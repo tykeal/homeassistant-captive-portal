@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Andrew Grimberg <tykeal@bardicgrove.org>
+# SPDX-License-Identifier: Apache-2.0
+---
+name: Captive Portal
+url: https://github.com/tykeal/homeassistant-captive-portal
+maintainer: Andrew Grimberg <tykeal@bardicgrove.org>
