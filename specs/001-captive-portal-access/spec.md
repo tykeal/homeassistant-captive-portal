@@ -112,10 +112,18 @@ On first run the system prompts for initial admin credentials and stores them; l
 - **FR-012**: System MUST provide clear error message to guest when voucher invalid or expired without exposing internal system details.
 - **FR-013**: System MUST handle controller communication failures by queuing intended changes and retrying until success or timeout threshold.
 - **FR-014**: System MUST prevent duplicate grants for same voucher if multiple redemption attempts occur simultaneously.
+- **FR-015**: System MUST use SQLite (SQLModel) as initial storage behind a repository abstraction enabling later DB migration without service layer changes.
+- **FR-016**: System MUST implement admin authentication using secure HTTP-only server-side session cookies with CSRF protection for state-changing requests.
 
 *Assumptions: TP-Omada controller API offers endpoints for session authorization, revocation, and modification; standard HTTPS REST assumed.*
 
 *Clarifications Needed:* None (defaults chosen for unspecified implementation specifics).
+
+## Clarifications
+
+### Session 2025-10-22
+- Q1: Initial persistence engine choice for vouchers/grants/accounts? → A: SQLite via SQLModel behind abstraction
+- Q2: Admin authentication mechanism? → A: Secure HTTP-only server-side session cookie with CSRF protection
 
 ### Key Entities *(include if feature involves data)*
 
