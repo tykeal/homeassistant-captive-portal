@@ -13,8 +13,8 @@ Implement a pluggable captive portal enabling rental guest network access with v
 ## Technical Context
 
 **Language/Version**: Python 3.13
-**Primary Dependencies**: FastAPI (HTTP/API & admin UI simple templating), Jinja2 (theming templates), httpx (async HTTP to TP-Omada + HA REST), SQLModel or PostgreSQL adapter (NEEDS CLARIFICATION: storage choice for persistence), passlib/bcrypt (password hashing), pydantic (data validation), uv (package/environment manager), alembic (if SQL DB chosen for migrations)
-**Storage**: NEEDS CLARIFICATION: Lightweight DB (SQLite via SQLModel) vs PostgreSQL for multi-instance scalability. Default assumption: SQLite initially (atomic commits + low complexity) with abstraction layer for future switch.
+**Primary Dependencies**: FastAPI (HTTP/API & admin UI simple templating), Jinja2 (theming templates), httpx (async HTTP to TP-Omada + HA REST), SQLModel (initial SQLite persistence), passlib/bcrypt (password hashing), pydantic (data validation), uv (package/environment manager), alembic (for future DB migrations if upgraded beyond SQLite)
+**Storage**: Adopt SQLite via SQLModel behind a repository abstraction (Clarification Q1). Future upgrade path to PostgreSQL documented; no multi-instance requirement in v1.
 **Testing**: pytest + pytest-asyncio; coverage enforcement; contract tests for controller API boundaries using recorded fixtures; integration tests spinning up FastAPI test client.
 **Target Platform**: Linux container (Home Assistant addon base image) & generic OCI container (Docker/Podman)
 **Project Type**: Single backend project (web portal + API) with minimal frontend templating (no SPA framework initially)
@@ -87,8 +87,8 @@ Implement adapter for TP-Omada external portal API interactions; retry queue for
 Tests first: contract tests with fixture responses; integration tests verifying grant propagation statuses.
 
 ### Phase 4: Admin Web Interface & Theming
-Implement authentication, admin CRUD for vouchers/grants, entity mapping UI, theming loader.
-Tests first: integration tests for admin routes (auth success/failure), template rendering checks (no sensitive data leakage).
+Implement authentication (secure HTTP-only server-side session cookies + CSRF protection), admin CRUD for vouchers/grants, entity mapping UI, theming loader.
+Tests first: integration tests for admin routes (auth success/failure), CSRF enforcement tests, template rendering checks (no sensitive data leakage).
 
 ### Phase 5: Home Assistant Entity Mapping Integration
 Polling or on-demand fetch of Rental Control entities; persistence of selected mapping; usage in authorization decisions.
@@ -116,18 +116,18 @@ Tests: finalize performance threshold assertions (remove skips), documentation v
 - research.md: summarize TP-Omada endpoints (login, authorize, revoke) & HA entity endpoints
 - data-model.md: define entities & relationships
 - contracts/: define OpenAPI routers & controller interface spec
-- Implement persistence abstraction + SQLite default
+- Implement persistence abstraction + SQLite default (repository pattern)
 - Voucher service + tests (create, validate, prevent duplicates)
 - Grant service + tests (create, extend, revoke, audit logging)
 - Controller adapter (tp_omada) + contract tests
-- Admin auth (password hashing, session/JWT) + tests
+- Admin auth (password hashing, secure HTTP-only session cookies + CSRF) + tests
 - Web templates (portal page, admin dashboard) basic theme config
 - HA mapping integration logic + tests
 - Performance scaffolds (benchmark voucher redemption)
 
-## Open Questions (NEEDS CLARIFICATION)
-1. Storage choice: SQLite vs PostgreSQL for initial release? (Defaulting to SQLite unless multi-instance requirement emerges)
-2. Admin auth mechanism: Session cookies vs JWT? (Defaulting to secure HTTP-only cookie session)
+## Open Questions (Resolved Clarifications Applied)
+1. Storage choice: RESOLVED → SQLite via SQLModel behind abstraction (Q1)
+2. Admin auth mechanism: RESOLVED → Secure HTTP-only server-side session cookies + CSRF protection (Q2)
 
 ## Risk & Mitigation
 - Controller API instability: Implement resilient retry with capped exponential backoff.
