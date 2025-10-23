@@ -16,7 +16,7 @@ Implement a pluggable captive portal enabling rental guest network access with v
 **Primary Dependencies**: FastAPI (HTTP/API & admin UI simple templating), Jinja2 (theming templates), httpx (async HTTP to TP-Omada + HA REST), SQLModel (initial SQLite persistence), passlib/bcrypt (password hashing), pydantic (data validation), uv (package/environment manager), alembic (for future DB migrations if upgraded beyond SQLite)
 **Storage**: Adopt SQLite via SQLModel behind a repository abstraction (Clarification Q1). Future upgrade path to PostgreSQL documented; no multi-instance requirement in v1.
 **Testing**: pytest + pytest-asyncio; coverage enforcement; contract tests for controller API boundaries using recorded fixtures; integration tests spinning up FastAPI test client.
-**Target Platform**: Linux container (Home Assistant addon base image) & generic OCI container (Docker/Podman)
+**Target Platform**: Home Assistant addon container (based on addons-example best practices) & generic OCI container (Docker/Podman)
 **Project Type**: Single backend project (web portal + API) with minimal frontend templating (no SPA framework initially)
 **Performance Goals**: Voucher redemption end-to-end < 1s median; admin list grants page loads < 2s with up to 500 grants; controller update propagation <30s (spec success criteria) with retry resolution <2min worst-case.
 **Constraints**: p95 voucher redemption <2s; memory footprint <150MB RSS; CPU utilization idle <5%; No blocking IO in request handlers (async everywhere). Bandwidth shaping configuration delegated to controller (not enforced in app).
@@ -99,7 +99,7 @@ Add benchmark tests for voucher redemption path, log audit completeness tests, f
 Refactor for any identified bottlenecks.
 
 ### Phase 7: Polish & Documentation
-quickstart.md, finalize README additions, audit logging review, ensure all SPDX headers, license compliance review.
+quickstart.md, finalize README additions, audit logging review, ensure all SPDX headers, license compliance review, addon build artifacts (Dockerfile, config.json) aligned with addons-example.
 Tests: finalize performance threshold assertions (remove skips), documentation validation (lint).
 
 ## Complexity Tracking
@@ -112,6 +112,7 @@ Tests: finalize performance threshold assertions (remove skips), documentation v
 ## Initial Task Seeds (High-Level)
 (Details deferred to /speckit.tasks)
 - Setup uv project, pyproject.toml, add dependencies
+- Add addon skeleton (Dockerfile, config.json, run script) based on home-assistant/addons-example
 - Add pre-commit config (ruff, reuse, pytest, black if used)
 - research.md: summarize TP-Omada endpoints (login, authorize, revoke) & HA entity endpoints
 - data-model.md: define entities & relationships
