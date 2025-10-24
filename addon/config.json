@@ -1,0 +1,17 @@
+{
+  "name": "Captive Portal Guest Access",
+  "version": "0.0.0-dev",
+  "slug": "captive_portal_guest_access",
+  "description": "Guest network captive portal integrating TP-Omada and Home Assistant",
+  "url": "https://example.com/placeholder",
+  "arch": ["amd64", "aarch64"],
+  "startup": "services",
+  "init": false,
+  "panel_admin": true,
+  "homeassistant_api": true,
+  "ingress": false,
+  "ports": {"8080/tcp": 8080},
+  "ports_description": {"8080/tcp": "Web admin & portal"},
+  "schema": {},
+  "image": "local/captive-portal-{arch}"
+}

@@ -11,14 +11,14 @@ SPDX-License-Identifier: Apache-2.0
 - **[Story]** US1..US4 or NF (non-functional)
 
 ## Phase 0: Research & Environment Setup
-- [ ] T0001 [P] NF Initialize uv project, pyproject, base dependency pins
-- [ ] T0002 [P] NF Add pre-commit (ruff, reuse, pytest, coverage, trailing-ws)
-- [ ] T0003 [P] NF Add addon skeleton (Dockerfile, config.json, run script) from addons-example
-- [ ] T0004 NF research.md: document TP-Omada external portal endpoints (authorize, revoke, session) with sample payloads
-- [ ] T0005 NF research.md: document HA REST endpoints for Rental Control entities discovery
-- [ ] T0006 [P] NF Add basic FastAPI app factory + health endpoint (no business logic)
-- [ ] T0007 [P] NF Add logging & structured log formatter (JSON capable)
-- [ ] T0008 NF Phase 0 review: re-evaluate spec analysis & list decisions required for Phase 1
+- [x] T0001 [P] NF Initialize uv project, pyproject, base dependency pins (2025-10-24T21:39:11.207Z)
+- [x] T0002 [P] NF Add pre-commit (ruff, reuse, pytest, coverage, trailing-ws) (2025-10-24T21:39:11.207Z)
+- [x] T0003 [P] NF Add addon skeleton (Dockerfile, config.json, run script) from addons-example (2025-10-24T21:39:11.207Z)
+- [x] T0004 NF research.md: document TP-Omada external portal endpoints (authorize, revoke, session) with sample payloads (2025-10-24T21:42:42.556Z)
+- [x] T0005 NF research.md: document HA REST endpoints for Rental Control entities discovery (2025-10-24T21:42:42.556Z)
+- [x] T0006 [P] NF Add basic FastAPI app factory + health endpoint (no business logic) (2025-10-24T21:39:11.207Z)
+- [x] T0007 [P] NF Add logging & structured log formatter (JSON capable) (2025-10-24T21:39:11.207Z)
+- [x] T0008 NF Phase 0 review: re-evaluate spec analysis & list decisions required for Phase 1 (2025-10-24T21:42:42.556Z)
 
 ## Phase 1: Data Model & Contracts (Write tests first)
 ### Tests First
