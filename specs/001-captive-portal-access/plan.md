@@ -73,32 +73,40 @@ tests/
 ### Phase 0: Research & Environment Setup
 Deliverables: research.md, initial pre-commit config, dependency selection, controller API analysis summary (mapping of needed endpoints), HA REST entity discovery notes.
 Tests (author first): None functional yet; add placeholder performance baseline test scaffolds (skipped) and config loading unit tests.
+Constitution Gate Re-check: Verify SPDX headers on new files, pre-commit active, TDD scaffolds present.
 
 ### Phase 1: Data Model & Contracts
 Deliverables: data-model.md (Voucher, AccessGrant, AdminAccount, EntityMapping, AuditLog models), contracts/ (OpenAPI draft for internal API, JSON schema for voucher redemption request/response, controller interaction contract stubs).
 Tests first: unit tests for model validation (pydantic), contract tests using mocked controller responses; negative tests for duplicate voucher race condition simulation.
+Constitution Gate Re-check: Confirm all new files have SPDX headers, tests exist before implementation, atomic commit sequencing followed.
 
 ### Phase 2: Core Services (Voucher & Grant Logic)
 Implement voucher creation, redemption flow, grant lifecycle (create/update/revoke), duplicate prevention semaphore/locking strategy.
 Tests first: service-level unit tests (voucher expiration, grant extension), concurrency test for duplicate redemption.
+Constitution Gate Re-check: Ensure tests failing before code, validate no pre-commit bypass, verify audit/logging tasks planned.
 
 ### Phase 3: Controller Integration (TP-Omada)
 Implement adapter for TP-Omada external portal API interactions; retry queue for failures.
 Tests first: contract tests with fixture responses; integration tests verifying grant propagation statuses.
+Constitution Gate Re-check: Confirm adapter tests cover error paths (retry), metrics instrumentation test present before implementation.
 
 ### Phase 4: Admin Web Interface & Theming
+Constitution Gate Re-check: Validate security headers, CSRF tests precede implementation, theme precedence test (remediation) added before UI changes.
 Implement authentication (secure HTTP-only server-side session cookies + CSRF protection), admin CRUD for vouchers/grants, entity mapping UI, theming loader.
 Tests first: integration tests for admin routes (auth success/failure), CSRF enforcement tests, template rendering checks (no sensitive data leakage).
 
 ### Phase 5: Home Assistant Entity Mapping Integration
+Constitution Gate Re-check: Confirm mapping tests validate selection logic before service code; ensure SPDX headers on new files.
 Polling or on-demand fetch of Rental Control entities; persistence of selected mapping; usage in authorization decisions.
 Tests first: integration tests with mocked HA responses, mapping save/retrieve, fallback when HA unavailable.
 
 ### Phase 6: Performance & Hardening
+Constitution Gate Re-check: Finalize performance baselines before removing test skips; enforce audit/log completeness tests present.
 Add benchmark tests for voucher redemption path, log audit completeness tests, finalize performance baseline numbers.
 Refactor for any identified bottlenecks.
 
 ### Phase 7: Polish & Documentation
+Constitution Gate Re-check: Ensure documentation reflects final baselines, all SPDX headers verified, no skipped tests remain.
 quickstart.md, finalize README additions, audit logging review, ensure all SPDX headers, license compliance review, addon build artifacts (Dockerfile, config.json) aligned with addons-example.
 Tests: finalize performance threshold assertions (remove skips), documentation validation (lint).
 

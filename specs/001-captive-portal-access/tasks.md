@@ -18,6 +18,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0005 NF research.md: document HA REST endpoints for Rental Control entities discovery
 - [ ] T0006 [P] NF Add basic FastAPI app factory + health endpoint (no business logic)
 - [ ] T0007 [P] NF Add logging & structured log formatter (JSON capable)
+- [ ] T0008 NF Phase 0 review: re-evaluate spec analysis & list decisions required for Phase 1
 
 ## Phase 1: Data Model & Contracts (Write tests first)
 ### Tests First
@@ -42,6 +43,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0117 NF api/contracts/openapi_draft.yaml (initial endpoints)
 - [ ] T0118 NF contracts/controller/omada_authorize.json (request/response schema)
 - [ ] T0119 NF contracts/controller/omada_revoke.json
+- [ ] T0120 NF Phase 1 review: re-evaluate spec analysis & list decisions required for Phase 2
 
 ## Phase 2: Core Services (Voucher & Grant Logic)
 ### Tests First
@@ -57,6 +59,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0211 US1 services/grant_service.py (create, revoke, extend)
 - [ ] T0212 NF services/audit_service.py (log admin + voucher events)
 - [ ] T0213 NF concurrency lock / uniqueness (DB constraint + async lock) added
+- [ ] T0214 NF Phase 2 review: re-evaluate spec analysis & list decisions required for Phase 3
 
 ## Phase 3: Controller Integration (TP-Omada)
 ### Tests First
@@ -69,6 +72,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0311 US1 controllers/tp_omada/adapter.py (authorize, revoke, update)
 - [ ] T0312 US1 services/omada_sync_queue.py (retry queue)
 - [ ] T0313 NF metrics instrumentation (authorize latency histogram)
+- [ ] T0314 NF Phase 3 review: re-evaluate spec analysis & list decisions required for Phase 4
 
 ## Phase 4: Admin Web Interface & Theming
 ### Tests First
@@ -92,6 +96,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0418 NF web/templates/portal/index.html (theming placeholders)
 - [ ] T0419 NF web/templates/admin/dashboard.html
 - [ ] T0420 NF web/themes/default/theme.css
+- [ ] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5
 
 ## Phase 5: Home Assistant Entity Mapping Integration
 ### Tests First
@@ -102,6 +107,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0510 US3 services/ha_entity_service.py (fetch + cache)
 - [ ] T0511 US3 services/mapping_application.py (inject entity data to validation)
 - [ ] T0512 NF add degraded-mode logging when HA unreachable
+- [ ] T0513 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6
 
 ## Phase 6: Performance & Hardening
 ### Tests First
@@ -113,6 +119,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0610 NF optimize DB indices (voucher.code, access_grant.expiration)
 - [ ] T0611 NF add caching layer for frequently read vouchers (optional)
 - [ ] T0612 NF finalize performance thresholds documentation
+- [ ] T0613 NF Phase 6 review: re-evaluate spec analysis & list decisions required for Phase 7
 
 ## Phase 7: Polish & Documentation
 - [ ] T0700 NF quickstart.md (addon + standalone run)
@@ -123,10 +130,11 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0705 NF security review checklist (session hardening, CSRF, headers)
 - [ ] T0706 NF release notes draft (MVP scope)
 - [ ] T0707 NF audit logging review & gap fixes
+- [ ] T0708R NF Phase 7 review: final re-evaluation & readiness decisions before release
 
 ## Dependencies & Execution Order
 - Completion of Phase 0 required before Phase 1.
-- Core services (Phase 2) depend on models/contracts (Phase 1).
+- Core services (Phase 2) depend on models/contracts (Phase 1 partial) & contracts.
 - Controller adapter (Phase 3) depends on services scaffolds (Phase 2 partial) & contracts.
 - Admin interface (Phase 4) depends on auth + services + controller integration.
 - Entity mapping (Phase 5) depends on earlier phases for validation injection.
@@ -144,3 +152,20 @@ SPDX-License-Identifier: Apache-2.0
 - Commit each task or cohesive small set (atomic).
 - Performance tests initially skipped until baseline chosen.
 - Avoid introducing auth framework complexity beyond session + CSRF for v1.
+
+## Remediation Addenda (Post-Analysis)
+- Added after specification analysis to close coverage & alignment gaps.
+
+### Remediation Tasks
+- [ ] T0708 NF constitution_gate_checklist.md: add per-phase gate re-check template & reference in plan after each phase.
+- [ ] T0709 NF tests/integration/test_portal_error_messages_theming.py (guest error clarity, theming, localization placeholders) (FR-012).
+- [ ] T0710 NF define performance baselines (login p95 <500ms, voucher p95 <750ms, memory RSS <150MB, CPU <30% p95); update performance test harness (tests/performance/*) & docs.
+- [ ] T0711 NF tests/unit/logging/test_audit_log_fields.py (validate user, action, resource, result, correlation_id) + ensure audit_service emits all fields.
+- [ ] T0712 NF tests/integration/test_session_cookie_security_headers.py (Secure, HttpOnly, SameSite=Lax, CSP, Referrer-Policy, Permissions-Policy) & middleware header additions.
+- [ ] T0713 NF tests/integration/test_theme_precedence.py (admin override > default > fallback) including error pages & vouchers.
+- [ ] T0714 NF tests/integration/test_health_readiness_liveness.py + implement readiness & liveness endpoints & document container probes.
+- [ ] T0715 NF cache_decision.md: decide keep (add NFR: reduce controller round-trips 60% + tests) or remove T0611; record rationale.
+- [ ] T0716 NF add NFR (disconnect enforcement p95 <30s after access expiry) + tests/integration/test_disconnect_enforcement.py.
+- [ ] T0717 NF extend metrics (active_sessions, controller_latency, auth_failures) + tests/unit/metrics/test_metrics_export.py & instrumentation updates.
+- [ ] T0718 NF tests/integration/test_addon_build_run.py: build HA addon image, start container, verify health & readiness endpoints, graceful shutdown.
+- Recommendation (2025-10-23T13:57:51.702Z): Adopt minimal in-memory TTL cache (30–60s controller status, 5–10m HA rental metadata) with explicit bust on grant create/update/delete; implement via optional layer (T0611) if T0715 outcome = keep, else remove T0611.
