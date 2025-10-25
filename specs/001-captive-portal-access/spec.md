@@ -114,6 +114,7 @@ On first run the system prompts for initial admin credentials and stores them; l
 - **FR-014**: System MUST prevent duplicate grants for same voucher if multiple redemption attempts occur simultaneously.
 - **FR-015**: System MUST use SQLite (SQLModel) as initial storage behind a repository abstraction enabling later DB migration without service layer changes.
 - **FR-016**: System MUST implement admin authentication using secure HTTP-only server-side session cookies with CSRF protection for state-changing requests.
+- **FR-017**: System MUST enforce role-based access control (RBAC) with roles {viewer, operator, auditor, admin}; deny-by-default policy; centrally defined action matrix; and 403 JSON error (code: RBAC_FORBIDDEN) on unauthorized access with no sensitive leakage.
 
 *Assumptions: TP-Omada controller API offers endpoints for session authorization, revocation, and modification; standard HTTPS REST assumed.*
 

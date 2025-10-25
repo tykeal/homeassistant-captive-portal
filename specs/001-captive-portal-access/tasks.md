@@ -48,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0119 NF contracts/controller/omada_revoke.json
 - [ ] T0120 NF Phase 1 review: re-evaluate spec analysis & list decisions required for Phase 2
 
-## Phase 2: Core Services (Voucher & Grant Logic)
+## Phase 2: Core Services (Voucher & Grant Logic + RBAC Foundations)
 ### Tests First
 - [ ] T0200 [P] US1 tests/unit/services/test_voucher_service_create.py (duplicate prevention red)
 - [ ] T0201 [P] US1 tests/unit/services/test_voucher_service_redeem.py (expired, valid)
@@ -56,12 +56,17 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0203 [P] US2 tests/unit/services/test_grant_service_extend.py
 - [ ] T0204 [P] US2 tests/unit/services/test_grant_service_revoke.py
 - [ ] T0205 US1 tests/integration/test_duplicate_redemption_race.py (concurrency)
+- [ ] T0206 NF tests/integration/test_rbac_permission_matrix_allow.py (each role allowed actions)
+- [ ] T0207 NF tests/integration/test_rbac_permission_matrix_deny.py (deny-by-default unauthorized actions => 403)
 
 ### Implementation
 - [ ] T0210 US1 services/voucher_service.py (create, validate, redeem)
 - [ ] T0211 US1 services/grant_service.py (create, revoke, extend)
 - [ ] T0212 NF services/audit_service.py (log admin + voucher events)
 - [ ] T0213 NF concurrency lock / uniqueness (DB constraint + async lock) added
+- [ ] T0215 NF security/rbac/matrix.py (role→actions mapping & deny-by-default lookup)
+- [ ] T0216 NF middleware/rbac_enforcer.py (FastAPI dependency to enforce matrix, emits audit on deny)
+- [ ] T0217 NF docs/permissions_matrix.md (roles x endpoints/actions table and RBAC acceptance criteria for FR-017)
 - [ ] T0214 NF Phase 2 review: re-evaluate spec analysis & list decisions required for Phase 3
 
 ## Phase 3: Controller Integration (TP-Omada)
@@ -101,15 +106,24 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0420 NF web/themes/default/theme.css
 - [ ] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5
 
-## Phase 5: Home Assistant Entity Mapping Integration
+## Phase 5: Home Assistant Entity Mapping Integration (Booking Code Validation)
 ### Tests First
 - [ ] T0500 [P] US3 tests/unit/services/test_entity_discovery_failover.py
 - [ ] T0501 [P] US3 tests/integration/test_entity_mapping_applied_in_voucher_validation.py
+- [ ] T0502 NF tests/unit/services/test_booking_code_format_validation.py (slot_code, slot_name edge cases)
+- [ ] T0503 NF tests/integration/test_booking_code_lookup_happy_path.py (event 0 & 1)
+- [ ] T0504 NF tests/integration/test_booking_code_not_found.py
+- [ ] T0505 NF tests/integration/test_booking_code_outside_window.py
+- [ ] T0506 NF tests/integration/test_booking_code_duplicate_grant.py
+- [ ] T0507 NF tests/integration/test_booking_code_integration_unavailable.py
 
 ### Implementation
 - [ ] T0510 US3 services/ha_entity_service.py (fetch + cache)
 - [ ] T0511 US3 services/mapping_application.py (inject entity data to validation)
 - [ ] T0512 NF add degraded-mode logging when HA unreachable
+- [ ] T0514 NF services/booking_code_validator.py (format+window+lookup logic, metrics, audit emission)
+- [ ] T0515 NF api/routes/booking_authorize.py (guest POST code → grant)
+- [ ] T0516 NF docs/booking_code_validation.md (FR-018 details, flows, error matrix)
 - [ ] T0513 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6
 
 ## Phase 6: Performance & Hardening

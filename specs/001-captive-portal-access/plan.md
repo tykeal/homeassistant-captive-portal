@@ -115,6 +115,26 @@ Constitution Gate Re-check: Ensure documentation reflects final baselines, all S
 quickstart.md, finalize README additions, audit logging review, ensure all SPDX headers, license compliance review, addon build artifacts (Dockerfile, config.json) aligned with addons-example.
 Tests: finalize performance threshold assertions (remove skips), documentation validation (lint).
 
+## Role-Based Access Control (FR-017)
+
+FR-017: System SHALL enforce role-based permissions: {Viewer: read dashboards only; Operator: viewer + trigger captive session resets; Admin: operator + manage vouchers/roles; Auditor: viewer + access immutable logs}. No other actions permitted (deny-by-default). Permission matrix documented and tests (authorization allow/deny, negative) precede implementation.
+
+## Booking Identifier Validation (FR-018)
+
+FR-018: System SHALL validate guest authorization (booking) codes against Rental Control events.
+- Source Entities per integration: calendar.rental_control_<integration_id>, sensor.rental_control_<integration_id>_event_[0..N-1].
+- Prioritized Events: event 0 (current or checking-out today), event 1 (upcoming/arriving today). All events 0..N-1 are eligible if within [start, end].
+- Candidate Identifier Attributes: slot_code (default) or slot_name (admin-selectable per integration). Admin chooses once per integration; selection persisted.
+- Formats: slot_code regex ^\d{4,}$; last_four regex ^\d{4}$ (last_four not used directly for auth in v1 but may be displayed/audited). slot_name treated as opaque string (non-empty, trimmed, <=128 chars).
+- Guest Input: Single authorization code field (no username).
+- Validation Window: Access allowed from event.start (floored to minute) until event.end (ceiled to minute). Access grants lifetime resolved to minute boundaries.
+- Devices: Unlimited devices per valid booking within window.
+- Failure Responses: 400 invalid format; 404 booking not found; 410 booking outside active window; 409 duplicate active grant (same code already redeemed and still valid) returns existing grant reference.
+- Metrics: booking_lookup_latency (histogram), validation_fail_total (counter with reason labels: invalid_format, not_found, outside_window, duplicate).
+- Audit Log: booking_code_attempt (code_hash, integration_id, outcome, reason, correlation_id).
+- Future: Bandwidth limits & guest upgrade path (deferred; note for roadmap).
+- Security: Deny-by-default if integration selection missing or events unavailable (reason: integration_unavailable).
+
 ## Complexity Tracking
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
