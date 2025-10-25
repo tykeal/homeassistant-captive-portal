@@ -5,7 +5,7 @@ Actual integration will attach roles to request (e.g., session) later.
 """
 from __future__ import annotations
 from fastapi import HTTPException, Request
-from .security import is_allowed  # type: ignore  # path corrected by package layout
+from .security import is_allowed
 
 # Simple stub: role passed via header X-Role for early tests
 DEFAULT_ACTION_HEADER = "X-Action"
