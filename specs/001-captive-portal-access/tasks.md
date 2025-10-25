@@ -39,7 +39,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0111 NF persistence/sqlite_meta.py create tables via SQLModel
 - [ ] T0111a NF performance_baselines.md: capture baseline sources & methodology (links to plan)
 - [x] T0112 [P] NF core/models/voucher.py (2025-10-25T20:25:09.143Z)
-- [ ] T0113 [P] NF core/models/access_grant.py
+- [x] T0113 [P] NF core/models/access_grant.py (2025-10-25T20:27:38.792Z)
 - [ ] T0114 [P] NF core/models/admin_account.py
 - [ ] T0115 [P] NF core/models/entity_mapping.py
 - [ ] T0116 [P] NF core/models/audit_log.py
