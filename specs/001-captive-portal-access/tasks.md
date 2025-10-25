@@ -3,8 +3,8 @@ SPDX-License-Identifier: Apache-2.0
 
 # Tasks: Captive Portal Guest Access
 
-**Input**: spec.md, plan.md (phased TDD)
-**Prerequisites**: plan.md, spec.md
+**Input**: spec.md, phase1.md, plan.md (phased TDD)
+**Prerequisites**: plan.md, spec.md, phase1.md
 
 ## Format: `[ID] [P] [Story] Description`
 - **[P]** parallel-safe (different files/no deps)
@@ -19,6 +19,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0006 [P] NF Add basic FastAPI app factory + health endpoint (no business logic) (2025-10-24T21:39:11.207Z)
 - [x] T0007 [P] NF Add logging & structured log formatter (JSON capable) (2025-10-24T21:39:11.207Z)
 - [x] T0008 NF Phase 0 review: re-evaluate spec analysis & list decisions required for Phase 1 (2025-10-24T21:42:42.556Z)
+- [x] T0009 NF constitution_gate_checklist.md created (initial gates) (2025-10-25T13:46:20.138Z)
 
 ## Phase 1: Data Model & Contracts (Write tests first)
 ### Tests First
@@ -31,10 +32,12 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0106 [P] US1 tests/contract/tp_omada/test_revoke_flow.py
 - [ ] T0107 [P] US3 tests/contract/ha/test_entity_discovery.py
 - [ ] T0108 NF tests/unit/config/test_settings_load.py
+- [ ] T0109 NF tests/performance/test_baselines_placeholder.py (skipped; asserts p95 thresholds)
 
 ### Implementation
 - [ ] T0110 NF persistence/__init__.py repository abstractions (VoucherRepo, GrantRepo, AdminRepo)
 - [ ] T0111 NF persistence/sqlite_meta.py create tables via SQLModel
+- [ ] T0111a NF performance_baselines.md: capture baseline sources & methodology (links to plan)
 - [ ] T0112 [P] NF core/models/voucher.py
 - [ ] T0113 [P] NF core/models/access_grant.py
 - [ ] T0114 [P] NF core/models/admin_account.py
@@ -45,7 +48,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0119 NF contracts/controller/omada_revoke.json
 - [ ] T0120 NF Phase 1 review: re-evaluate spec analysis & list decisions required for Phase 2
 
-## Phase 2: Core Services (Voucher & Grant Logic)
+## Phase 2: Core Services (Voucher & Grant Logic + RBAC Foundations)
 ### Tests First
 - [ ] T0200 [P] US1 tests/unit/services/test_voucher_service_create.py (duplicate prevention red)
 - [ ] T0201 [P] US1 tests/unit/services/test_voucher_service_redeem.py (expired, valid)
@@ -53,12 +56,17 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0203 [P] US2 tests/unit/services/test_grant_service_extend.py
 - [ ] T0204 [P] US2 tests/unit/services/test_grant_service_revoke.py
 - [ ] T0205 US1 tests/integration/test_duplicate_redemption_race.py (concurrency)
+- [ ] T0206 NF tests/integration/test_rbac_permission_matrix_allow.py (each role allowed actions)
+- [ ] T0207 NF tests/integration/test_rbac_permission_matrix_deny.py (deny-by-default unauthorized actions => 403)
 
 ### Implementation
 - [ ] T0210 US1 services/voucher_service.py (create, validate, redeem)
 - [ ] T0211 US1 services/grant_service.py (create, revoke, extend)
 - [ ] T0212 NF services/audit_service.py (log admin + voucher events)
 - [ ] T0213 NF concurrency lock / uniqueness (DB constraint + async lock) added
+- [ ] T0215 NF security/rbac/matrix.py (role→actions mapping & deny-by-default lookup)
+- [ ] T0216 NF middleware/rbac_enforcer.py (FastAPI dependency to enforce matrix, emits audit on deny)
+- [ ] T0217 NF docs/permissions_matrix.md (roles x endpoints/actions table and RBAC acceptance criteria for FR-017)
 - [ ] T0214 NF Phase 2 review: re-evaluate spec analysis & list decisions required for Phase 3
 
 ## Phase 3: Controller Integration (TP-Omada)
@@ -98,15 +106,24 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0420 NF web/themes/default/theme.css
 - [ ] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5
 
-## Phase 5: Home Assistant Entity Mapping Integration
+## Phase 5: Home Assistant Entity Mapping Integration (Booking Code Validation)
 ### Tests First
 - [ ] T0500 [P] US3 tests/unit/services/test_entity_discovery_failover.py
 - [ ] T0501 [P] US3 tests/integration/test_entity_mapping_applied_in_voucher_validation.py
+- [ ] T0502 NF tests/unit/services/test_booking_code_format_validation.py (slot_code, slot_name edge cases + voucher length/charset per FR-018)
+- [ ] T0503 NF tests/integration/test_booking_code_lookup_happy_path.py (event 0 & 1)
+- [ ] T0504 NF tests/integration/test_booking_code_not_found.py
+- [ ] T0505 NF tests/integration/test_booking_code_outside_window.py
+- [ ] T0506 NF tests/integration/test_booking_code_duplicate_grant.py
+- [ ] T0507 NF tests/integration/test_booking_code_integration_unavailable.py
 
 ### Implementation
 - [ ] T0510 US3 services/ha_entity_service.py (fetch + cache)
 - [ ] T0511 US3 services/mapping_application.py (inject entity data to validation)
 - [ ] T0512 NF add degraded-mode logging when HA unreachable
+- [ ] T0514 NF services/booking_code_validator.py (format+window+lookup logic, metrics, audit emission)
+- [ ] T0515 NF api/routes/booking_authorize.py (guest POST code → grant)
+- [ ] T0516 NF docs/booking_code_validation.md (FR-018 details, flows, error matrix)
 - [ ] T0513 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6
 
 ## Phase 6: Performance & Hardening
@@ -130,7 +147,6 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0705 NF security review checklist (session hardening, CSRF, headers)
 - [ ] T0706 NF release notes draft (MVP scope)
 - [ ] T0707 NF audit logging review & gap fixes
-- [ ] T0708R NF Phase 7 review: final re-evaluation & readiness decisions before release
 
 ## Dependencies & Execution Order
 - Completion of Phase 0 required before Phase 1.
@@ -157,9 +173,7 @@ SPDX-License-Identifier: Apache-2.0
 - Added after specification analysis to close coverage & alignment gaps.
 
 ### Remediation Tasks
-- [ ] T0708 NF constitution_gate_checklist.md: add per-phase gate re-check template & reference in plan after each phase.
 - [ ] T0709 NF tests/integration/test_portal_error_messages_theming.py (guest error clarity, theming, localization placeholders) (FR-012).
-- [ ] T0710 NF define performance baselines (login p95 <500ms, voucher p95 <750ms, memory RSS <150MB, CPU <30% p95); update performance test harness (tests/performance/*) & docs.
 - [ ] T0711 NF tests/unit/logging/test_audit_log_fields.py (validate user, action, resource, result, correlation_id) + ensure audit_service emits all fields.
 - [ ] T0712 NF tests/integration/test_session_cookie_security_headers.py (Secure, HttpOnly, SameSite=Lax, CSP, Referrer-Policy, Permissions-Policy) & middleware header additions.
 - [ ] T0713 NF tests/integration/test_theme_precedence.py (admin override > default > fallback) including error pages & vouchers.

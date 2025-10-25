@@ -15,9 +15,6 @@ jobs:
   lint-and-test:
     name: Lint and Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: addon
 
     steps:
       - name: Checkout code
@@ -32,9 +29,9 @@ jobs:
         uses: astral-sh/setup-uv@2ddd2b9cb38ad8efd50337e8ab201519a34c9f24 # v7.1.1
         with:
           enable-cache: true
-          cache-dependency-glob: "addon/uv.lock"
+          cache-dependency-glob: "uv.lock"
 
-      - name: Verify uv.lock is up to date (T038)
+      - name: Verify uv.lock is up to date
         run: |
           if ! uv lock --check; then
             echo "::error::uv.lock is out of sync with pyproject.toml"
@@ -47,12 +44,12 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          uv run pytest --cov=src --cov-report=xml --cov-report=term
+          uv run pytest --cov=src/captive_portal --cov-report=xml --cov-report=term
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
         with:
-          files: ./addon/coverage.xml
+          files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
@@ -60,9 +57,6 @@ jobs:
   dependency-check:
     name: Dependency Security Check
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: addon
 
     steps:
       - name: Checkout code
@@ -90,9 +84,6 @@ jobs:
   type-check:
     name: Type Checking
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: addon
 
     steps:
       - name: Checkout code
@@ -111,4 +102,4 @@ jobs:
 
       - name: Run mypy
         run: |
-          uv run mypy src
+          uv run mypy src/captive_portal
