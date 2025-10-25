@@ -27,6 +27,8 @@ Implement a pluggable captive portal enabling rental guest network access with v
 
 ## Constitution Check
 
+Refer to `constitution_gate_checklist.md` for per-phase gate verification (introduced Phase 0, task T0009).
+
 Gates derived from constitution:
 - Atomic commits: Plan phases enforce granular task breakdown.
 - SPDX headers: Template enforcement; automation script will insert headers for new files.

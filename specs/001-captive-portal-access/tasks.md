@@ -19,6 +19,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0006 [P] NF Add basic FastAPI app factory + health endpoint (no business logic) (2025-10-24T21:39:11.207Z)
 - [x] T0007 [P] NF Add logging & structured log formatter (JSON capable) (2025-10-24T21:39:11.207Z)
 - [x] T0008 NF Phase 0 review: re-evaluate spec analysis & list decisions required for Phase 1 (2025-10-24T21:42:42.556Z)
+- [x] T0009 NF constitution_gate_checklist.md created (initial gates) (2025-10-25T13:46:20.138Z)
 
 ## Phase 1: Data Model & Contracts (Write tests first)
 ### Tests First
@@ -132,7 +133,6 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0705 NF security review checklist (session hardening, CSRF, headers)
 - [ ] T0706 NF release notes draft (MVP scope)
 - [ ] T0707 NF audit logging review & gap fixes
-- [ ] T0708R NF Phase 7 review: final re-evaluation & readiness decisions before release
 
 ## Dependencies & Execution Order
 - Completion of Phase 0 required before Phase 1.
@@ -159,7 +159,6 @@ SPDX-License-Identifier: Apache-2.0
 - Added after specification analysis to close coverage & alignment gaps.
 
 ### Remediation Tasks
-- [ ] T0708 NF constitution_gate_checklist.md: add per-phase gate re-check template & reference in plan after each phase.
 - [ ] T0709 NF tests/integration/test_portal_error_messages_theming.py (guest error clarity, theming, localization placeholders) (FR-012).
 - [ ] T0711 NF tests/unit/logging/test_audit_log_fields.py (validate user, action, resource, result, correlation_id) + ensure audit_service emits all fields.
 - [ ] T0712 NF tests/integration/test_session_cookie_security_headers.py (Secure, HttpOnly, SameSite=Lax, CSP, Referrer-Policy, Permissions-Policy) & middleware header additions.
