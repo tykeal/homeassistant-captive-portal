@@ -40,9 +40,9 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0111a NF performance_baselines.md: capture baseline sources & methodology (links to plan)
 - [x] T0112 [P] NF core/models/voucher.py (2025-10-25T20:25:09.143Z)
 - [x] T0113 [P] NF core/models/access_grant.py (2025-10-25T20:27:38.792Z)
-- [ ] T0114 [P] NF core/models/admin_account.py
-- [ ] T0115 [P] NF core/models/entity_mapping.py
-- [ ] T0116 [P] NF core/models/audit_log.py
+- [x] T0114 [P] NF core/models/admin_account.py (2025-10-25T20:30:42.556Z)
+- [x] T0115 [P] NF core/models/entity_mapping.py (2025-10-25T20:30:42.556Z)
+- [x] T0116 [P] NF core/models/audit_log.py (2025-10-25T20:30:42.556Z)
 - [ ] T0117 NF api/contracts/openapi_draft.yaml (initial endpoints)
 - [ ] T0118 NF contracts/controller/omada_authorize.json (request/response schema)
 - [ ] T0119 NF contracts/controller/omada_revoke.json
