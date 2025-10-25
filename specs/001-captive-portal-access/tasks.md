@@ -38,7 +38,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0110 NF persistence/__init__.py repository abstractions (VoucherRepo, GrantRepo, AdminRepo)
 - [ ] T0111 NF persistence/sqlite_meta.py create tables via SQLModel
 - [ ] T0111a NF performance_baselines.md: capture baseline sources & methodology (links to plan)
-- [ ] T0112 [P] NF core/models/voucher.py
+- [x] T0112 [P] NF core/models/voucher.py (2025-10-25T20:25:09.143Z)
 - [ ] T0113 [P] NF core/models/access_grant.py
 - [ ] T0114 [P] NF core/models/admin_account.py
 - [ ] T0115 [P] NF core/models/entity_mapping.py
