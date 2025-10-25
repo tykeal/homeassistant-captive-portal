@@ -18,8 +18,11 @@ Implement a pluggable captive portal enabling rental guest network access with v
 **Testing**: pytest + pytest-asyncio; coverage enforcement; contract tests for controller API boundaries using recorded fixtures; integration tests spinning up FastAPI test client.
 **Target Platform**: Home Assistant addon container (based on addons-example best practices) & generic OCI container (Docker/Podman)
 **Project Type**: Single backend project (web portal + API) with minimal frontend templating (no SPA framework initially)
-**Performance Goals**: Voucher redemption end-to-end < 1s median; admin list grants page loads < 2s with up to 500 grants; controller update propagation <30s (spec success criteria) with retry resolution <2min worst-case.
-**Constraints**: p95 voucher redemption <2s; memory footprint <150MB RSS; CPU utilization idle <5%; No blocking IO in request handlers (async everywhere). Bandwidth shaping configuration delegated to controller (not enforced in app).
+**Performance Baselines (p95 unless noted)**:
+- Voucher redemption: ≤800ms (L1: 50 concurrent) / ≤900ms (L2: 200 concurrent)
+- Auth login API: ≤300ms; Controller propagation (authorize→active): ≤25s; Admin grants list (500 grants): ≤1500ms
+- Memory RSS: ≤150MB; CPU 1-min peak: ≤60% @ 200 concurrent; Merge gate: >10% regression vs baseline blocks
+- Non-blocking IO (async); bandwidth shaping delegated to controller
 **Scale/Scope**: Single property initial; design for extension to multiple controllers and properties (multi-tenancy deferred). Concurrent guests <50 typical; admin users <5.
 
 ## Constitution Check

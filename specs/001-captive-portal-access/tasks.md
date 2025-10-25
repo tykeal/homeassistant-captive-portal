@@ -31,10 +31,12 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0106 [P] US1 tests/contract/tp_omada/test_revoke_flow.py
 - [ ] T0107 [P] US3 tests/contract/ha/test_entity_discovery.py
 - [ ] T0108 NF tests/unit/config/test_settings_load.py
+- [ ] T0109 NF tests/performance/test_baselines_placeholder.py (skipped; asserts p95 thresholds)
 
 ### Implementation
 - [ ] T0110 NF persistence/__init__.py repository abstractions (VoucherRepo, GrantRepo, AdminRepo)
 - [ ] T0111 NF persistence/sqlite_meta.py create tables via SQLModel
+- [ ] T0111a NF performance_baselines.md: capture baseline sources & methodology (links to plan)
 - [ ] T0112 [P] NF core/models/voucher.py
 - [ ] T0113 [P] NF core/models/access_grant.py
 - [ ] T0114 [P] NF core/models/admin_account.py
@@ -159,7 +161,6 @@ SPDX-License-Identifier: Apache-2.0
 ### Remediation Tasks
 - [ ] T0708 NF constitution_gate_checklist.md: add per-phase gate re-check template & reference in plan after each phase.
 - [ ] T0709 NF tests/integration/test_portal_error_messages_theming.py (guest error clarity, theming, localization placeholders) (FR-012).
-- [ ] T0710 NF define performance baselines (login p95 <500ms, voucher p95 <750ms, memory RSS <150MB, CPU <30% p95); update performance test harness (tests/performance/*) & docs.
 - [ ] T0711 NF tests/unit/logging/test_audit_log_fields.py (validate user, action, resource, result, correlation_id) + ensure audit_service emits all fields.
 - [ ] T0712 NF tests/integration/test_session_cookie_security_headers.py (Secure, HttpOnly, SameSite=Lax, CSP, Referrer-Policy, Permissions-Policy) & middleware header additions.
 - [ ] T0713 NF tests/integration/test_theme_precedence.py (admin override > default > fallback) including error pages & vouchers.
