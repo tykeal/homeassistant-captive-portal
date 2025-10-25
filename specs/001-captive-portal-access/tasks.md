@@ -23,16 +23,16 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 1: Data Model & Contracts (Write tests first)
 ### Tests First
-- [ ] T0100 [P] NF tests/unit/models/test_voucher_model.py (validation, duration calc)
-- [ ] T0101 [P] NF tests/unit/models/test_access_grant_model.py
-- [ ] T0102 [P] NF tests/unit/models/test_admin_account_model.py (password hash placeholder)
-- [ ] T0103 [P] NF tests/unit/models/test_entity_mapping_model.py
-- [ ] T0104 [P] NF tests/unit/models/test_audit_log_model.py
-- [ ] T0105 [P] US1 tests/contract/tp_omada/test_authorize_flow.py (fixture stubs fail initially)
-- [ ] T0106 [P] US1 tests/contract/tp_omada/test_revoke_flow.py
-- [ ] T0107 [P] US3 tests/contract/ha/test_entity_discovery.py
-- [ ] T0108 NF tests/unit/config/test_settings_load.py
-- [ ] T0109 NF tests/performance/test_baselines_placeholder.py (skipped; asserts p95 thresholds)
+- [x] T0100 [P] NF tests/unit/models/test_voucher_model.py (validation, duration calc) (2025-10-25T20:18:06.977Z)
+- [x] T0101 [P] NF tests/unit/models/test_access_grant_model.py (2025-10-25T20:18:06.977Z)
+- [x] T0102 [P] NF tests/unit/models/test_admin_account_model.py (password hash placeholder) (2025-10-25T20:18:06.977Z)
+- [x] T0103 [P] NF tests/unit/models/test_entity_mapping_model.py (2025-10-25T20:18:06.977Z)
+- [x] T0104 [P] NF tests/unit/models/test_audit_log_model.py (2025-10-25T20:18:06.977Z)
+- [x] T0105 [P] US1 tests/contract/tp_omada/test_authorize_flow.py (fixture stubs fail initially) (2025-10-25T20:18:06.977Z)
+- [x] T0106 [P] US1 tests/contract/tp_omada/test_revoke_flow.py (2025-10-25T20:18:06.977Z)
+- [x] T0107 [P] US3 tests/contract/ha/test_entity_discovery.py (2025-10-25T20:18:06.977Z)
+- [x] T0108 NF tests/unit/config/test_settings_load.py (2025-10-25T20:18:06.977Z)
+- [x] T0109 NF tests/performance/test_baselines_placeholder.py (skipped; asserts p95 thresholds) (2025-10-25T20:18:06.977Z)
 
 ### Implementation
 - [ ] T0110 NF persistence/__init__.py repository abstractions (VoucherRepo, GrantRepo, AdminRepo)
