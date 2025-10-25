@@ -110,7 +110,7 @@ SPDX-License-Identifier: Apache-2.0
 ### Tests First
 - [ ] T0500 [P] US3 tests/unit/services/test_entity_discovery_failover.py
 - [ ] T0501 [P] US3 tests/integration/test_entity_mapping_applied_in_voucher_validation.py
-- [ ] T0502 NF tests/unit/services/test_booking_code_format_validation.py (slot_code, slot_name edge cases)
+- [ ] T0502 NF tests/unit/services/test_booking_code_format_validation.py (slot_code, slot_name edge cases + voucher length/charset per FR-018)
 - [ ] T0503 NF tests/integration/test_booking_code_lookup_happy_path.py (event 0 & 1)
 - [ ] T0504 NF tests/integration/test_booking_code_not_found.py
 - [ ] T0505 NF tests/integration/test_booking_code_outside_window.py
