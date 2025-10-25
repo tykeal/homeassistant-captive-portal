@@ -3,7 +3,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Implementation Plan: Captive Portal Guest Access
 
-**Branch**: `001-captive-portal-access` | **Date**: 2025-10-22 | **Spec**: ./spec.md
+**Branch**: `001-captive-portal-access` | **Date**: 2025-10-22 | **Spec**: ./spec.md | **Phase1**: ./phase1.md
 **Input**: Feature specification from `/specs/001-captive-portal-access/spec.md`
 
 ## Summary
@@ -18,11 +18,16 @@ Implement a pluggable captive portal enabling rental guest network access with v
 **Testing**: pytest + pytest-asyncio; coverage enforcement; contract tests for controller API boundaries using recorded fixtures; integration tests spinning up FastAPI test client.
 **Target Platform**: Home Assistant addon container (based on addons-example best practices) & generic OCI container (Docker/Podman)
 **Project Type**: Single backend project (web portal + API) with minimal frontend templating (no SPA framework initially)
-**Performance Goals**: Voucher redemption end-to-end < 1s median; admin list grants page loads < 2s with up to 500 grants; controller update propagation <30s (spec success criteria) with retry resolution <2min worst-case.
-**Constraints**: p95 voucher redemption <2s; memory footprint <150MB RSS; CPU utilization idle <5%; No blocking IO in request handlers (async everywhere). Bandwidth shaping configuration delegated to controller (not enforced in app).
+**Performance Baselines (p95 unless noted)**:
+- Voucher redemption: ≤800ms (L1: 50 concurrent) / ≤900ms (L2: 200 concurrent)
+- Auth login API: ≤300ms; Controller propagation (authorize→active): ≤25s; Admin grants list (500 grants): ≤1500ms
+- Memory RSS: ≤150MB; CPU 1-min peak: ≤60% @ 200 concurrent; Merge gate: >10% regression vs baseline blocks
+- Non-blocking IO (async); bandwidth shaping delegated to controller
 **Scale/Scope**: Single property initial; design for extension to multiple controllers and properties (multi-tenancy deferred). Concurrent guests <50 typical; admin users <5.
 
 ## Constitution Check
+
+Refer to `constitution_gate_checklist.md` for per-phase gate verification (introduced Phase 0, task T0009).
 
 Gates derived from constitution:
 - Atomic commits: Plan phases enforce granular task breakdown.
@@ -109,6 +114,26 @@ Refactor for any identified bottlenecks.
 Constitution Gate Re-check: Ensure documentation reflects final baselines, all SPDX headers verified, no skipped tests remain.
 quickstart.md, finalize README additions, audit logging review, ensure all SPDX headers, license compliance review, addon build artifacts (Dockerfile, config.json) aligned with addons-example.
 Tests: finalize performance threshold assertions (remove skips), documentation validation (lint).
+
+## Role-Based Access Control (FR-017)
+
+FR-017: System SHALL enforce role-based permissions: {Viewer: read dashboards only; Operator: viewer + trigger captive session resets; Admin: operator + manage vouchers/roles; Auditor: viewer + access immutable logs}. No other actions permitted (deny-by-default). Permission matrix documented and tests (authorization allow/deny, negative) precede implementation.
+
+## Booking Identifier Validation (FR-018)
+
+FR-018: System SHALL validate guest authorization (booking) codes against Rental Control events.
+- Source Entities per integration: calendar.rental_control_<integration_id>, sensor.rental_control_<integration_id>_event_[0..N-1].
+- Prioritized Events: event 0 (current or checking-out today), event 1 (upcoming/arriving today). All events 0..N-1 are eligible if within [start, end].
+- Candidate Identifier Attributes: slot_code (default) or slot_name (admin-selectable per integration). Admin chooses once per integration; selection persisted.
+- Formats: slot_code regex ^\d{4,}$; last_four regex ^\d{4}$ (last_four not used directly for auth in v1 but may be displayed/audited). slot_name treated as opaque string (non-empty, trimmed, <=128 chars).
+- Guest Input: Single authorization code field (no username).
+- Validation Window: Access allowed from event.start (floored to minute) until event.end (ceiled to minute). Access grants lifetime resolved to minute boundaries.
+- Devices: Unlimited devices per valid booking within window.
+- Failure Responses: 400 invalid format; 404 booking not found; 410 booking outside active window; 409 duplicate active grant (same code already redeemed and still valid) returns existing grant reference.
+- Metrics: booking_lookup_latency (histogram), validation_fail_total (counter with reason labels: invalid_format, not_found, outside_window, duplicate).
+- Audit Log: booking_code_attempt (code_hash, integration_id, outcome, reason, correlation_id).
+- Future: Bandwidth limits & guest upgrade path (deferred; note for roadmap).
+- Security: Deny-by-default if integration selection missing or events unavailable (reason: integration_unavailable).
 
 ## Complexity Tracking
 

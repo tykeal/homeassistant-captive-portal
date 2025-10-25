@@ -99,7 +99,7 @@ On first run the system prompts for initial admin credentials and stores them; l
 ### Functional Requirements
 
 - **FR-001**: System MUST present a captive portal page to unauthenticated guest devices connecting to designated SSID.
-- **FR-002**: System MUST validate voucher codes and booking identifiers against internal store and HA Rental Control entities.
+- **FR-002**: System MUST validate voucher codes and booking identifiers (case-sensitive) against internal store and HA Rental Control entities.
 - **FR-003**: System MUST create, update, and revoke guest network access grants in the TP-Omada controller (initial backend target) within <30s from action.
 - **FR-004**: System MUST provide an admin web interface for viewing active, expired, and upcoming access grants with filtering by status and date.
 - **FR-005**: System MUST allow administrators to extend, revoke, and create new vouchers specifying duration and optional bandwidth constraints.
@@ -107,17 +107,19 @@ On first run the system prompts for initial admin credentials and stores them; l
 - **FR-007**: System MUST store mapping selections of HA entities used for guest access decision logic.
 - **FR-008**: System MUST expose an API endpoint to modify existing access grants (extend/revoke) and reflect changes in controller.
 - **FR-009**: System MUST enforce themed presentation allowing configurable logo, color palette, and welcome message for portal page.
-- **FR-010**: System MUST log all administrative actions (create/extend/revoke voucher, account creation) with timestamp and actor for audit.
+- **FR-010**: System MUST log all administrative actions (create/extend/revoke voucher, account creation) with timestamp (UTC, ISO 8601) and actor for audit.
 - **FR-011**: System MUST support operation as Home Assistant addon AND as standalone container with equivalent configuration capabilities.
 - **FR-012**: System MUST provide clear error message to guest when voucher invalid or expired without exposing internal system details.
 - **FR-013**: System MUST handle controller communication failures by queuing intended changes and retrying until success or timeout threshold.
 - **FR-014**: System MUST prevent duplicate grants for same voucher if multiple redemption attempts occur simultaneously.
 - **FR-015**: System MUST use SQLite (SQLModel) as initial storage behind a repository abstraction enabling later DB migration without service layer changes.
 - **FR-016**: System MUST implement admin authentication using secure HTTP-only server-side session cookies with CSRF protection for state-changing requests.
+- **FR-017**: System MUST enforce role-based access control (RBAC) with roles {viewer, operator, auditor, admin}; deny-by-default policy; centrally defined action matrix; and 403 JSON error (code: RBAC_FORBIDDEN) on unauthorized access with no sensitive leakage.
+- **FR-018**: Voucher codes MUST consist only of A-Z and 0-9, default length 10, configurable min/max length bounds (admin UI) with enforced absolute limits: min >=4, max <=24; system MUST reject codes outside configured bounds or with invalid characters.
 
-*Assumptions: TP-Omada controller API offers endpoints for session authorization, revocation, and modification; standard HTTPS REST assumed.*
+*Assumptions: TP-Omada controller API offers endpoints for session authorization, revocation, and modification; standard HTTPS REST assumed. All persisted and API-exposed timestamps are UTC; booking identifiers remain case-sensitive end-to-end; Phase 1 defers bandwidth enforcement but reserves nullable up/down kbps fields for forward compatibility; admin session cookie: SameSite=Lax, Secure when HTTPS, 24h idle timeout, rotated on privilege escalation; optimistic retry (max 3) on UNIQUE conflicts; no client-supplied timestamps accepted.*
 
-*Clarifications Needed:* None (defaults chosen for unspecified implementation specifics).
+*Clarifications Needed:* None (defaults chosen for unspecified implementation specifics). All Phase 1 default operational/security parameters confirmed 2025-10-25T15:15:12Z.
 
 ## Clarifications
 
@@ -127,11 +129,11 @@ On first run the system prompts for initial admin credentials and stores them; l
 
 ### Key Entities *(include if feature involves data)*
 
-- **Voucher**: Represents a redeemable access token with fields: code, created timestamp, duration, optional bandwidth constraints, status (unused, active, expired, revoked), associated booking reference (optional).
-- **Access Grant**: Active authorization object: device identifier (MAC/IP placeholder), start time, expiration time, voucher reference, controller grant ID, status.
+- **Voucher**: Represents a redeemable access token with fields: code, created timestamp (UTC), duration, optional bandwidth constraints, status (unused, active, expired, revoked), associated booking reference (optional, case-sensitive).
+- **Access Grant**: Active authorization object: device identifier (MAC/IP placeholder), start time (UTC), expiration time (UTC), voucher reference, controller grant ID, status.
 - **Admin Account**: Credentials metadata: username, role, created timestamp, last login timestamp, active flag.
 - **HA Rental Entity Mapping**: Configuration linking selected Home Assistant entity IDs to portal roles (e.g., booking status entity, stay start date entity, stay end date entity).
-- **Audit Log Entry**: Action record: actor, action type, target entity ID, timestamp, outcome status.
+- **Audit Log Entry**: Action record: actor, action type, target entity ID, timestamp (UTC), outcome status.
 
 ## Success Criteria *(mandatory)*
 
