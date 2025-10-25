@@ -3,7 +3,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Implementation Plan: Captive Portal Guest Access
 
-**Branch**: `001-captive-portal-access` | **Date**: 2025-10-22 | **Spec**: ./spec.md
+**Branch**: `001-captive-portal-access` | **Date**: 2025-10-22 | **Spec**: ./spec.md | **Phase1**: ./phase1.md
 **Input**: Feature specification from `/specs/001-captive-portal-access/spec.md`
 
 ## Summary

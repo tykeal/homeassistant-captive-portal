@@ -3,8 +3,8 @@ SPDX-License-Identifier: Apache-2.0
 
 # Tasks: Captive Portal Guest Access
 
-**Input**: spec.md, plan.md (phased TDD)
-**Prerequisites**: plan.md, spec.md
+**Input**: spec.md, phase1.md, plan.md (phased TDD)
+**Prerequisites**: plan.md, spec.md, phase1.md
 
 ## Format: `[ID] [P] [Story] Description`
 - **[P]** parallel-safe (different files/no deps)
