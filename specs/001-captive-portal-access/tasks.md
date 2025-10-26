@@ -23,30 +23,30 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 1: Data Model & Contracts (Write tests first)
 ### Tests First
-- [ ] T0100 [P] NF tests/unit/models/test_voucher_model.py (validation, duration calc)
-- [ ] T0101 [P] NF tests/unit/models/test_access_grant_model.py
-- [ ] T0102 [P] NF tests/unit/models/test_admin_account_model.py (password hash placeholder)
-- [ ] T0103 [P] NF tests/unit/models/test_entity_mapping_model.py
-- [ ] T0104 [P] NF tests/unit/models/test_audit_log_model.py
-- [ ] T0105 [P] US1 tests/contract/tp_omada/test_authorize_flow.py (fixture stubs fail initially)
-- [ ] T0106 [P] US1 tests/contract/tp_omada/test_revoke_flow.py
-- [ ] T0107 [P] US3 tests/contract/ha/test_entity_discovery.py
-- [ ] T0108 NF tests/unit/config/test_settings_load.py
-- [ ] T0109 NF tests/performance/test_baselines_placeholder.py (skipped; asserts p95 thresholds)
+- [x] T0100 [P] NF tests/unit/models/test_voucher_model.py (validation, duration calc) (2025-10-25T20:18:06.977Z)
+- [x] T0101 [P] NF tests/unit/models/test_access_grant_model.py (2025-10-25T20:18:06.977Z)
+- [x] T0102 [P] NF tests/unit/models/test_admin_account_model.py (password hash placeholder) (2025-10-25T20:18:06.977Z)
+- [x] T0103 [P] NF tests/unit/models/test_entity_mapping_model.py (2025-10-25T20:18:06.977Z)
+- [x] T0104 [P] NF tests/unit/models/test_audit_log_model.py (2025-10-25T20:18:06.977Z)
+- [x] T0105 [P] US1 tests/contract/tp_omada/test_authorize_flow.py (fixture stubs fail initially) (2025-10-25T20:18:06.977Z)
+- [x] T0106 [P] US1 tests/contract/tp_omada/test_revoke_flow.py (2025-10-25T20:18:06.977Z)
+- [x] T0107 [P] US3 tests/contract/ha/test_entity_discovery.py (2025-10-25T20:18:06.977Z)
+- [x] T0108 NF tests/unit/config/test_settings_load.py (2025-10-25T20:18:06.977Z)
+- [x] T0109 NF tests/performance/test_baselines_placeholder.py (skipped; asserts p95 thresholds) (2025-10-25T20:18:06.977Z)
 
 ### Implementation
-- [ ] T0110 NF persistence/__init__.py repository abstractions (VoucherRepo, GrantRepo, AdminRepo)
-- [ ] T0111 NF persistence/sqlite_meta.py create tables via SQLModel
-- [ ] T0111a NF performance_baselines.md: capture baseline sources & methodology (links to plan)
-- [ ] T0112 [P] NF core/models/voucher.py
-- [ ] T0113 [P] NF core/models/access_grant.py
-- [ ] T0114 [P] NF core/models/admin_account.py
-- [ ] T0115 [P] NF core/models/entity_mapping.py
-- [ ] T0116 [P] NF core/models/audit_log.py
-- [ ] T0117 NF api/contracts/openapi_draft.yaml (initial endpoints)
-- [ ] T0118 NF contracts/controller/omada_authorize.json (request/response schema)
-- [ ] T0119 NF contracts/controller/omada_revoke.json
-- [ ] T0120 NF Phase 1 review: re-evaluate spec analysis & list decisions required for Phase 2
+- [x] T0110 NF persistence/__init__.py repository abstractions (VoucherRepo, GrantRepo, AdminRepo) (2025-10-26T00:56:21.774Z)
+- [x] T0111 NF persistence/sqlite_meta.py create tables via SQLModel (2025-10-26T00:56:21.774Z)
+- [x] T0111a NF performance_baselines.md: capture baseline sources & methodology (links to plan) (2025-10-25T13:08:00.000Z)
+- [x] T0112 [P] NF core/models/voucher.py (2025-10-25T20:25:09.143Z)
+- [x] T0113 [P] NF core/models/access_grant.py (2025-10-25T20:27:38.792Z)
+- [x] T0114 [P] NF core/models/admin_account.py (2025-10-25T20:30:42.556Z)
+- [x] T0115 [P] NF core/models/entity_mapping.py (2025-10-25T20:30:42.556Z)
+- [x] T0116 [P] NF core/models/audit_log.py (2025-10-25T20:30:42.556Z)
+- [x] T0117 NF api/contracts/openapi_draft.yaml (initial endpoints) (2025-10-26T13:48:15.332Z)
+- [x] T0118 NF contracts/controller/omada_authorize.json (request/response schema) (2025-10-26T13:48:15.332Z)
+- [x] T0119 NF contracts/controller/omada_revoke.json (2025-10-26T13:48:15.332Z)
+- [x] T0120 NF Phase 1 review: re-evaluate spec analysis & list decisions required for Phase 2 (2025-10-26T13:51:43.885Z)
 
 ## Phase 2: Core Services (Voucher & Grant Logic + RBAC Foundations)
 ### Tests First

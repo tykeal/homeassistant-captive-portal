@@ -1,0 +1,131 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TP-Omada Revoke Request/Response Schema",
+  "description": "Contract for TP-Omada controller revoke operation",
+  "definitions": {
+    "RevokeRequest": {
+      "type": "object",
+      "oneOf": [
+        {
+          "required": ["grant_id", "site_id"],
+          "properties": {
+            "grant_id": {
+              "type": "string",
+              "description": "Controller-assigned grant identifier"
+            },
+            "site_id": {
+              "type": "string",
+              "description": "Omada site identifier"
+            }
+          }
+        },
+        {
+          "required": ["mac", "site_id"],
+          "properties": {
+            "mac": {
+              "type": "string",
+              "pattern": "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$",
+              "description": "Device MAC address (fallback if grant_id unknown)"
+            },
+            "site_id": {
+              "type": "string",
+              "description": "Omada site identifier"
+            }
+          }
+        }
+      ]
+    },
+    "RevokeResponseSuccess": {
+      "type": "object",
+      "required": ["errorCode", "msg"],
+      "properties": {
+        "errorCode": {
+          "type": "integer",
+          "const": 0,
+          "description": "Success code (0)"
+        },
+        "msg": {
+          "type": "string",
+          "description": "Success message"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "const": "revoked",
+              "description": "Grant status after revocation"
+            }
+          }
+        }
+      }
+    },
+    "RevokeResponseNotFound": {
+      "type": "object",
+      "required": ["errorCode", "msg"],
+      "properties": {
+        "errorCode": {
+          "type": "integer",
+          "const": 404,
+          "description": "Grant not found error code"
+        },
+        "msg": {
+          "type": "string",
+          "description": "Error message"
+        }
+      }
+    },
+    "RevokeResponseError": {
+      "type": "object",
+      "required": ["errorCode", "msg"],
+      "properties": {
+        "errorCode": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Error code (non-zero)"
+        },
+        "msg": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional error context"
+        }
+      }
+    }
+  },
+  "examples": {
+    "requestByGrantId": {
+      "grant_id": "omada-grant-123456",
+      "site_id": "Default"
+    },
+    "requestByMac": {
+      "mac": "AA:BB:CC:DD:EE:FF",
+      "site_id": "Default"
+    },
+    "responseSuccess": {
+      "errorCode": 0,
+      "msg": "Success",
+      "result": {
+        "status": "revoked"
+      }
+    },
+    "responseNotFound": {
+      "errorCode": 404,
+      "msg": "Grant not found"
+    },
+    "responseError": {
+      "errorCode": 1002,
+      "msg": "Controller unavailable",
+      "details": "Connection timeout"
+    }
+  },
+  "retryStrategy": {
+    "description": "Retry strategy for revoke operation",
+    "maxAttempts": 4,
+    "backoffSequence": [1000, 2000, 4000, 8000],
+    "retryableErrors": ["timeout", "connection_error", "errorCode >= 5000"],
+    "idempotency": "Repeated revoke calls should succeed (no-op if already revoked)"
+  }
+}

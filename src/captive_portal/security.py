@@ -3,6 +3,7 @@
 """RBAC matrix data (FR-017).
 Minimal placeholder consumed by future middleware. Tests will import ROLE_ACTIONS.
 """
+
 from __future__ import annotations
 from typing import Dict, Set
 
@@ -26,4 +27,13 @@ ROLE_ACTIONS: Dict[str, Set[str]] = {
 
 
 def is_allowed(role: str, action: str) -> bool:
+    """Check if role is allowed to perform action.
+
+    Args:
+        role: User role (e.g., 'admin', 'operator')
+        action: Action identifier (e.g., 'grants.list')
+
+    Returns:
+        True if role has permission for action
+    """
     return role in ROLE_ACTIONS.get(action, set())

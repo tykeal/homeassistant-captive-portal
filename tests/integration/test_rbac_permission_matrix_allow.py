@@ -17,7 +17,7 @@ client = TestClient(app)
 ALLOWED: List[Tuple[str, int]] = [("operator", 200), ("auditor", 200), ("admin", 200)]
 
 
-@pytest.mark.parametrize("role,status", ALLOWED)  # type: ignore[misc]
+@pytest.mark.parametrize("role,status", ALLOWED)
 def test_grants_list_allow(role: str, status: int) -> None:
     """Allowed roles get 200 with empty grants list placeholder."""
     r = client.get("/grants", headers={"X-Role": role})

@@ -4,7 +4,7 @@
 name = "captive-portal"
 version = "0.0.0.dev0"
 description = "Captive portal guest access (TP-Omada + Home Assistant)"
-authors = [{name="Andrew Grimberg", email="tykeal@gmail.com"}]
+authors = [{name="Andrew Grimberg", email="tykeal@bardicgrove.org"}]
 license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.13"
