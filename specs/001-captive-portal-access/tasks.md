@@ -71,7 +71,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 3: Controller Integration (HA + TP-Omada)
 ### Tests First (HA Integration)
-- [ ] T0303 [P] US3 tests/unit/integrations/test_ha_client.py (REST API mocking, auth token)
+- [x] T0303 [P] US3 tests/unit/integrations/test_ha_client.py (REST API mocking, auth token) (2025-10-26T16:57:00.000Z)
 - [ ] T0304 [P] US3 tests/unit/integrations/test_ha_poller_60s_interval.py (polling timing)
 - [ ] T0305 [P] US3 tests/unit/integrations/test_ha_poller_backoff.py (exponential backoff on errors)
 - [ ] T0306 [P] US3 tests/unit/integrations/test_rental_control_event_processing.py (attribute selection, fallback logic)
@@ -83,7 +83,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0300 [P] US1 tests/contract/tp_omada/test_adapter_error_retry.py (backoff)
 - [x] T0301 [P] US1 tests/integration/test_authorize_end_to_end.py
 - [x] T0302 [P] US1 tests/integration/test_revoke_end_to_end.py
-- [ ] T0309a [P] US3 tests/unit/services/test_booking_code_case_insensitive.py (D10: case-insensitive matching)
+- [x] T0309a [P] US3 tests/unit/services/test_booking_code_case_insensitive.py (D10: case-insensitive matching) (2025-10-26T16:57:00.000Z)
 
 ### Implementation (Models & Migrations)
 - [ ] T0320 NF core/models/ha_integration_config.py (add auth_attribute, checkout_grace_minutes fields)

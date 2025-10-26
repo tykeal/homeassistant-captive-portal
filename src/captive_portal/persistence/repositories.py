@@ -3,15 +3,18 @@
 """Repository abstraction layer for data access."""
 
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone
 from typing import Generic, Optional, TypeVar, List
 from uuid import UUID
 
 from sqlmodel import Session, select
 
+
 from captive_portal.models.access_grant import AccessGrant
 from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.audit_log import AuditLog
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
+from captive_portal.models.rental_control_event import RentalControlEvent
 from captive_portal.models.voucher import Voucher
 
 T = TypeVar("T")
@@ -208,3 +211,75 @@ class HAIntegrationConfigRepository(BaseRepository[HAIntegrationConfig]):
             HAIntegrationConfig.integration_id == integration_id
         )
         return self.session.exec(statement).first()
+
+
+class RentalControlEventRepository(BaseRepository[RentalControlEvent]):
+    """Repository for RentalControlEvent entities."""
+
+    def get_model_class(self) -> type[RentalControlEvent]:
+        """Return RentalControlEvent model class."""
+        return RentalControlEvent
+
+    def get_by_id(self, event_id: int) -> Optional[RentalControlEvent]:
+        """Retrieve event by ID.
+
+        Args:
+            event_id: Event ID
+
+        Returns:
+            RentalControlEvent instance or None
+        """
+        return self.session.get(RentalControlEvent, event_id)
+
+    async def upsert(self, event: RentalControlEvent) -> RentalControlEvent:
+        """Insert or update event record.
+
+        Updates existing event based on (integration_id, event_index) unique constraint.
+
+        Args:
+            event: Event to insert/update
+
+        Returns:
+            Updated event instance
+        """
+        # Check for existing event
+        statement = select(RentalControlEvent).where(
+            RentalControlEvent.integration_id == event.integration_id,
+            RentalControlEvent.event_index == event.event_index,
+        )
+        existing = self.session.exec(statement).first()
+
+        if existing:
+            # Update existing
+            existing.slot_name = event.slot_name
+            existing.slot_code = event.slot_code
+            existing.last_four = event.last_four
+            existing.start_utc = event.start_utc
+            existing.end_utc = event.end_utc
+            existing.raw_attributes = event.raw_attributes
+            existing.updated_utc = datetime.now(timezone.utc)
+            self.session.add(existing)
+            self.session.flush()
+            self.session.refresh(existing)
+            return existing
+        else:
+            # Insert new
+            return self.add(event)
+
+    async def delete_events_older_than(self, cutoff_date: datetime) -> int:
+        """Delete events with end_utc older than cutoff date.
+
+        Args:
+            cutoff_date: Cutoff timestamp (UTC)
+
+        Returns:
+            Number of deleted events
+        """
+        statement = select(RentalControlEvent).where(RentalControlEvent.end_utc < cutoff_date)
+        events_to_delete = list(self.session.exec(statement).all())
+
+        for event in events_to_delete:
+            self.session.delete(event)
+
+        self.session.flush()
+        return len(events_to_delete)
