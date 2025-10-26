@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TP-Omada Authorize Request/Response Schema",
+  "description": "Contract for TP-Omada controller authorize operation",
+  "definitions": {
+    "AuthorizeRequest": {
+      "type": "object",
+      "required": ["mac", "expires_at", "site_id"],
+      "properties": {
+        "mac": {
+          "type": "string",
+          "pattern": "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$",
+          "description": "Device MAC address (e.g., AA:BB:CC:DD:EE:FF)"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Grant expiration timestamp (ISO 8601 UTC)"
+        },
+        "site_id": {
+          "type": "string",
+          "description": "Omada site identifier (e.g., Default)"
+        },
+        "upload_limit_kbps": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional upload bandwidth limit in kbps"
+        },
+        "download_limit_kbps": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional download bandwidth limit in kbps"
+        }
+      }
+    },
+    "AuthorizeResponseSuccess": {
+      "type": "object",
+      "required": ["errorCode", "msg", "result"],
+      "properties": {
+        "errorCode": {
+          "type": "integer",
+          "const": 0,
+          "description": "Success code (0)"
+        },
+        "msg": {
+          "type": "string",
+          "description": "Success message"
+        },
+        "result": {
+          "type": "object",
+          "required": ["grant_id", "status"],
+          "properties": {
+            "grant_id": {
+              "type": "string",
+              "description": "Controller-assigned grant identifier"
+            },
+            "status": {
+              "type": "string",
+              "enum": ["active", "pending"],
+              "description": "Grant status"
+            },
+            "mac": {
+              "type": "string",
+              "description": "Echo of authorized MAC"
+            }
+          }
+        }
+      }
+    },
+    "AuthorizeResponseError": {
+      "type": "object",
+      "required": ["errorCode", "msg"],
+      "properties": {
+        "errorCode": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Error code (non-zero)"
+        },
+        "msg": {
+          "type": "string",
+          "description": "Error message"
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional error context"
+        }
+      }
+    }
+  },
+  "examples": {
+    "request": {
+      "mac": "AA:BB:CC:DD:EE:FF",
+      "expires_at": "2025-10-26T15:30:00Z",
+      "site_id": "Default"
+    },
+    "responseSuccess": {
+      "errorCode": 0,
+      "msg": "Success",
+      "result": {
+        "grant_id": "omada-grant-123456",
+        "status": "active",
+        "mac": "AA:BB:CC:DD:EE:FF"
+      }
+    },
+    "responseError": {
+      "errorCode": 1001,
+      "msg": "Invalid MAC address",
+      "details": "MAC address format incorrect"
+    }
+  },
+  "retryStrategy": {
+    "description": "Retry strategy for authorize operation",
+    "maxAttempts": 4,
+    "backoffSequence": [1000, 2000, 4000, 8000],
+    "retryableErrors": ["timeout", "connection_error", "errorCode >= 5000"],
+    "idempotency": "Repeated calls with same MAC should return existing grant or update expiry"
+  }
+}
