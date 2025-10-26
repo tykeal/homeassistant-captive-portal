@@ -1,17 +1,27 @@
 # SPDX-FileCopyrightText: 2025 Andrew Grimberg
 # SPDX-License-Identifier: Apache-2.0
 """Captive Portal application package."""
+
 from typing import Optional
 from fastapi import FastAPI
 
 # Lazy import to avoid circular dependency during test collection
 
+
 def create_app() -> FastAPI:
+    """Create and configure the FastAPI application instance.
+
+    Returns:
+        Configured FastAPI application
+    """
     from .app import create_app as _factory
+
     return _factory()
+
 
 try:  # pragma: no cover
     from .app import create_app as _factory
+
     app: Optional[FastAPI] = _factory()
 except Exception:  # pragma: no cover
     app = None
