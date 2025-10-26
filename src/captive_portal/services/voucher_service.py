@@ -17,6 +17,7 @@ from captive_portal.persistence.repositories import (
     AccessGrantRepository,
     VoucherRepository,
 )
+from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
 
 class VoucherCollisionError(Exception):
@@ -168,11 +169,9 @@ class VoucherService:
                 raise VoucherRedemptionError(f"Voucher '{code}' already redeemed for MAC '{mac}'")
 
         # Create access grant
-        grant_start = current_time.replace(second=0, microsecond=0)  # Floor to minute
+        grant_start = floor_to_minute(current_time)
         grant_end = grant_start + timedelta(minutes=voucher.duration_minutes)
-        # Ceil to next minute if needed
-        if grant_end.second > 0 or grant_end.microsecond > 0:
-            grant_end = grant_end.replace(second=0, microsecond=0) + timedelta(minutes=1)
+        grant_end = ceil_to_minute(grant_end)
 
         grant = AccessGrant(
             voucher_code=code,

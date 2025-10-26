@@ -10,6 +10,7 @@ from sqlmodel import Session
 
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.persistence.repositories import AccessGrantRepository
+from captive_portal.utils.time_utils import ceil_to_minute
 
 
 class GrantNotFoundError(Exception):
@@ -121,13 +122,9 @@ class GrantService:
         if grant.status == GrantStatus.REVOKED:
             raise GrantOperationError(f"Cannot extend revoked grant {grant_id}")
 
-        # Extend end_utc
+        # Extend end_utc and ceil to next minute
         new_end = grant.end_utc + timedelta(minutes=additional_minutes)
-        # Ceil to next minute if needed
-        if new_end.second > 0 or new_end.microsecond > 0:
-            new_end = new_end.replace(second=0, microsecond=0) + timedelta(minutes=1)
-
-        grant.end_utc = new_end
+        grant.end_utc = ceil_to_minute(new_end)
         grant.updated_utc = current_time
 
         # Reactivate expired grant if being extended

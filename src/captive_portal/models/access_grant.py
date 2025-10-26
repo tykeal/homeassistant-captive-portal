@@ -9,6 +9,8 @@ from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel
 
+from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
+
 
 class GrantStatus(str, Enum):
     """Access grant lifecycle status."""
@@ -52,13 +54,8 @@ class AccessGrant(SQLModel, table=True):
         """Initialize AccessGrant with minute-precision timestamp rounding."""
         # Round start_utc down to minute
         if "start_utc" in data:
-            data["start_utc"] = data["start_utc"].replace(second=0, microsecond=0)
+            data["start_utc"] = floor_to_minute(data["start_utc"])
         # Round end_utc up to next minute (ceil)
         if "end_utc" in data:
-            end = data["end_utc"]
-            if end.second > 0 or end.microsecond > 0:
-                from datetime import timedelta
-
-                end = end.replace(second=0, microsecond=0) + timedelta(minutes=1)
-            data["end_utc"] = end
+            data["end_utc"] = ceil_to_minute(data["end_utc"])
         super().__init__(**data)
