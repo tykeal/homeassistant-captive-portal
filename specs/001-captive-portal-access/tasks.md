@@ -35,8 +35,8 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0109 NF tests/performance/test_baselines_placeholder.py (skipped; asserts p95 thresholds) (2025-10-25T20:18:06.977Z)
 
 ### Implementation
-- [ ] T0110 NF persistence/__init__.py repository abstractions (VoucherRepo, GrantRepo, AdminRepo)
-- [ ] T0111 NF persistence/sqlite_meta.py create tables via SQLModel
+- [x] T0110 NF persistence/__init__.py repository abstractions (VoucherRepo, GrantRepo, AdminRepo) (2025-10-26T00:56:21.774Z)
+- [x] T0111 NF persistence/sqlite_meta.py create tables via SQLModel (2025-10-26T00:56:21.774Z)
 - [ ] T0111a NF performance_baselines.md: capture baseline sources & methodology (links to plan)
 - [x] T0112 [P] NF core/models/voucher.py (2025-10-25T20:25:09.143Z)
 - [x] T0113 [P] NF core/models/access_grant.py (2025-10-25T20:27:38.792Z)
