@@ -50,14 +50,14 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 2: Core Services (Voucher & Grant Logic + RBAC Foundations)
 ### Tests First
-- [ ] T0200 [P] US1 tests/unit/services/test_voucher_service_create.py (duplicate prevention red)
-- [ ] T0201 [P] US1 tests/unit/services/test_voucher_service_redeem.py (expired, valid)
-- [ ] T0202 [P] US1 tests/unit/services/test_grant_service_create.py
-- [ ] T0203 [P] US2 tests/unit/services/test_grant_service_extend.py
-- [ ] T0204 [P] US2 tests/unit/services/test_grant_service_revoke.py
-- [ ] T0205 US1 tests/integration/test_duplicate_redemption_race.py (concurrency)
-- [ ] T0206 NF tests/integration/test_rbac_permission_matrix_allow.py (each role allowed actions)
-- [ ] T0207 NF tests/integration/test_rbac_permission_matrix_deny.py (deny-by-default unauthorized actions => 403)
+- [x] T0200 [P] US1 tests/unit/services/test_voucher_service_create.py (duplicate prevention red) (2025-10-26T14:26:32.117Z)
+- [x] T0201 [P] US1 tests/unit/services/test_voucher_service_redeem.py (expired, valid) (2025-10-26T14:26:32.117Z)
+- [x] T0202 [P] US1 tests/unit/services/test_grant_service_create.py (2025-10-26T14:26:32.117Z)
+- [x] T0203 [P] US2 tests/unit/services/test_grant_service_extend.py (2025-10-26T14:26:32.117Z)
+- [x] T0204 [P] US2 tests/unit/services/test_grant_service_revoke.py (2025-10-26T14:26:32.117Z)
+- [x] T0205 US1 tests/integration/test_duplicate_redemption_race.py (concurrency) (2025-10-26T14:26:32.117Z)
+- [x] T0206 NF tests/integration/test_rbac_permission_matrix_allow.py (each role allowed actions) (2025-10-25T13:44:22.000Z)
+- [x] T0207 NF tests/integration/test_rbac_permission_matrix_deny.py (deny-by-default unauthorized actions => 403) (2025-10-25T13:44:22.000Z)
 
 ### Implementation
 - [ ] T0210 US1 services/voucher_service.py (create, validate, redeem)
