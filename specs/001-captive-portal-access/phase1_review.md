@@ -100,37 +100,41 @@ All critical Phase 1 deliverables complete. Minor observations:
 
 ## Decisions Required for Phase 2
 
-### D1: Password Hashing Library
+### D1: Password Hashing Library ✅ DECIDED
 **Context**: AdminUser has password_hash field but no hashing implementation yet.
 **Options**:
   a) passlib with bcrypt (already in dependencies)
   b) argon2-cffi (more modern, OWASP recommended)
-**Recommendation**: Use passlib[bcrypt] (simpler, already specified in pyproject.toml).
-**Action**: Implement in security/password_hashing.py (T0410).
+**Decision**: Use **argon2-cffi** (modern, OWASP recommended as of 2023).
+**Rationale**: Better resistance to GPU cracking attacks, future-proof security.
+**Action**: Add argon2-cffi dependency; implement in security/password_hashing.py (T0410).
 
-### D2: Session Storage Strategy
+### D2: Session Storage Strategy ✅ DECIDED
 **Context**: Admin authentication uses session cookies (per phase1.md clarification 10).
 **Options**:
   a) Server-side sessions in SQLite (new table: sessions)
   b) Server-side sessions in-memory (dict/LRU cache)
   c) Signed JWT tokens (stateless, no server storage)
-**Recommendation**: Server-side sessions in SQLite (persistent, supports multi-instance future).
+**Decision**: Server-side sessions in SQLite (new `sessions` table).
+**Rationale**: Persistent across restarts, supports future multi-instance deployment, enables session revocation.
 **Action**: Define Session model + repository in Phase 4.
 
-### D3: Voucher Collision Retry Implementation
+### D3: Voucher Collision Retry Implementation ✅ DECIDED
 **Context**: phase1.md specifies 5 attempts with collision retry for voucher generation.
 **Question**: Where to implement retry logic?
 **Options**:
   a) VoucherService.create() method
   b) Dedicated VoucherGenerator class
-**Recommendation**: VoucherService.create() with exponential backoff (50ms, 100ms, 200ms per phase1.md).
+**Decision**: VoucherService.create() method with exponential backoff (50ms, 100ms, 200ms per phase1.md).
+**Rationale**: Simpler implementation for Phase 2; retry logic tightly coupled to creation.
 **Action**: Implement in Phase 2 (T0210).
 
-### D4: HA Polling Interval Configuration
+### D4: HA Polling Interval Configuration ✅ DECIDED
 **Context**: phase1.md specifies 60s HA poll interval.
 **Question**: Should interval be configurable?
-**Recommendation**: Yes, add to Settings/config with default=60s (allows testing + future tuning).
-**Action**: Add to config model in Phase 5.
+**Decision**: Yes, make configurable with default=60s.
+**Rationale**: Allows testing with faster polling, enables performance tuning, avoids magic numbers.
+**Action**: Add `ha_poll_interval_seconds` to Settings model in Phase 5 (T0500).
 
 ## Risks & Mitigations
 
