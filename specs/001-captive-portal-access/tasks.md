@@ -37,15 +37,15 @@ SPDX-License-Identifier: Apache-2.0
 ### Implementation
 - [x] T0110 NF persistence/__init__.py repository abstractions (VoucherRepo, GrantRepo, AdminRepo) (2025-10-26T00:56:21.774Z)
 - [x] T0111 NF persistence/sqlite_meta.py create tables via SQLModel (2025-10-26T00:56:21.774Z)
-- [ ] T0111a NF performance_baselines.md: capture baseline sources & methodology (links to plan)
+- [x] T0111a NF performance_baselines.md: capture baseline sources & methodology (links to plan) (2025-10-25T13:08:00.000Z)
 - [x] T0112 [P] NF core/models/voucher.py (2025-10-25T20:25:09.143Z)
 - [x] T0113 [P] NF core/models/access_grant.py (2025-10-25T20:27:38.792Z)
 - [x] T0114 [P] NF core/models/admin_account.py (2025-10-25T20:30:42.556Z)
 - [x] T0115 [P] NF core/models/entity_mapping.py (2025-10-25T20:30:42.556Z)
 - [x] T0116 [P] NF core/models/audit_log.py (2025-10-25T20:30:42.556Z)
-- [ ] T0117 NF api/contracts/openapi_draft.yaml (initial endpoints)
-- [ ] T0118 NF contracts/controller/omada_authorize.json (request/response schema)
-- [ ] T0119 NF contracts/controller/omada_revoke.json
+- [x] T0117 NF api/contracts/openapi_draft.yaml (initial endpoints) (2025-10-26T13:48:15.332Z)
+- [x] T0118 NF contracts/controller/omada_authorize.json (request/response schema) (2025-10-26T13:48:15.332Z)
+- [x] T0119 NF contracts/controller/omada_revoke.json (2025-10-26T13:48:15.332Z)
 - [ ] T0120 NF Phase 1 review: re-evaluate spec analysis & list decisions required for Phase 2
 
 ## Phase 2: Core Services (Voucher & Grant Logic + RBAC Foundations)
