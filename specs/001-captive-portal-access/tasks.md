@@ -86,10 +86,10 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0309a [P] US3 tests/unit/services/test_booking_code_case_insensitive.py (D10: case-insensitive matching) (2025-10-26T16:57:00.000Z)
 
 ### Implementation (Models & Migrations)
-- [ ] T0320 NF core/models/ha_integration_config.py (add auth_attribute, checkout_grace_minutes fields)
-- [ ] T0321 NF core/models/rental_control_event.py (event cache model)
-- [ ] T0322 NF alembic/versions/XXX_add_ha_integration_fields.py (migration for D7+D9)
-- [ ] T0323 NF alembic/versions/XXX_create_rental_control_event_table.py (migration for D8)
+- [x] T0320 NF core/models/ha_integration_config.py (add auth_attribute, checkout_grace_minutes fields) (2025-10-26T21:22:00.000Z)
+- [x] T0321 NF core/models/rental_control_event.py (event cache model) (2025-10-26T21:22:00.000Z)
+- [x] T0322 NF alembic/versions/XXX_add_ha_integration_fields.py (migration for D7+D9) (2025-10-26T21:22:00.000Z)
+- [x] T0323 NF alembic/versions/XXX_create_rental_control_event_table.py (migration for D8) (2025-10-26T21:22:00.000Z)
 
 ### Implementation (HA Integration Services)
 - [x] T0324 US3 integrations/ha_client.py (REST client, Supervisor API, httpx) (2025-10-26T16:57:00.000Z)
@@ -101,14 +101,14 @@ SPDX-License-Identifier: Apache-2.0
 ### Implementation (TP-Omada)
 - [x] T0310 US1 controllers/tp_omada/base_client.py (HTTP wrapper)
 - [x] T0311 US1 controllers/tp_omada/adapter.py (authorize, revoke, update)
-- [ ] T0312 US1 services/retry_queue_service.py (background retry for controller failures)
+- [x] T0312 US1 services/retry_queue_service.py (background retry for controller failures) (2025-10-26T21:22:00.000Z)
 
 ### Implementation (API Routes - Backend Only per D11)
-- [ ] T0329 US3 api/routes/integrations.py (CRUD for HAIntegrationConfig, admin-only)
-- [ ] T0330 US3 api/routes/booking_authorize.py (POST booking code validation, guest endpoint)
+- [x] T0329 US3 api/routes/integrations.py (CRUD for HAIntegrationConfig, admin-only) (2025-10-26T21:22:00.000Z)
+- [x] T0330 US3 api/routes/booking_authorize.py (POST booking code validation, guest endpoint) (2025-10-26T21:22:00.000Z)
 
 ### Implementation (Metrics & Review)
-- [ ] T0313 NF metrics instrumentation (authorize latency, polling errors, cleanup counts, booking_code validation)
+- [x] T0313 NF metrics instrumentation (authorize latency, polling errors, cleanup counts, booking_code validation) (2025-10-26T21:22:00.000Z)
 - [ ] T0314 NF Phase 3 review: re-evaluate spec analysis & list decisions required for Phase 4
 
 ## Phase 4: Admin Web Interface & Theming
@@ -155,11 +155,14 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0505 NF tests/integration/test_booking_code_integration_unavailable.py (deny-by-default when HA unavailable)
 - [ ] T0506 [P] US3 tests/integration/test_entity_mapping_applied_in_voucher_validation.py (integration with voucher service)
 
+
+
 ### Implementation
 - [ ] T0510 NF services/booking_code_validator.py (format+window+lookup logic, metrics, audit emission)
 - [ ] T0511 NF api/routes/booking_authorize.py (guest POST code → grant, error responses per FR-018)
 - [ ] T0512 NF services/mapping_application.py (inject cached HA data into validation flow)
 - [ ] T0513 NF docs/booking_code_validation.md (FR-018 details, flows, error matrix)
+
 - [ ] T0514 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6
 
 ## Phase 6: Performance & Hardening
