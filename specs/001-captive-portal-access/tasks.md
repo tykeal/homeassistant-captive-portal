@@ -60,13 +60,13 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0207 NF tests/integration/test_rbac_permission_matrix_deny.py (deny-by-default unauthorized actions => 403) (2025-10-25T13:44:22.000Z)
 
 ### Implementation
-- [ ] T0210 US1 services/voucher_service.py (create, validate, redeem)
-- [ ] T0211 US1 services/grant_service.py (create, revoke, extend)
-- [ ] T0212 NF services/audit_service.py (log admin + voucher events)
-- [ ] T0213 NF concurrency lock / uniqueness (DB constraint + async lock) added
-- [ ] T0215 NF security/rbac/matrix.py (role→actions mapping & deny-by-default lookup)
-- [ ] T0216 NF middleware/rbac_enforcer.py (FastAPI dependency to enforce matrix, emits audit on deny)
-- [ ] T0217 NF docs/permissions_matrix.md (roles x endpoints/actions table and RBAC acceptance criteria for FR-017)
+- [x] T0210 US1 services/voucher_service.py (create, validate, redeem) (2025-10-26T14:32:17.418Z)
+- [x] T0211 US1 services/grant_service.py (create, revoke, extend) (2025-10-26T14:35:45.092Z)
+- [x] T0212 NF services/audit_service.py (log admin + voucher events) (2025-10-26T14:39:28.761Z)
+- [x] T0213 NF concurrency lock / uniqueness (DB constraint + async lock) added (2025-10-26T14:40:00.000Z)
+- [x] T0215 NF security/rbac/matrix.py (role→actions mapping & deny-by-default lookup) (2025-10-25T13:44:22.000Z)
+- [x] T0216 NF middleware/rbac_enforcer.py (FastAPI dependency to enforce matrix, emits audit on deny) (2025-10-25T13:44:22.000Z)
+- [x] T0217 NF docs/permissions_matrix.md (roles x endpoints/actions table and RBAC acceptance criteria for FR-017) (2025-10-26T14:42:19.332Z)
 - [ ] T0214 NF Phase 2 review: re-evaluate spec analysis & list decisions required for Phase 3
 
 ## Phase 3: Controller Integration (TP-Omada)
