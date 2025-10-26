@@ -4,7 +4,7 @@
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel
@@ -48,7 +48,7 @@ class AccessGrant(SQLModel, table=True):
     created_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    def __init__(self, **data):  # type: ignore[no-untyped-def]
+    def __init__(self, **data: Any) -> None:
         """Initialize AccessGrant with minute-precision timestamp rounding."""
         # Round start_utc down to minute
         if "start_utc" in data:
