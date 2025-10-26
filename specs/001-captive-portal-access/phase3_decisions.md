@@ -267,6 +267,128 @@ class RentalControlEvent(SQLModel, table=True):
 
 ---
 
+---
+
+## Decision D10: Booking Code Case Sensitivity
+
+**Decision**: Case-insensitive matching, case-sensitive storage and display
+
+**Problem**: Guests may mistype case on mobile devices; admin needs original case for cross-reference with booking platforms.
+
+**Implementation**:
+
+**Matching Strategy**:
+- Guest input normalized for lookup: `LOWER(guest_input) == LOWER(stored_value)`
+- SQL: `WHERE LOWER(slot_code) = LOWER(:input)` or `func.lower()` in SQLAlchemy
+- Whitespace trimmed from input
+
+**Storage Strategy**:
+- Store: Original case from Rental Control (slot_code, slot_name, last_four)
+- No normalization on write
+- Preserve exact string for admin cross-reference
+
+**Display Strategy**:
+- Admin UI: Show original case
+- Audit logs: Log original case
+- Error messages: Display original case when referencing booking codes
+
+**Example Flow**:
+1. Rental Control provides: `slot_code="ABC123"`
+2. Guest enters: `"aBc123"`
+3. Lookup: `LOWER("aBc123") == LOWER("ABC123")` → Match found
+4. Display in admin: `"ABC123"` (original)
+5. Audit log: `booking_code="ABC123"` (original)
+
+**Service Changes**:
+```python
+# booking_code_validator.py
+def validate_code(user_input: str, integration: HAIntegrationConfig) -> Optional[RentalControlEvent]:
+    normalized_input = user_input.strip()
+    # Case-insensitive query
+    query = db.query(RentalControlEvent).filter(
+        RentalControlEvent.integration_id == integration.id,
+        func.lower(getattr(RentalControlEvent, integration.auth_attribute)) == normalized_input.lower()
+    )
+    return query.first()  # Returns event with original case
+```
+
+**Database Impact**: None (no schema changes)
+
+**UI Impact** (Phase 4):
+- Guest input field: Accept any case, normalize for lookup
+- Admin display: Show original case in grants list
+- Error messages: Reference original case when displaying codes
+
+**File**: `src/captive_portal/services/booking_code_validator.py`
+
+**Approved**: 2025-10-26T16:49:00Z
+
+---
+
+## Decision D11: UI Scope for Phase 3
+
+**Decision**: Keep Phase 3 backend-focused; defer UI to Phase 4
+
+**Problem**: Expanded Phase 3 scope introduces new UI needs not originally planned for this phase:
+1. HA Integration configuration form (admin)
+2. Guest booking code authorization form
+3. Enhanced grants display (show booking identifier, grace period, integration)
+
+**Options Considered**:
+- **Option A (CHOSEN)**: Backend-only in Phase 3; REST APIs tested via integration tests; UI in Phase 4
+- **Option B**: Minimal UI now (basic forms); polish in Phase 4
+- **Option C**: Full UI in Phase 3 (extends timeline)
+
+**Rationale for Option A**:
+- Maintains clean phase separation (backend → UI)
+- Prevents scope creep and timeline extension
+- Testable via integration tests (API validation sufficient)
+- Aligns with original plan (Phase 4 = Admin UI, Phase 5 = Guest Authorization UI)
+- Reduces risk of introducing UI bugs while backend still stabilizing
+
+**Phase 3 Deliverables**:
+- REST API endpoints:
+  - `POST /api/admin/integrations` (create/update HAIntegrationConfig)
+  - `GET /api/admin/integrations` (list configurations)
+  - `POST /api/guest/authorize` (booking code validation)
+  - `GET /api/admin/grants` (list grants with booking identifiers)
+- Backend services: HAClient, HAPoller, RentalControlService, CleanupService
+- Database models: HAIntegrationConfig, RentalControlEvent
+- Integration tests: API contract validation, error scenarios
+
+**Phase 4 Deliverables** (UI implementation):
+- Admin forms for HA integration configuration
+- Guest booking code authorization form
+- Enhanced grants display
+- Theme integration for guest-facing pages
+- CSRF protection and session security
+
+**Impact on Tasks**:
+- Phase 3 focuses on T0303-T0327 (backend services, models, tests)
+- Phase 4 adds new UI tasks: T0422-T0425 (HA config UI, booking auth UI, grants display)
+
+**Files**:
+- Phase 3: Backend services and API routes only
+- Phase 4: Web templates, forms, and UI routes
+
+**Approved**: 2025-10-26T16:49:00Z
+
+---
+
+## Summary of All Approved Decisions
+
+| Decision | Summary | Implementation Phase | Priority |
+|----------|---------|---------------------|----------|
+| **D5** | HA integration via REST API (httpx) | Phase 3 | High |
+| **D6** | Poll all integrations, 60s batch, exponential backoff | Phase 3 | High |
+| **D7** | Per-integration auth attribute (default slot_code) | Phase 3 | High |
+| **D8** | 7-day event retention, daily 3 AM cleanup | Phase 3 | Medium |
+| **D9** | 0-30 min checkout grace (default 15 min) | Phase 3 | High |
+| **D10** | Case-insensitive match, case-sensitive store/display | Phase 3 | High |
+| **D11** | Backend-only Phase 3; UI deferred to Phase 4 | Phase 3/4 | High |
+
+---
+
 **Approved By**: User
-**Approval Date**: 2025-10-26T14:54:00Z
+**Approval Date**: 2025-10-26T16:49:00Z
 **Documented By**: Implementation Agent

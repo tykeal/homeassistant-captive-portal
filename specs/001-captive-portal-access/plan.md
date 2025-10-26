@@ -91,14 +91,16 @@ Tests first: service-level unit tests (voucher expiration, grant extension), con
 Constitution Gate Re-check: Ensure tests failing before code, validate no pre-commit bypass, verify audit/logging tasks planned.
 
 ### Phase 3: Controller Integration (HA + TP-Omada)
-Implement HA integration (REST client, 60s polling, Rental Control event processing) + TP-Omada adapter (external portal API, retry queue). Includes models for HAIntegrationConfig (auth attribute selection, grace period), RentalControlEvent (caching), and CleanupService (7-day retention).
-Tests first: HA client tests (mocked REST), poller tests (60s + backoff), event processing tests (attribute selection/fallback), TP-Omada contract tests (fixture responses), cleanup tests (retention policy).
+Implement HA integration (REST client, 60s polling, Rental Control event processing) + TP-Omada adapter (external portal API, retry queue). Includes models for HAIntegrationConfig (auth attribute selection, grace period), RentalControlEvent (caching), CleanupService (7-day retention), and BookingCodeValidator (case-insensitive matching).
+Tests first: HA client tests (mocked REST), poller tests (60s + backoff), event processing tests (attribute selection/fallback), TP-Omada contract tests (fixture responses), cleanup tests (retention policy), case-insensitive booking code matching tests.
+Backend-only (Decision D11): REST API endpoints for integration management and booking authorization; UI deferred to Phase 4.
 Constitution Gate Re-check: Confirm adapter tests cover error paths (retry), HA unavailability tests (backoff), metrics instrumentation test present before implementation, migration tests for schema changes.
 
 ### Phase 4: Admin Web Interface & Theming
 Constitution Gate Re-check: Validate security headers, CSRF tests precede implementation, theme precedence test (remediation) added before UI changes.
-Implement authentication (secure HTTP-only server-side session cookies + CSRF protection), admin CRUD for vouchers/grants, entity mapping UI, theming loader.
-Tests first: integration tests for admin routes (auth success/failure), CSRF enforcement tests, template rendering checks (no sensitive data leakage).
+Implement authentication (secure HTTP-only server-side session cookies + CSRF protection using argon2 password hashing), admin CRUD for vouchers/grants, entity mapping UI, theming loader.
+Includes deferred Phase 3 UI (Decision D11): HA integration configuration forms, guest booking code authorization form, enhanced grants display.
+Tests first: integration tests for admin routes (auth success/failure), CSRF enforcement tests, template rendering checks (no sensitive data leakage), UI tests for booking code forms and integration management.
 
 ### Phase 5: Guest Authorization & Booking Code Validation
 Constitution Gate Re-check: Confirm booking code validation tests cover all FR-018 error scenarios (invalid_format, not_found, outside_window, duplicate, integration_unavailable), metrics tests present, audit logging tests present.
@@ -130,6 +132,7 @@ FR-018: System SHALL validate guest authorization (booking) codes against Rental
 - Grace Period: Checkout grace period extends end_utc by 0-30 minutes (default 15, configurable via HAIntegrationConfig.checkout_grace_minutes, Decision D9).
 - Formats: slot_code regex ^\d{4,}$; last_four regex ^\d{4}$; slot_name treated as opaque string (non-empty, trimmed, <=128 chars).
 - Guest Input: Single authorization code field (no username).
+- Case Sensitivity: Matching case-INSENSITIVE for guest input (D10); storage and display case-SENSITIVE (preserve original from Rental Control for admin cross-reference).
 - Validation Window: Access allowed from event.start (floored to minute) until event.end + grace_period (ceiled to minute). Access grants lifetime resolved to minute boundaries.
 - Devices: Unlimited devices per valid booking within window.
 - Failure Responses: 400 invalid format; 404 booking not found; 410 booking outside active window; 409 duplicate active grant (same code already redeemed and still valid) returns existing grant reference.

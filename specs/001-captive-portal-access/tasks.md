@@ -83,6 +83,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0300 [P] US1 tests/contract/tp_omada/test_adapter_error_retry.py (backoff)
 - [x] T0301 [P] US1 tests/integration/test_authorize_end_to_end.py
 - [x] T0302 [P] US1 tests/integration/test_revoke_end_to_end.py
+- [ ] T0309a [P] US3 tests/unit/services/test_booking_code_case_insensitive.py (D10: case-insensitive matching)
 
 ### Implementation (Models & Migrations)
 - [ ] T0320 NF core/models/ha_integration_config.py (add auth_attribute, checkout_grace_minutes fields)
@@ -95,14 +96,19 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0325 US3 integrations/ha_poller.py (60s polling, exponential backoff, background task)
 - [ ] T0326 US3 integrations/rental_control_service.py (event processing, auth attribute selection, grace period)
 - [ ] T0327 NF services/cleanup_service.py (7-day retention, daily 3 AM job, audit logging)
+- [ ] T0328 US3 services/booking_code_validator.py (D10: case-insensitive lookup, case-sensitive storage/display)
 
 ### Implementation (TP-Omada)
 - [x] T0310 US1 controllers/tp_omada/base_client.py (HTTP wrapper)
 - [x] T0311 US1 controllers/tp_omada/adapter.py (authorize, revoke, update)
 - [ ] T0312 US1 services/retry_queue_service.py (background retry for controller failures)
 
+### Implementation (API Routes - Backend Only per D11)
+- [ ] T0329 US3 api/routes/integrations.py (CRUD for HAIntegrationConfig, admin-only)
+- [ ] T0330 US3 api/routes/booking_authorize.py (POST booking code validation, guest endpoint)
+
 ### Implementation (Metrics & Review)
-- [ ] T0313 NF metrics instrumentation (authorize latency, polling errors, cleanup counts)
+- [ ] T0313 NF metrics instrumentation (authorize latency, polling errors, cleanup counts, booking_code validation)
 - [ ] T0314 NF Phase 3 review: re-evaluate spec analysis & list decisions required for Phase 4
 
 ## Phase 4: Admin Web Interface & Theming
@@ -115,11 +121,13 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0405 [P] US4 tests/integration/test_initial_admin_bootstrap.py
 - [ ] T0406 [P] US4 tests/integration/test_add_additional_admin.py
 
-### Implementation
-- [ ] T0410 US4 security/password_hashing.py
+### Implementation (Security & Auth)
+- [ ] T0410 US4 security/password_hashing.py (argon2)
 - [ ] T0411 US4 security/session_middleware.py (secure HTTP-only cookie, rotation)
 - [ ] T0412 US4 security/csrf.py (token issue/verify)
 - [ ] T0413 US2 api/routes/admin_auth.py (login/logout, bootstrap)
+
+### Implementation (Admin UI Routes & Templates)
 - [ ] T0414 US2 api/routes/grants.py (list/extend/revoke)
 - [ ] T0415 US1 api/routes/vouchers.py (redeem)
 - [ ] T0416 US3 api/routes/entity_mapping.py
@@ -127,6 +135,14 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0418 NF web/templates/portal/index.html (theming placeholders)
 - [ ] T0419 NF web/templates/admin/dashboard.html
 - [ ] T0420 NF web/themes/default/theme.css
+
+### Implementation (Phase 3 UI Deferred per D11)
+- [ ] T0422 US3 web/templates/admin/integrations.html (HA config form: integration_id, auth_attribute dropdown, grace_minutes)
+- [ ] T0423 US3 web/templates/guest/booking_authorize.html (guest booking code form, themed)
+- [ ] T0424 US2 web/templates/admin/grants_enhanced.html (show booking identifier, grace period, integration source)
+- [ ] T0425 US3 api/routes/integrations_ui.py (UI routes for integration config forms)
+
+### Review
 - [ ] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5
 
 ## Phase 5: Guest Authorization & Booking Code Validation
