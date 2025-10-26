@@ -46,7 +46,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0117 NF api/contracts/openapi_draft.yaml (initial endpoints) (2025-10-26T13:48:15.332Z)
 - [x] T0118 NF contracts/controller/omada_authorize.json (request/response schema) (2025-10-26T13:48:15.332Z)
 - [x] T0119 NF contracts/controller/omada_revoke.json (2025-10-26T13:48:15.332Z)
-- [ ] T0120 NF Phase 1 review: re-evaluate spec analysis & list decisions required for Phase 2
+- [x] T0120 NF Phase 1 review: re-evaluate spec analysis & list decisions required for Phase 2 (2025-10-26T13:51:43.885Z)
 
 ## Phase 2: Core Services (Voucher & Grant Logic + RBAC Foundations)
 ### Tests First
