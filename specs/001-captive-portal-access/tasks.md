@@ -69,17 +69,40 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0217 NF docs/permissions_matrix.md (roles x endpoints/actions table and RBAC acceptance criteria for FR-017) (2025-10-26T14:42:19.332Z)
 - [x] T0214 NF Phase 2 review: re-evaluate spec analysis & list decisions required for Phase 3 (2025-10-26T14:45:00.000Z)
 
-## Phase 3: Controller Integration (TP-Omada)
-### Tests First
+## Phase 3: Controller Integration (HA + TP-Omada)
+### Tests First (HA Integration)
+- [ ] T0303 [P] US3 tests/unit/integrations/test_ha_client.py (REST API mocking, auth token)
+- [ ] T0304 [P] US3 tests/unit/integrations/test_ha_poller_60s_interval.py (polling timing)
+- [ ] T0305 [P] US3 tests/unit/integrations/test_ha_poller_backoff.py (exponential backoff on errors)
+- [ ] T0306 [P] US3 tests/unit/integrations/test_rental_control_event_processing.py (attribute selection, fallback logic)
+- [ ] T0307 [P] US3 tests/unit/integrations/test_cleanup_service_retention.py (7-day policy)
+- [ ] T0308 [P] US3 tests/unit/integrations/test_grace_period_logic.py (voucher extension)
+- [ ] T0309 [P] NF tests/unit/models/test_ha_integration_config_model.py (auth_attribute, grace_minutes validation)
+
+### Tests First (TP-Omada)
 - [x] T0300 [P] US1 tests/contract/tp_omada/test_adapter_error_retry.py (backoff)
 - [x] T0301 [P] US1 tests/integration/test_authorize_end_to_end.py
 - [x] T0302 [P] US1 tests/integration/test_revoke_end_to_end.py
 
-### Implementation
+### Implementation (Models & Migrations)
+- [ ] T0320 NF core/models/ha_integration_config.py (add auth_attribute, checkout_grace_minutes fields)
+- [ ] T0321 NF core/models/rental_control_event.py (event cache model)
+- [ ] T0322 NF alembic/versions/XXX_add_ha_integration_fields.py (migration for D7+D9)
+- [ ] T0323 NF alembic/versions/XXX_create_rental_control_event_table.py (migration for D8)
+
+### Implementation (HA Integration Services)
+- [ ] T0324 US3 integrations/ha_client.py (REST client, Supervisor API, httpx)
+- [ ] T0325 US3 integrations/ha_poller.py (60s polling, exponential backoff, background task)
+- [ ] T0326 US3 integrations/rental_control_service.py (event processing, auth attribute selection, grace period)
+- [ ] T0327 NF services/cleanup_service.py (7-day retention, daily 3 AM job, audit logging)
+
+### Implementation (TP-Omada)
 - [x] T0310 US1 controllers/tp_omada/base_client.py (HTTP wrapper)
 - [x] T0311 US1 controllers/tp_omada/adapter.py (authorize, revoke, update)
-- [ ] T0312 US1 services/omada_sync_queue.py (retry queue)
-- [ ] T0313 NF metrics instrumentation (authorize latency histogram)
+- [ ] T0312 US1 services/retry_queue_service.py (background retry for controller failures)
+
+### Implementation (Metrics & Review)
+- [ ] T0313 NF metrics instrumentation (authorize latency, polling errors, cleanup counts)
 - [ ] T0314 NF Phase 3 review: re-evaluate spec analysis & list decisions required for Phase 4
 
 ## Phase 4: Admin Web Interface & Theming
@@ -106,25 +129,22 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0420 NF web/themes/default/theme.css
 - [ ] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5
 
-## Phase 5: Home Assistant Entity Mapping Integration (Booking Code Validation)
+## Phase 5: Guest Authorization & Booking Code Validation
 ### Tests First
-- [ ] T0500 [P] US3 tests/unit/services/test_entity_discovery_failover.py
-- [ ] T0501 [P] US3 tests/integration/test_entity_mapping_applied_in_voucher_validation.py
-- [ ] T0502 NF tests/unit/services/test_booking_code_format_validation.py (slot_code, slot_name edge cases + voucher length/charset per FR-018)
-- [ ] T0503 NF tests/integration/test_booking_code_lookup_happy_path.py (event 0 & 1)
-- [ ] T0504 NF tests/integration/test_booking_code_not_found.py
-- [ ] T0505 NF tests/integration/test_booking_code_outside_window.py
-- [ ] T0506 NF tests/integration/test_booking_code_duplicate_grant.py
-- [ ] T0507 NF tests/integration/test_booking_code_integration_unavailable.py
+- [ ] T0500 NF tests/unit/services/test_booking_code_format_validation.py (slot_code, slot_name edge cases + voucher length/charset per FR-018)
+- [ ] T0501 NF tests/integration/test_booking_code_lookup_happy_path.py (event 0 & 1, time window validation)
+- [ ] T0502 NF tests/integration/test_booking_code_not_found.py (404 responses)
+- [ ] T0503 NF tests/integration/test_booking_code_outside_window.py (410 responses, before start/after end)
+- [ ] T0504 NF tests/integration/test_booking_code_duplicate_grant.py (409 responses, idempotency)
+- [ ] T0505 NF tests/integration/test_booking_code_integration_unavailable.py (deny-by-default when HA unavailable)
+- [ ] T0506 [P] US3 tests/integration/test_entity_mapping_applied_in_voucher_validation.py (integration with voucher service)
 
 ### Implementation
-- [ ] T0510 US3 services/ha_entity_service.py (fetch + cache)
-- [ ] T0511 US3 services/mapping_application.py (inject entity data to validation)
-- [ ] T0512 NF add degraded-mode logging when HA unreachable
-- [ ] T0514 NF services/booking_code_validator.py (format+window+lookup logic, metrics, audit emission)
-- [ ] T0515 NF api/routes/booking_authorize.py (guest POST code → grant)
-- [ ] T0516 NF docs/booking_code_validation.md (FR-018 details, flows, error matrix)
-- [ ] T0513 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6
+- [ ] T0510 NF services/booking_code_validator.py (format+window+lookup logic, metrics, audit emission)
+- [ ] T0511 NF api/routes/booking_authorize.py (guest POST code → grant, error responses per FR-018)
+- [ ] T0512 NF services/mapping_application.py (inject cached HA data into validation flow)
+- [ ] T0513 NF docs/booking_code_validation.md (FR-018 details, flows, error matrix)
+- [ ] T0514 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6
 
 ## Phase 6: Performance & Hardening
 ### Tests First
