@@ -71,13 +71,13 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 3: Controller Integration (TP-Omada)
 ### Tests First
-- [ ] T0300 [P] US1 tests/contract/tp_omada/test_adapter_error_retry.py (backoff)
-- [ ] T0301 [P] US1 tests/integration/test_authorize_end_to_end.py
-- [ ] T0302 [P] US1 tests/integration/test_revoke_end_to_end.py
+- [x] T0300 [P] US1 tests/contract/tp_omada/test_adapter_error_retry.py (backoff)
+- [x] T0301 [P] US1 tests/integration/test_authorize_end_to_end.py
+- [x] T0302 [P] US1 tests/integration/test_revoke_end_to_end.py
 
 ### Implementation
-- [ ] T0310 US1 controllers/tp_omada/base_client.py (HTTP wrapper)
-- [ ] T0311 US1 controllers/tp_omada/adapter.py (authorize, revoke, update)
+- [x] T0310 US1 controllers/tp_omada/base_client.py (HTTP wrapper)
+- [x] T0311 US1 controllers/tp_omada/adapter.py (authorize, revoke, update)
 - [ ] T0312 US1 services/omada_sync_queue.py (retry queue)
 - [ ] T0313 NF metrics instrumentation (authorize latency histogram)
 - [ ] T0314 NF Phase 3 review: re-evaluate spec analysis & list decisions required for Phase 4
