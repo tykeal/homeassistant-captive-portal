@@ -67,7 +67,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0215 NF security/rbac/matrix.py (role→actions mapping & deny-by-default lookup) (2025-10-25T13:44:22.000Z)
 - [x] T0216 NF middleware/rbac_enforcer.py (FastAPI dependency to enforce matrix, emits audit on deny) (2025-10-25T13:44:22.000Z)
 - [x] T0217 NF docs/permissions_matrix.md (roles x endpoints/actions table and RBAC acceptance criteria for FR-017) (2025-10-26T14:42:19.332Z)
-- [ ] T0214 NF Phase 2 review: re-evaluate spec analysis & list decisions required for Phase 3
+- [x] T0214 NF Phase 2 review: re-evaluate spec analysis & list decisions required for Phase 3 (2025-10-26T14:45:00.000Z)
 
 ## Phase 3: Controller Integration (TP-Omada)
 ### Tests First
