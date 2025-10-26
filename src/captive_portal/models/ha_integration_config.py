@@ -15,6 +15,7 @@ class IdentifierAttr(str, Enum):
 
     SLOT_CODE = "slot_code"
     SLOT_NAME = "slot_name"
+    LAST_FOUR = "last_four"
 
 
 class HAIntegrationConfig(SQLModel, table=True):
@@ -23,7 +24,8 @@ class HAIntegrationConfig(SQLModel, table=True):
     Attributes:
         id: Primary key (UUID)
         integration_id: Unique HA integration identifier
-        identifier_attr: Chosen attribute (slot_code or slot_name)
+        identifier_attr: Chosen attribute (slot_code, slot_name, last_four)
+        checkout_grace_minutes: Minutes of WiFi access after checkout (0-30)
         last_sync_utc: Last successful HA poll timestamp (UTC, nullable)
         stale_count: Consecutive missed polls counter
     """
@@ -33,5 +35,6 @@ class HAIntegrationConfig(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     integration_id: str = Field(unique=True, max_length=128, index=True)
     identifier_attr: IdentifierAttr = Field(default=IdentifierAttr.SLOT_CODE)
+    checkout_grace_minutes: int = Field(default=15, ge=0, le=30)
     last_sync_utc: Optional[datetime] = Field(default=None)
     stale_count: int = Field(default=0, ge=0)
