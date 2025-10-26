@@ -172,6 +172,30 @@ Phase 1 deliverables meet all acceptance criteria from phase1.md Section 10:
 2. Begin Phase 2 with tests-first approach (T0200-T0207 test scaffolds)
 3. Implement services to make Phase 1 test skeletons pass (green phase of TDD)
 
+## Quality Gate for Future Phases
+
+**MANDATORY**: Before any phase re-review or spec analysis, the following quality gate MUST pass:
+
+```bash
+pre-commit run -a
+```
+
+**Requirements**:
+- ✅ All hooks must pass (ruff, mypy strict, interrogate 100%, REUSE, gitlint)
+- ✅ Zero errors, zero warnings
+- ✅ All files formatted and linted
+- ✅ 100% docstring coverage (interrogate)
+- ✅ Type hints validated (mypy strict mode)
+
+**Process**:
+1. Run `pre-commit run -a` before requesting phase review
+2. Fix all errors (do not skip or ignore)
+3. Commit fixes with descriptive message
+4. Re-run to confirm clean pass
+5. Only then proceed with phase review/analysis
+
+This gate ensures consistent code quality and prevents CI failures.
+
 ---
 **Reviewer Signature**: Implementation Agent
 **Date**: 2025-10-26T13:50:00Z
