@@ -4,7 +4,7 @@
 
 import pytest
 from unittest.mock import AsyncMock, Mock
-import httpx  # type: ignore[import-not-found]
+import httpx
 
 
 class TestOmadaAdapterRetry:

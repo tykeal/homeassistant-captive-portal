@@ -6,7 +6,7 @@ import asyncio
 from typing import Any, Optional
 from urllib.parse import urljoin
 
-import httpx  # type: ignore[import-not-found]
+import httpx
 
 
 class OmadaClientError(Exception):
