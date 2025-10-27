@@ -103,9 +103,9 @@ async def list_admin_accounts(
 async def create_admin_account(
     request: Request,
     account: AdminAccountCreate,
+    _current_admin: AdminUser = Depends(get_current_admin),
     db: Session = Depends(get_session),
     csrf: CSRFProtection = Depends(get_csrf_protection),
-    _current_admin: AdminUser = Depends(get_current_admin),
 ) -> AdminAccountResponse:
     """
     Create a new admin account.

@@ -11,7 +11,6 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, create_engine
 from sqlalchemy.engine import Engine
 
-from captive_portal.app import create_app
 from captive_portal.persistence import database
 
 
@@ -67,7 +66,40 @@ def db_session(db_engine: Engine) -> Generator[Session, None, None]:
 @pytest.fixture
 def app(db_engine: Engine) -> FastAPI:
     """Create test FastAPI app with database initialized."""
-    app_instance = create_app()
+    # Create app with test-friendly session config
+    from captive_portal.security.session_middleware import (
+        SessionConfig,
+        SessionMiddleware,
+        SessionStore,
+    )
+
+    test_app = FastAPI(title="Captive Portal Guest Access (Test)")
+
+    # Initialize with test-friendly session config (no secure cookies for HTTP)
+    session_config = SessionConfig(cookie_secure=False)
+    session_store = SessionStore()
+    test_app.state.session_config = session_config
+    test_app.state.session_store = session_store
+
+    # Add session middleware
+    test_app.add_middleware(SessionMiddleware, config=session_config, store=session_store)
+
+    # Register routes
+    from captive_portal.api.routes import (
+        admin_accounts,
+        admin_auth,
+        grants,
+        health,
+        integrations_ui,
+        vouchers,
+    )
+
+    test_app.include_router(admin_accounts.router)
+    test_app.include_router(admin_auth.router)
+    test_app.include_router(grants.router)
+    test_app.include_router(health.router)
+    test_app.include_router(vouchers.router)
+    test_app.include_router(integrations_ui.router)
 
     # Override the get_session dependency to use the test database
     def get_test_session() -> Generator[Session, None, None]:
@@ -77,9 +109,9 @@ def app(db_engine: Engine) -> FastAPI:
 
     from captive_portal.persistence.database import get_session
 
-    app_instance.dependency_overrides[get_session] = get_test_session
+    test_app.dependency_overrides[get_session] = get_test_session
 
-    return app_instance
+    return test_app
 
 
 @pytest.fixture

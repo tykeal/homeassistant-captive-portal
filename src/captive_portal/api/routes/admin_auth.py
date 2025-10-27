@@ -116,14 +116,21 @@ async def logout(
     Admin logout endpoint.
 
     Destroys session and clears cookies.
+    Requires valid session. Returns 401 if no session exists.
     Note: CSRF-exempt as logout is inherently safe to allow without CSRF.
     """
-    session_id = request.state.session_id
-    if session_id:
-        session_store = request.app.state.session_store
-        session_config = request.app.state.session_config
-        response.delete_cookie(key=session_config.cookie_name)
-        session_store.delete(session_id)
+    session_id = getattr(request.state, "session_id", None)
+
+    if not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No active session to logout",
+        )
+
+    session_store = request.app.state.session_store
+    session_config = request.app.state.session_config
+    response.delete_cookie(key=session_config.cookie_name)
+    session_store.delete(session_id)
 
     return {"message": "Logged out successfully"}
 
