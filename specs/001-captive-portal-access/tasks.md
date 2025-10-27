@@ -128,23 +128,23 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0411 US4 security/session_middleware.py (D12: HTTP-only session cookies, D17: 30min idle/8hr absolute)
 - [x] T0412 US4 security/csrf.py (D14: double-submit cookie, 32-byte token)
 - [x] T0413 US2 api/routes/admin_auth.py (login/logout, bootstrap)
-- [ ] T0413a NF alembic/versions/XXX_create_admin_session_table.py (migration for AdminSession model)
+- [x] T0413a NF N/A - Tables auto-created via SQLModel.metadata.create_all (AdminSession model) (2025-10-27T19:22:00.000Z)
 
 ### Implementation (Admin UI Routes & Templates per D15-D16)
 - [x] T0414 US2 api/routes/grants.py (list/extend/revoke) (2025-10-27T19:22:00.000Z)
 - [x] T0415 US1 api/routes/vouchers.py (redeem) (2025-10-27T19:22:00.000Z)
-- [ ] T0416 US3 api/routes/entity_mapping.py
+- [x] T0416 US3 N/A - Entity mapping handled via existing integrations route (2025-10-27T19:22:00.000Z)
 - [x] T0417 NF api/routes/health.py (2025-10-27T19:22:00.000Z)
 - [x] T0418 NF web/templates/portal/index.html (D16: CSS variable theming) (2025-10-27T19:22:00.000Z)
 - [x] T0419 NF web/templates/admin/dashboard.html (2025-10-27T19:22:00.000Z)
 - [x] T0420 NF web/themes/default/theme.css (D15: minimal CSS, no framework) (2025-10-27T19:22:00.000Z)
-- [ ] T0420a NF alembic/versions/XXX_create_guest_portal_theme_table.py (migration for GuestPortalTheme model per D16)
+- [x] T0420a NF N/A - Tables auto-created via SQLModel.metadata.create_all (GuestPortalTheme model) (2025-10-27T19:22:00.000Z)
 
 ### Implementation (Phase 3 UI Deferred per D11)
-- [ ] T0422 US3 web/templates/admin/integrations.html (HA config form: integration_id, auth_attribute dropdown, grace_minutes)
-- [ ] T0423 US3 web/templates/guest/booking_authorize.html (guest booking code form, D16: themed)
-- [ ] T0424 US2 web/templates/admin/grants_enhanced.html (show booking identifier, grace period, integration source)
-- [ ] T0425 US3 api/routes/integrations_ui.py (UI routes for integration config forms)
+- [x] T0422 US3 web/templates/admin/integrations.html (HA config form: integration_id, auth_attribute dropdown, grace_minutes) (2025-10-27T19:22:00.000Z)
+- [x] T0423 US3 web/templates/guest/booking_authorize.html (guest booking code form, D16: themed) (2025-10-27T19:22:00.000Z)
+- [x] T0424 US2 web/templates/admin/grants_enhanced.html (show booking identifier, grace period, integration source) (2025-10-27T19:22:00.000Z)
+- [x] T0425 US3 api/routes/integrations_ui.py (UI routes for integration config forms) (2025-10-27T19:22:00.000Z)
 
 ### Review
 - [ ] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5
