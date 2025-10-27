@@ -131,13 +131,13 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0413a NF alembic/versions/XXX_create_admin_session_table.py (migration for AdminSession model)
 
 ### Implementation (Admin UI Routes & Templates per D15-D16)
-- [ ] T0414 US2 api/routes/grants.py (list/extend/revoke)
-- [ ] T0415 US1 api/routes/vouchers.py (redeem)
+- [x] T0414 US2 api/routes/grants.py (list/extend/revoke) (2025-10-27T19:22:00.000Z)
+- [x] T0415 US1 api/routes/vouchers.py (redeem) (2025-10-27T19:22:00.000Z)
 - [ ] T0416 US3 api/routes/entity_mapping.py
-- [ ] T0417 NF api/routes/health.py
-- [ ] T0418 NF web/templates/portal/index.html (D16: CSS variable theming)
-- [ ] T0419 NF web/templates/admin/dashboard.html
-- [ ] T0420 NF web/themes/default/theme.css (D15: minimal CSS, no framework)
+- [x] T0417 NF api/routes/health.py (2025-10-27T19:22:00.000Z)
+- [x] T0418 NF web/templates/portal/index.html (D16: CSS variable theming) (2025-10-27T19:22:00.000Z)
+- [x] T0419 NF web/templates/admin/dashboard.html (2025-10-27T19:22:00.000Z)
+- [x] T0420 NF web/themes/default/theme.css (D15: minimal CSS, no framework) (2025-10-27T19:22:00.000Z)
 - [ ] T0420a NF alembic/versions/XXX_create_guest_portal_theme_table.py (migration for GuestPortalTheme model per D16)
 
 ### Implementation (Phase 3 UI Deferred per D11)
