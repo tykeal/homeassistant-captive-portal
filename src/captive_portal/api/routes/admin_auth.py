@@ -20,7 +20,6 @@ from captive_portal.models.admin_user import AdminUser
 from captive_portal.persistence.database import get_session
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
 from captive_portal.security.password_hashing import hash_password, verify_password
-from captive_portal.security.session_middleware import SessionMiddleware
 
 router = APIRouter(prefix="/api/admin/auth", tags=["admin-auth"])
 
@@ -79,11 +78,22 @@ async def login(
             detail="Invalid username or password",
         )
 
-    session_middleware: SessionMiddleware = request.app.state.session_middleware
+    # Use shared session store from app state
+    session_config = request.app.state.session_config
+    session_store = request.app.state.session_store
     ip_address = request.client.host if request.client else None
     user_agent = request.headers.get("User-Agent")
 
-    session_middleware.create_session(response, admin.id, ip_address, user_agent)
+    # Create session
+    session_id = session_store.create(admin.id, session_config, ip_address, user_agent)
+    response.set_cookie(
+        key=session_config.cookie_name,
+        value=session_id,
+        httponly=session_config.cookie_httponly,
+        secure=session_config.cookie_secure,
+        samesite=session_config.cookie_samesite,
+        max_age=session_config.max_hours * 3600,
+    )
 
     csrf_token = csrf.generate_token()
     csrf.set_csrf_cookie(response, csrf_token)
@@ -112,8 +122,10 @@ async def logout(
 
     session_id = request.state.session_id
     if session_id:
-        session_middleware: SessionMiddleware = request.app.state.session_middleware
-        session_middleware.delete_session(response, session_id)
+        session_store = request.app.state.session_store
+        session_config = request.app.state.session_config
+        response.delete_cookie(key=session_config.cookie_name)
+        session_store.delete(session_id)
 
     return {"message": "Logged out successfully"}
 

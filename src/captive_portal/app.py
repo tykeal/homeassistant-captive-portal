@@ -23,16 +23,30 @@ def create_app() -> FastAPI:
     """
     app = FastAPI(title="Captive Portal Guest Access")
 
-    # Initialize session middleware
+    # Initialize shared session store and config
+    from captive_portal.security.session_middleware import SessionStore
+
     session_config = SessionConfig()
-    session_middleware = SessionMiddleware(app, config=session_config)
-    app.add_middleware(SessionMiddleware, config=session_config)
-    app.state.session_middleware = session_middleware
+    session_store = SessionStore()
+    # Store both in app state for access by routes
+    app.state.session_config = session_config
+    app.state.session_store = session_store
+
+    # Add session middleware with shared store
+    app.add_middleware(SessionMiddleware, config=session_config, store=session_store)
 
     # Register routes
-    from captive_portal.api.routes import admin_auth, grants, health, integrations_ui, vouchers
+    from captive_portal.api.routes import (
+        admin_accounts,
+        admin_auth,
+        grants,
+        health,
+        integrations_ui,
+        vouchers,
+    )
     from captive_portal import middleware
 
+    app.include_router(admin_accounts.router)
     app.include_router(admin_auth.router)
     app.include_router(grants.router)
     app.include_router(health.router)

@@ -111,11 +111,16 @@ class SessionStore:
 class SessionMiddleware(BaseHTTPMiddleware):
     """FastAPI middleware for session management."""
 
-    def __init__(self, app: ASGIApp, config: Optional[SessionConfig] = None) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        config: Optional[SessionConfig] = None,
+        store: Optional[SessionStore] = None,
+    ) -> None:
         """Initialize session middleware."""
         super().__init__(app)
         self.config = config or SessionConfig()
-        self.store = SessionStore()
+        self.store = store or SessionStore()
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """Process request and validate session."""
