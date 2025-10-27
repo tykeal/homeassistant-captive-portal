@@ -54,6 +54,9 @@ class BootstrapResponse(BaseModel):
 
     success: bool
     message: str
+    username: str
+    email: str
+    role: str
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -135,7 +138,7 @@ async def logout(
     return {"message": "Logged out successfully"}
 
 
-@router.post("/bootstrap", response_model=BootstrapResponse)
+@router.post("/bootstrap", response_model=BootstrapResponse, status_code=status.HTTP_201_CREATED)
 async def bootstrap_admin(
     bootstrap_req: BootstrapRequest,
     db: Session = Depends(get_session),
@@ -151,8 +154,8 @@ async def bootstrap_admin(
 
     if existing_admins:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin accounts already exist. Bootstrap is only allowed for initial setup.",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Admin account already exists. Bootstrap is only allowed for initial setup.",
         )
 
     password_hash = hash_password(bootstrap_req.password)
@@ -160,6 +163,7 @@ async def bootstrap_admin(
         username=bootstrap_req.username,
         password_hash=password_hash,
         email=bootstrap_req.email,
+        role="admin",
     )
 
     db.add(admin)
@@ -169,6 +173,9 @@ async def bootstrap_admin(
     return BootstrapResponse(
         success=True,
         message=f"Admin user '{admin.username}' created successfully",
+        username=admin.username,
+        email=admin.email,
+        role=admin.role,
     )
 
 
