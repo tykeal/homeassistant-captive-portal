@@ -46,11 +46,10 @@ def authenticated_client(client, admin_user) -> Any:
 def sample_grant(db_session: Session) -> Any:
     """Create sample access grant in database."""
     grant = AccessGrant(
-        mac_address="AA:BB:CC:DD:EE:FF",
+        mac="AA:BB:CC:DD:EE:FF",
         start_utc=datetime.now(timezone.utc),
         end_utc=datetime.now(timezone.utc) + timedelta(hours=2),
-        booking_identifier="BOOKING123",
-        integration_id="rental_1",
+        booking_ref="BOOKING123",
     )
     db_session.add(grant)
     db_session.commit()
@@ -168,11 +167,10 @@ class TestAdminExtendRevokeGrant:
 
         # Create expired grant
         expired_grant = AccessGrant(
-            mac_address="11:22:33:44:55:66",
+            mac="11:22:33:44:55:66",
             start_utc=datetime.now(timezone.utc) - timedelta(hours=3),
             end_utc=datetime.now(timezone.utc) - timedelta(hours=1),
-            booking_identifier="EXPIRED123",
-            integration_id="rental_1",
+            booking_ref="EXPIRED123",
         )
         db_session.add(expired_grant)
         db_session.commit()

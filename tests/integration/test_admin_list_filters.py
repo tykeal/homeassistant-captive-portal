@@ -49,33 +49,30 @@ def sample_grants(db_session: Session) -> Any:
     # Active grant
     grants.append(
         AccessGrant(
-            mac_address="AA:BB:CC:DD:EE:01",
+            mac="AA:BB:CC:DD:EE:01",
             start_utc=datetime.now(timezone.utc) - timedelta(hours=1),
             end_utc=datetime.now(timezone.utc) + timedelta(hours=1),
-            booking_identifier="ACTIVE001",
-            integration_id="rental_1",
+            booking_ref="ACTIVE001",
         )
     )
 
     # Expired grant
     grants.append(
         AccessGrant(
-            mac_address="AA:BB:CC:DD:EE:02",
+            mac="AA:BB:CC:DD:EE:02",
             start_utc=datetime.now(timezone.utc) - timedelta(hours=3),
             end_utc=datetime.now(timezone.utc) - timedelta(hours=1),
-            booking_identifier="EXPIRED001",
-            integration_id="rental_1",
+            booking_ref="EXPIRED001",
         )
     )
 
     # Future grant
     grants.append(
         AccessGrant(
-            mac_address="AA:BB:CC:DD:EE:03",
+            mac="AA:BB:CC:DD:EE:03",
             start_utc=datetime.now(timezone.utc) + timedelta(hours=1),
             end_utc=datetime.now(timezone.utc) + timedelta(hours=3),
-            booking_identifier="FUTURE001",
-            integration_id="rental_2",
+            booking_ref="FUTURE001",
         )
     )
 
