@@ -42,7 +42,9 @@ class RetryOperation:
     params: dict[str, Any]
     attempts: int = 0
     next_retry_utc: Optional[datetime] = None
-    created_utc: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_utc: datetime = field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0)
+    )
 
 
 class RetryQueueService:
