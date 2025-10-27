@@ -98,9 +98,14 @@ Constitution Gate Re-check: Confirm adapter tests cover error paths (retry), HA 
 
 ### Phase 4: Admin Web Interface & Theming
 Constitution Gate Re-check: Validate security headers, CSRF tests precede implementation, theme precedence test (remediation) added before UI changes.
-Implement authentication (secure HTTP-only server-side session cookies + CSRF protection using argon2 password hashing), admin CRUD for vouchers/grants, entity mapping UI, theming loader.
+Implement authentication (secure HTTP-only server-side session cookies + CSRF protection using argon2 password hashing per D13), admin CRUD for vouchers/grants, entity mapping UI, theming loader.
+Session Management (D12): Server-side session cookies (HTTP-only, Secure, SameSite=Strict) with configurable lifetimes (default 30 min idle, 8 hr absolute per D17).
+CSRF Protection (D14): Double-submit cookie pattern (stateless, 32-byte random token).
+Admin UI Theme (D15): Minimal CSS (no framework) for smaller bundle, modern CSS features (grid, flexbox, CSS variables).
+Guest Portal Theming (D16): CSS variable overrides (admin-configurable colors, logo) stored in GuestPortalTheme model; deferred UI to Phase 5.
 Includes deferred Phase 3 UI (Decision D11): HA integration configuration forms, guest booking code authorization form, enhanced grants display.
-Tests first: integration tests for admin routes (auth success/failure), CSRF enforcement tests, template rendering checks (no sensitive data leakage), UI tests for booking code forms and integration management.
+Tests first: integration tests for admin routes (auth success/failure), CSRF enforcement tests, session timeout tests (idle + absolute), template rendering checks (no sensitive data leakage), UI tests for booking code forms and integration management.
+Decisions reference: See phase4_decisions.md for full rationale on D12-D17 (all approved 2025-10-27T00:45:00Z).
 
 ### Phase 5: Guest Authorization & Booking Code Validation
 Constitution Gate Re-check: Confirm booking code validation tests cover all FR-018 error scenarios (invalid_format, not_found, outside_window, duplicate, integration_unavailable), metrics tests present, audit logging tests present.
