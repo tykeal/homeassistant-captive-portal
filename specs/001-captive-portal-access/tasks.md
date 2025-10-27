@@ -120,7 +120,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0403 [P] US2 tests/integration/test_admin_list_filters.py (2025-10-27T11:14:00.000Z)
 - [x] T0404 [P] US3 tests/integration/test_entity_mapping_save_retrieve.py (2025-10-27T11:14:00.000Z)
 - [x] T0405 [P] US4 tests/integration/test_initial_admin_bootstrap.py (2025-10-27T11:14:00.000Z)
-- [ ] T0406 [P] US4 tests/integration/test_add_additional_admin.py
+- [x] T0406 [P] US4 tests/integration/test_add_additional_admin.py (2025-10-27T20:20:00.000Z)
 - [x] T0407 [P] NF tests/unit/security/test_argon2_password_hashing.py (D13: OWASP params) (2025-10-27T11:14:00.000Z)
 
 ### Implementation (Security & Auth per D12-D14, D17)
@@ -147,7 +147,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0425 US3 api/routes/integrations_ui.py (UI routes for integration config forms) (2025-10-27T19:22:00.000Z)
 
 ### Review
-- [ ] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5
+- [x] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5 (2025-10-27T20:20:00.000Z)
 
 ## Phase 5: Guest Authorization & Booking Code Validation
 ### Tests First
