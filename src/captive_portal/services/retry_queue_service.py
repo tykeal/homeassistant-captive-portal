@@ -89,6 +89,7 @@ class RetryQueueService:
         """
         # Calculate next retry time with exponential backoff
         delay = min(self._base_delay * (2**operation.attempts), self._max_delay)
+        # Truncate to second precision since queue processor runs at 1s intervals
         operation.next_retry_utc = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(
             seconds=delay
         )
