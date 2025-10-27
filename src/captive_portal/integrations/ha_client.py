@@ -53,9 +53,6 @@ class HAClient:
             if response.status_code == 404:
                 return None
 
-            if response.status_code >= 500:
-                raise Exception(f"HA API error: {response.status_code} - {response.text}")
-
             response.raise_for_status()
             result: Dict[str, Any] = response.json()
             return result
