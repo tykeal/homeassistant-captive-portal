@@ -67,16 +67,20 @@ async def test_ha_client_authentication_header() -> None:
 @pytest.mark.asyncio
 async def test_ha_client_handles_http_errors() -> None:
     """Test client handles HTTP errors gracefully."""
+    import httpx
     from captive_portal.integrations.ha_client import HAClient
 
     mock_response = MagicMock()
     mock_response.status_code = 500
     mock_response.text = "Internal Server Error"
+    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "500 Server Error", request=MagicMock(), response=mock_response
+    )
 
     with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
         mock_get.return_value = mock_response
 
         client = HAClient(base_url="http://supervisor/core/api", token="test_token")
 
-        with pytest.raises(Exception, match="HA API error"):
+        with pytest.raises(Exception, match="HA API request failed"):
             await client.get_entity_state("sensor.test")
