@@ -2,10 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """App factory and minimal health endpoint (Phase 0 placeholder)."""
 
-from typing import Any, Callable
-from fastapi import FastAPI, Depends
-from . import middleware
 import logging
+from typing import Any, Callable
+
+from fastapi import Depends, FastAPI, Request
+
+from captive_portal.security.session_middleware import (
+    SessionConfig,
+    SessionMiddleware,
+)
 
 logger = logging.getLogger("captive_portal")
 
@@ -18,8 +23,20 @@ def create_app() -> FastAPI:
     """
     app = FastAPI(title="Captive Portal Guest Access")
 
-    @app.get("/health", tags=["internal"])  # basic health for addon
-    async def health() -> dict[str, str]:  # pragma: no cover - trivial
+    # Initialize session middleware
+    session_config = SessionConfig()
+    session_middleware = SessionMiddleware(app, config=session_config)
+    app.add_middleware(SessionMiddleware, config=session_config)
+    app.state.session_middleware = session_middleware
+
+    # Register routes
+    from captive_portal.api.routes import admin_auth
+    from captive_portal import middleware
+
+    app.include_router(admin_auth.router)
+
+    @app.get("/health", tags=["internal"])
+    async def health() -> dict[str, str]:
         """Health check endpoint.
 
         Returns:
@@ -28,7 +45,6 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     # Example protected listing endpoint placeholder (no real data yet)
-    from fastapi import Request  # local import inside factory
 
     def enforce(action: str) -> Callable[..., Any]:
         """Create RBAC enforcement dependency.

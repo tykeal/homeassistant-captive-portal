@@ -109,7 +109,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ### Implementation (Metrics & Review)
 - [x] T0313 NF metrics instrumentation (authorize latency, polling errors, cleanup counts, booking_code validation) (2025-10-26T21:22:00.000Z)
-- [ ] T0314 NF Phase 3 review: re-evaluate spec analysis & list decisions required for Phase 4
+- [x] T0314 NF Phase 3 review: re-evaluate spec analysis & list decisions required for Phase 4 (2025-10-27T12:43:00.000Z)
 
 ## Phase 4: Admin Web Interface & Theming (See phase4_decisions.md for D12-D17)
 ### Tests First

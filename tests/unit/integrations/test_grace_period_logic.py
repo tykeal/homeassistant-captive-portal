@@ -182,7 +182,7 @@ async def test_30_minute_grace_max_extension(
     assert call_args.end_utc == checkout_time
 
 
-def test_grace_period_validation_rejects_over_30():
+def test_grace_period_validation_rejects_over_30() -> None:
     """Test that grace period validation rejects values over 30 minutes."""
     with pytest.raises(ValueError):
         HAIntegrationConfig(
@@ -193,7 +193,7 @@ def test_grace_period_validation_rejects_over_30():
         )
 
 
-def test_grace_period_validation_rejects_negative():
+def test_grace_period_validation_rejects_negative() -> None:
     """Test that grace period validation rejects negative values."""
     with pytest.raises(ValueError):
         HAIntegrationConfig(
