@@ -47,3 +47,10 @@ dev = [
 [tool.setuptools]
 packages = ["captive_portal"]
 package-dir = {"captive_portal" = "src/captive_portal"}
+
+[tool.pytest.ini_options]
+markers = [
+    "contract: marks tests as contract/API tests requiring external dependencies",
+    "integration: marks tests as integration tests requiring full system setup",
+    "performance: marks tests as performance tests (deselect with '-m \"not performance\"')",
+]
