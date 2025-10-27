@@ -113,15 +113,15 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 4: Admin Web Interface & Theming (See phase4_decisions.md for D12-D17)
 ### Tests First
-- [ ] T0400 [P] US2 tests/integration/test_admin_auth_login_logout.py
-- [ ] T0401 [P] US2 tests/integration/test_admin_session_csrf.py (D14: double-submit cookie)
-- [ ] T0401a [P] US2 tests/integration/test_admin_session_timeout.py (D17: idle 30min + absolute 8hr)
-- [ ] T0402 [P] US2 tests/integration/test_admin_extend_revoke_grant.py
-- [ ] T0403 [P] US2 tests/integration/test_admin_list_filters.py
-- [ ] T0404 [P] US3 tests/integration/test_entity_mapping_save_retrieve.py
-- [ ] T0405 [P] US4 tests/integration/test_initial_admin_bootstrap.py
+- [x] T0400 [P] US2 tests/integration/test_admin_auth_login_logout.py (2025-10-27T12:10:00.000Z)
+- [x] T0401 [P] US2 tests/integration/test_admin_session_csrf.py (D14: double-submit cookie) (2025-10-27T11:14:00.000Z)
+- [x] T0401a [P] US2 tests/integration/test_admin_session_timeout.py (D17: idle 30min + absolute 8hr) (2025-10-27T11:14:00.000Z)
+- [x] T0402 [P] US2 tests/integration/test_admin_extend_revoke_grant.py (2025-10-27T11:14:00.000Z)
+- [x] T0403 [P] US2 tests/integration/test_admin_list_filters.py (2025-10-27T11:14:00.000Z)
+- [x] T0404 [P] US3 tests/integration/test_entity_mapping_save_retrieve.py (2025-10-27T11:14:00.000Z)
+- [x] T0405 [P] US4 tests/integration/test_initial_admin_bootstrap.py (2025-10-27T11:14:00.000Z)
 - [ ] T0406 [P] US4 tests/integration/test_add_additional_admin.py
-- [ ] T0407 [P] NF tests/unit/security/test_argon2_password_hashing.py (D13: OWASP params)
+- [x] T0407 [P] NF tests/unit/security/test_argon2_password_hashing.py (D13: OWASP params) (2025-10-27T11:14:00.000Z)
 
 ### Implementation (Security & Auth per D12-D14, D17)
 - [x] T0410 US4 security/password_hashing.py (D13: argon2-cffi, OWASP params m=65536/t=3/p=4)
