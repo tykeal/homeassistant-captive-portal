@@ -32,6 +32,8 @@ class HAIntegrationConfig(SQLModel, table=True):
 
     __tablename__ = "ha_integration_config"
 
+    model_config = {"validate_assignment": True}
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     integration_id: str = Field(unique=True, max_length=128, index=True)
     identifier_attr: IdentifierAttr = Field(default=IdentifierAttr.SLOT_CODE)

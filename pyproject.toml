@@ -31,10 +31,26 @@ fail-under = 100
 python_version = "3.13"
 strict = true
 
+[[tool.mypy.overrides]]
+module = "httpx"
+ignore_missing_imports = true
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[dependency-groups]
+dev = [
+    "pytest-asyncio>=1.2.0",
+]
+
 [tool.setuptools]
 packages = ["captive_portal"]
 package-dir = {"captive_portal" = "src/captive_portal"}
+
+[tool.pytest.ini_options]
+markers = [
+    "contract: marks tests as contract/API tests requiring external dependencies",
+    "integration: marks tests as integration tests requiring full system setup",
+    "performance: marks tests as performance tests (deselect with '-m \"not performance\"')",
+]

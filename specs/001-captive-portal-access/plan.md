@@ -90,20 +90,27 @@ Implement voucher creation, redemption flow, grant lifecycle (create/update/revo
 Tests first: service-level unit tests (voucher expiration, grant extension), concurrency test for duplicate redemption.
 Constitution Gate Re-check: Ensure tests failing before code, validate no pre-commit bypass, verify audit/logging tasks planned.
 
-### Phase 3: Controller Integration (TP-Omada)
-Implement adapter for TP-Omada external portal API interactions; retry queue for failures.
-Tests first: contract tests with fixture responses; integration tests verifying grant propagation statuses.
-Constitution Gate Re-check: Confirm adapter tests cover error paths (retry), metrics instrumentation test present before implementation.
+### Phase 3: Controller Integration (HA + TP-Omada)
+Implement HA integration (REST client, 60s polling, Rental Control event processing) + TP-Omada adapter (external portal API, retry queue). Includes models for HAIntegrationConfig (auth attribute selection, grace period), RentalControlEvent (caching), CleanupService (7-day retention), and BookingCodeValidator (case-insensitive matching).
+Tests first: HA client tests (mocked REST), poller tests (60s + backoff), event processing tests (attribute selection/fallback), TP-Omada contract tests (fixture responses), cleanup tests (retention policy), case-insensitive booking code matching tests.
+Backend-only (Decision D11): REST API endpoints for integration management and booking authorization; UI deferred to Phase 4.
+Constitution Gate Re-check: Confirm adapter tests cover error paths (retry), HA unavailability tests (backoff), metrics instrumentation test present before implementation, migration tests for schema changes.
 
 ### Phase 4: Admin Web Interface & Theming
 Constitution Gate Re-check: Validate security headers, CSRF tests precede implementation, theme precedence test (remediation) added before UI changes.
-Implement authentication (secure HTTP-only server-side session cookies + CSRF protection), admin CRUD for vouchers/grants, entity mapping UI, theming loader.
-Tests first: integration tests for admin routes (auth success/failure), CSRF enforcement tests, template rendering checks (no sensitive data leakage).
+Implement authentication (secure HTTP-only server-side session cookies + CSRF protection using argon2 password hashing per D13), admin CRUD for vouchers/grants, entity mapping UI, theming loader.
+Session Management (D12): Server-side session cookies (HTTP-only, Secure, SameSite=Strict) with configurable lifetimes (default 30 min idle, 8 hr absolute per D17).
+CSRF Protection (D14): Double-submit cookie pattern (stateless, 32-byte random token).
+Admin UI Theme (D15): Minimal CSS (no framework) for smaller bundle, modern CSS features (grid, flexbox, CSS variables).
+Guest Portal Theming (D16): CSS variable overrides (admin-configurable colors, logo) stored in GuestPortalTheme model; deferred UI to Phase 5.
+Includes deferred Phase 3 UI (Decision D11): HA integration configuration forms, guest booking code authorization form, enhanced grants display.
+Tests first: integration tests for admin routes (auth success/failure), CSRF enforcement tests, session timeout tests (idle + absolute), template rendering checks (no sensitive data leakage), UI tests for booking code forms and integration management.
+Decisions reference: See phase4_decisions.md for full rationale on D12-D17 (all approved 2025-10-27T00:45:00Z).
 
-### Phase 5: Home Assistant Entity Mapping Integration
-Constitution Gate Re-check: Confirm mapping tests validate selection logic before service code; ensure SPDX headers on new files.
-Polling or on-demand fetch of Rental Control entities; persistence of selected mapping; usage in authorization decisions.
-Tests first: integration tests with mocked HA responses, mapping save/retrieve, fallback when HA unavailable.
+### Phase 5: Guest Authorization & Booking Code Validation
+Constitution Gate Re-check: Confirm booking code validation tests cover all FR-018 error scenarios (invalid_format, not_found, outside_window, duplicate, integration_unavailable), metrics tests present, audit logging tests present.
+Guest-facing booking code authorization flow with Rental Control event lookup. Validate codes against cached events (from Phase 3 poller), enforce time windows (start/end with grace period), return appropriate error responses (400/404/409/410).
+Tests first: booking code format validation (regex, length), lookup tests (happy path, not found, outside window, duplicate), integration unavailability (deny-by-default), end-to-end guest authorization flow.
 
 ### Phase 6: Performance & Hardening
 Constitution Gate Re-check: Finalize performance baselines before removing test skips; enforce audit/log completeness tests present.
@@ -123,15 +130,19 @@ FR-017: System SHALL enforce role-based permissions: {Viewer: read dashboards on
 
 FR-018: System SHALL validate guest authorization (booking) codes against Rental Control events.
 - Source Entities per integration: calendar.rental_control_<integration_id>, sensor.rental_control_<integration_id>_event_[0..N-1].
-- Prioritized Events: event 0 (current or checking-out today), event 1 (upcoming/arriving today). All events 0..N-1 are eligible if within [start, end].
-- Candidate Identifier Attributes: slot_code (default) or slot_name (admin-selectable per integration). Admin chooses once per integration; selection persisted.
-- Formats: slot_code regex ^\d{4,}$; last_four regex ^\d{4}$ (last_four not used directly for auth in v1 but may be displayed/audited). slot_name treated as opaque string (non-empty, trimmed, <=128 chars).
+- Polling: Phase 3 poller fetches all configured integrations every 60s; exponential backoff on HA unavailability (Decision D6).
+- Event Cache: RentalControlEvent model stores events for 7 days post-checkout (Decision D8); daily 3 AM cleanup.
+- Prioritized Events: event 0 (current or checking-out today), event 1 (upcoming/arriving today). All events 0..N-1 are eligible if within [start, end + grace_period].
+- Candidate Identifier Attributes: slot_code (default), slot_name, or last_four (admin-selectable per integration via HAIntegrationConfig.auth_attribute, Decision D7). Admin chooses once per integration; selection persisted. Fallback logic: configured → slot_code → slot_name → skip event.
+- Grace Period: Checkout grace period extends end_utc by 0-30 minutes (default 15, configurable via HAIntegrationConfig.checkout_grace_minutes, Decision D9).
+- Formats: slot_code regex ^\d{4,}$; last_four regex ^\d{4}$; slot_name treated as opaque string (non-empty, trimmed, <=128 chars).
 - Guest Input: Single authorization code field (no username).
-- Validation Window: Access allowed from event.start (floored to minute) until event.end (ceiled to minute). Access grants lifetime resolved to minute boundaries.
+- Case Sensitivity: Matching case-INSENSITIVE for guest input (D10); storage and display case-SENSITIVE (preserve original from Rental Control for admin cross-reference).
+- Validation Window: Access allowed from event.start (floored to minute) until event.end + grace_period (ceiled to minute). Access grants lifetime resolved to minute boundaries.
 - Devices: Unlimited devices per valid booking within window.
 - Failure Responses: 400 invalid format; 404 booking not found; 410 booking outside active window; 409 duplicate active grant (same code already redeemed and still valid) returns existing grant reference.
-- Metrics: booking_lookup_latency (histogram), validation_fail_total (counter with reason labels: invalid_format, not_found, outside_window, duplicate).
-- Audit Log: booking_code_attempt (code_hash, integration_id, outcome, reason, correlation_id).
+- Metrics: booking_lookup_latency (histogram), validation_fail_total (counter with reason labels: invalid_format, not_found, outside_window, duplicate, integration_unavailable), ha_polling_errors (counter).
+- Audit Log: booking_code_attempt (code_hash, integration_id, outcome, reason, correlation_id), event.cleanup (deleted_count), ha_polling_failure (integration_id, backoff_seconds).
 - Future: Bandwidth limits & guest upgrade path (deferred; note for roadmap).
 - Security: Deny-by-default if integration selection missing or events unavailable (reason: integration_unavailable).
 

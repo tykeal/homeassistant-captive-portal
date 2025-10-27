@@ -10,6 +10,7 @@ from captive_portal.models.access_grant import AccessGrant
 from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.audit_log import AuditLog
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
+from captive_portal.models.rental_control_event import RentalControlEvent
 from captive_portal.models.voucher import Voucher
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "AdminUser",
     "AuditLog",
     "HAIntegrationConfig",
+    "RentalControlEvent",
     "Voucher",
     "create_db_engine",
     "init_db",

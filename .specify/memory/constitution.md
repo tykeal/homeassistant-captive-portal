@@ -3,12 +3,12 @@
 
 <!--
 Sync Impact Report:
-Version: 1.0.0 (new)
-Modified principles: N/A (initial set)
-Added sections: Core Principles; Additional Standards & Constraints; Development Workflow & Quality Gates; Governance
+Version: 1.0.1 (patch)
+Modified principles: Added task completion commit sequencing rule
+Added sections: None
 Removed sections: None
-Templates requiring updates: .specify/templates/plan-template.md ✅ | .specify/templates/spec-template.md ⚠ (review UX & performance constraints) | .specify/templates/tasks-template.md ⚠ (ensure TDD checkpoints) | README.md ⚠ (add principles summary)
-Deferred TODOs: TODO(PERFORMANCE_BASELINES): define concrete p95 latency & resource targets; TODO(UX_PATTERN_LIBRARY): enumerate UX components & guidelines; TODO(RATIFICATION_DATE): confirm adoption date if different.
+Templates requiring updates: .specify/templates/plan-template.md ✅ | .specify/templates/spec-template.md ⚠ (review UX & performance constraints) | .specify/templates/tasks-template.md ⚠ (ensure TDD checkpoints + separate completion commit rule) | README.md ⚠ (add principles summary) | .github/prompts/speckit.tasks.prompt.md ⚠ (reflect separate commit requirement)
+Deferred TODOs: TODO(PERFORMANCE_BASELINES): define concrete p95 latency & resource targets; TODO(UX_PATTERN_LIBRARY): enumerate UX components & guidelines.
 -->
 
 ## Core Principles
@@ -58,9 +58,14 @@ Review Checklist MUST verify: atomic commit scope, SPDX headers, TDD adherence (
 ## Governance
 This constitution supersedes informal practices; conflicts MUST be resolved in favor of the constitution.
 Amendment Process: proposal PR including diff + rationale + version bump classification (MAJOR principles redefined; MINOR principle added/expanded; PATCH clarifications). Approval requires ≥2 maintainers.
+
 Compliance Reviews: quarterly audit of coverage, complexity, performance baselines, and hook reliability—action items tracked as issues.
-Enforcement: PR reviewers BLOCK merges on violations; repeated bypass attempts trigger maintainer escalation.
+
+Enforcement:
+- PR reviewers BLOCK merges on violations; repeated bypass attempts trigger maintainer escalation.
+- Task list updates MUST occur in a separate follow-up documentation commit after the functional/code commit(s) resolving the tasks.
+- Reviewers SHALL reject combined code+task-closure commits.
 Versioning: semantic as above; automated tooling MAY verify no unexplained bracket tokens or missing SPDX headers before tagging.
 Exceptions: temporary waivers MUST include expiration date and mitigation task ID.
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-22 | **Last Amended**: 2025-10-22
+**Version**: 1.0.1 | **Ratified**: 2025-10-22 | **Last Amended**: 2025-10-27
