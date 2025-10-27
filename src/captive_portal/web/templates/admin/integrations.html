@@ -1,0 +1,135 @@
+<!--
+SPDX-FileCopyrightText: 2025 Andrew Grimberg
+SPDX-License-Identifier: Apache-2.0
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HA Integrations - Admin</title>
+    <link rel="stylesheet" href="/static/themes/default/admin.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>Captive Portal Admin</h1>
+            <nav>
+                <a href="/admin/dashboard" class="nav-link">Dashboard</a>
+                <a href="/admin/grants" class="nav-link">Grants</a>
+                <a href="/admin/vouchers" class="nav-link">Vouchers</a>
+                <a href="/admin/integrations" class="nav-link active">Integrations</a>
+                <form action="/api/admin/logout" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn-link">Logout</button>
+                </form>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <h2>Home Assistant Integrations</h2>
+
+        <section class="integration-form">
+            <h3>{% if integration %}Edit{% else %}Add{% endif %} Integration</h3>
+            <form method="POST" action="/admin/integrations/save">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                {% if integration %}
+                <input type="hidden" name="id" value="{{ integration.id }}">
+                {% endif %}
+
+                <div class="form-group">
+                    <label for="integration_id" class="form-label">Integration ID *</label>
+                    <input type="text"
+                           id="integration_id"
+                           name="integration_id"
+                           class="form-control"
+                           value="{{ integration.integration_id if integration else '' }}"
+                           required
+                           placeholder="rental_control_1">
+                    <small>HA integration identifier (e.g., rental_control_1)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="auth_attribute" class="form-label">Authorization Attribute *</label>
+                    <select id="auth_attribute"
+                            name="auth_attribute"
+                            class="form-control"
+                            required>
+                        <option value="slot_code" {% if integration and integration.auth_attribute == 'slot_code' %}selected{% endif %}>
+                            Slot Code (4+ digits)
+                        </option>
+                        <option value="slot_name" {% if integration and integration.auth_attribute == 'slot_name' %}selected{% endif %}>
+                            Slot Name
+                        </option>
+                        <option value="last_four" {% if integration and integration.auth_attribute == 'last_four' %}selected{% endif %}>
+                            Last Four Digits
+                        </option>
+                    </select>
+                    <small>Which booking attribute to use for guest authorization</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="checkout_grace_minutes" class="form-label">Checkout Grace Period (minutes) *</label>
+                    <input type="number"
+                           id="checkout_grace_minutes"
+                           name="checkout_grace_minutes"
+                           class="form-control"
+                           value="{{ integration.checkout_grace_minutes if integration else 15 }}"
+                           min="0"
+                           max="30"
+                           required>
+                    <small>Grace period after checkout (0-30 minutes, default 15)</small>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">
+                        {% if integration %}Update{% else %}Add{% endif %} Integration
+                    </button>
+                    {% if integration %}
+                    <a href="/admin/integrations" class="btn">Cancel</a>
+                    {% endif %}
+                </div>
+            </form>
+        </section>
+
+        <section class="integration-list">
+            <h3>Configured Integrations</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Integration ID</th>
+                        <th>Auth Attribute</th>
+                        <th>Grace Period</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for int in integrations %}
+                    <tr>
+                        <td>{{ int.integration_id }}</td>
+                        <td>{{ int.auth_attribute }}</td>
+                        <td>{{ int.checkout_grace_minutes }} min</td>
+                        <td>
+                            <a href="/admin/integrations/edit/{{ int.id }}" class="btn btn-primary">Edit</a>
+                            <form method="POST" action="/admin/integrations/delete/{{ int.id }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this integration?')">
+                                    Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Captive Portal v1.0 | Powered by Home Assistant</p>
+        </div>
+    </footer>
+</body>
+</html>

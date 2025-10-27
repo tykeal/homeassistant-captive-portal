@@ -1,0 +1,164 @@
+<!--
+SPDX-FileCopyrightText: 2025 Andrew Grimberg
+SPDX-License-Identifier: Apache-2.0
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Grants - Admin</title>
+    <link rel="stylesheet" href="/static/themes/default/admin.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>Captive Portal Admin</h1>
+            <nav>
+                <a href="/admin/dashboard" class="nav-link">Dashboard</a>
+                <a href="/admin/grants" class="nav-link active">Grants</a>
+                <a href="/admin/vouchers" class="nav-link">Vouchers</a>
+                <a href="/admin/integrations" class="nav-link">Integrations</a>
+                <form action="/api/admin/logout" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn-link">Logout</button>
+                </form>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <h2>Access Grants</h2>
+
+        <section class="filters">
+            <form method="GET" action="/admin/grants" style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+                <div class="form-group" style="margin: 0;">
+                    <label for="status" class="form-label">Status</label>
+                    <select id="status" name="status" class="form-control">
+                        <option value="">All</option>
+                        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                        <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>Expired</option>
+                        <option value="revoked" {% if status_filter == 'revoked' %}selected{% endif %}>Revoked</option>
+                    </select>
+                </div>
+                <div style="align-self: flex-end;">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="grants-list">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>MAC Address</th>
+                        <th>Status</th>
+                        <th>Booking Ref</th>
+                        <th>Voucher</th>
+                        <th>Integration</th>
+                        <th>Start</th>
+                        <th>End</th>
+                        <th>Grace Period</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for grant in grants %}
+                    <tr>
+                        <td><code>{{ grant.mac }}</code></td>
+                        <td>
+                            <span class="status-badge status-{{ grant.status }}">
+                                {{ grant.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if grant.booking_ref %}
+                                <strong>{{ grant.booking_ref }}</strong>
+                            {% else %}
+                                <em>-</em>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if grant.voucher_code %}
+                                <code>{{ grant.voucher_code }}</code>
+                            {% else %}
+                                <em>-</em>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if grant.integration_id %}
+                                {{ grant.integration_id }}
+                            {% else %}
+                                <em>-</em>
+                            {% endif %}
+                        </td>
+                        <td>{{ grant.start_utc.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ grant.end_utc.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if grant.grace_minutes %}
+                                {{ grant.grace_minutes }} min
+                            {% else %}
+                                <em>-</em>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="POST" action="/admin/grants/extend/{{ grant.id }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="number" name="minutes" min="1" max="1440" value="60" style="width: 60px;">
+                                <button type="submit" class="btn btn-success" {% if grant.status == 'revoked' %}disabled{% endif %}>
+                                    Extend
+                                </button>
+                            </form>
+                            <form method="POST" action="/admin/grants/revoke/{{ grant.id }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-danger" {% if grant.status == 'revoked' %}disabled{% endif %}>
+                                    Revoke
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Captive Portal v1.0 | Powered by Home Assistant</p>
+        </div>
+    </footer>
+
+    <style>
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-active {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .status-expired {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-revoked {
+            background-color: #d6d8db;
+            color: #383d41;
+        }
+    </style>
+</body>
+</html>

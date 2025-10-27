@@ -30,13 +30,14 @@ def create_app() -> FastAPI:
     app.state.session_middleware = session_middleware
 
     # Register routes
-    from captive_portal.api.routes import admin_auth, grants, health, vouchers
+    from captive_portal.api.routes import admin_auth, grants, health, integrations_ui, vouchers
     from captive_portal import middleware
 
     app.include_router(admin_auth.router)
     app.include_router(grants.router)
     app.include_router(health.router)
     app.include_router(vouchers.router)
+    app.include_router(integrations_ui.router)
 
     # Example protected listing endpoint placeholder (no real data yet)
 
