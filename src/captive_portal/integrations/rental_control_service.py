@@ -4,7 +4,7 @@
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, Optional
 
 from captive_portal.integrations.ha_client import HAClient
@@ -81,9 +81,7 @@ class RentalControlService:
 
         start_utc = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
         end_utc = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
-
-        # Apply grace period to end time
-        end_utc = end_utc + timedelta(minutes=integration_config.checkout_grace_minutes)
+        # Note: Grace period NOT applied here - applied at grant creation time
 
         # Extract identifiers
         slot_name = attributes.get("slot_name")
@@ -101,7 +99,7 @@ class RentalControlService:
             )
             return
 
-        # Create event record
+        # Create event record with booking window (grace applied at grant time)
         event = RentalControlEvent(
             integration_id=integration_config.id,
             event_index=event_index,
@@ -109,7 +107,7 @@ class RentalControlService:
             slot_code=slot_code,
             last_four=last_four,
             start_utc=start_utc,
-            end_utc=end_utc,
+            end_utc=end_utc,  # Booking end without grace
             raw_attributes=json.dumps(attributes),
         )
 

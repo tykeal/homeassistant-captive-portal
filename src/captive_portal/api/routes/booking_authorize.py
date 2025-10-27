@@ -137,9 +137,10 @@ async def authorize_booking(
     # Check if booking is within valid time window
     now_utc = datetime.now(timezone.utc)
 
-    # Apply grace period
+    # Apply grace period (only applied here at grant creation)
     grace_minutes = matching_integration.checkout_grace_minutes
     effective_end = event.end_utc + timedelta(minutes=grace_minutes)
+    # Note: Grace period extends access but doesn't modify stored booking window
 
     if now_utc < event.start_utc:
         raise HTTPException(

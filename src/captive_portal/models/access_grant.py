@@ -51,7 +51,13 @@ class AccessGrant(SQLModel, table=True):
     updated_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __init__(self, **data: Any) -> None:
-        """Initialize AccessGrant with minute-precision timestamp rounding."""
+        """Initialize AccessGrant with minute-precision timestamp rounding.
+
+        Truncation strategy:
+            - start_utc: floor to minute (grant starts at or after requested time)
+            - end_utc: ceil to minute (grant expires at or after requested time)
+            - Ensures grants are never shorter than requested duration
+        """
         # Round start_utc down to minute
         if "start_utc" in data:
             data["start_utc"] = floor_to_minute(data["start_utc"])

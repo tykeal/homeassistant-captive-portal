@@ -208,7 +208,7 @@ async def test_skip_event_with_no_valid_identifier(
 async def test_applies_grace_period_to_end_time(
     integration_config_slot_code, mock_ha_client, mock_event_repo
 ):
-    """Test that checkout grace period is applied to end_utc.
+    """Test that event stores booking end without grace (applied at grant creation).
 
     Args:
         integration_config_slot_code: Config with 15 min grace
@@ -231,8 +231,8 @@ async def test_applies_grace_period_to_end_time(
         event_data=event_data,
     )
 
-    # Verify grace period was added (18:00 + 15 min = 18:15)
+    # Grace NOT applied here - event stores booking window (18:00)
     mock_event_repo.upsert.assert_called_once()
     call_args = mock_event_repo.upsert.call_args[0][0]
-    expected_end = datetime(2025, 10, 26, 18, 15, tzinfo=timezone.utc)
+    expected_end = datetime(2025, 10, 26, 18, 0, tzinfo=timezone.utc)
     assert call_args.end_utc == expected_end

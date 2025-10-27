@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Test grace period logic for voucher extension."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -86,7 +86,7 @@ def mock_ha_client():
 async def test_15_minute_grace_extends_end_time(
     integration_15min_grace, mock_ha_client, mock_event_repo
 ):
-    """Test that 15-minute grace period extends event end time.
+    """Test that event stores booking window without grace (applied at grant time).
 
     Args:
         integration_15min_grace: Config with 15 min grace
@@ -110,11 +110,10 @@ async def test_15_minute_grace_extends_end_time(
         event_data=event_data,
     )
 
-    # Verify grace period was added
+    # Grace period NOT applied here - stored booking window is checkout_time
     mock_event_repo.upsert.assert_called_once()
     call_args = mock_event_repo.upsert.call_args[0][0]
-    expected_end = checkout_time + timedelta(minutes=15)
-    assert call_args.end_utc == expected_end
+    assert call_args.end_utc == checkout_time
 
 
 @pytest.mark.asyncio
@@ -153,7 +152,7 @@ async def test_0_minute_grace_no_extension(integration_0min_grace, mock_ha_clien
 async def test_30_minute_grace_max_extension(
     integration_30min_grace, mock_ha_client, mock_event_repo
 ):
-    """Test that 30-minute grace period (maximum) extends end time.
+    """Test that event stores booking window without grace (max 30 min applied at grant time).
 
     Args:
         integration_30min_grace: Config with 30 min grace
@@ -177,11 +176,10 @@ async def test_30_minute_grace_max_extension(
         event_data=event_data,
     )
 
-    # Verify max grace period
+    # Grace period NOT applied here - stored booking window is checkout_time
     mock_event_repo.upsert.assert_called_once()
     call_args = mock_event_repo.upsert.call_args[0][0]
-    expected_end = checkout_time + timedelta(minutes=30)
-    assert call_args.end_utc == expected_end
+    assert call_args.end_utc == checkout_time
 
 
 def test_grace_period_validation_rejects_over_30():
