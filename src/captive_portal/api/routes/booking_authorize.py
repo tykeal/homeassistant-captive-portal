@@ -10,12 +10,12 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
 from captive_portal.models.access_grant import AccessGrant
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.models.rental_control_event import RentalControlEvent
-from captive_portal.persistence.database import create_db_engine
 from captive_portal.services.booking_code_validator import (
     BookingCodeValidator,
 )
@@ -43,15 +43,35 @@ class BookingAuthorizeResponse(BaseModel):
     message: str
 
 
-# Dependency: DB session (placeholder - will be properly injected later)
+# Global engine instance - will be initialized by application startup
+_engine: Optional[Engine] = None
+
+
+def set_db_engine(engine: Engine) -> None:
+    """Set the global database engine instance.
+
+    This should be called during application startup.
+
+    Args:
+        engine: SQLAlchemy engine instance
+    """
+    global _engine
+    _engine = engine
+
+
+# Dependency: DB session
 def get_db_session() -> Generator[Session, None, None]:
     """Get database session dependency.
 
     Yields:
         SQLModel Session instance
+
+    Raises:
+        RuntimeError: If database engine not initialized
     """
-    engine = create_db_engine("sqlite:///captive_portal.db")
-    with Session(engine) as session:
+    if _engine is None:
+        raise RuntimeError("Database engine not initialized. Call set_db_engine() during startup.")
+    with Session(_engine) as session:
         yield session
 
 
