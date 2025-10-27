@@ -3,59 +3,61 @@
 
 """Integration tests for admin extend and revoke grant operations."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from captive_portal.app import create_app
 from captive_portal.models.access_grant import AccessGrant
-from captive_portal.persistence.database import get_session  # type: ignore[attr-defined]
+from captive_portal.models.admin_user import AdminUser
+from captive_portal.security.password_hashing import hash_password
 
 
 @pytest.fixture
-def app() -> Any:
-    """Create test FastAPI app."""
-    return create_app()
+def admin_user(db_session: Session) -> Any:
+    """Create test admin user."""
+    admin = AdminUser(
+        username="testadmin",
+        password_hash=hash_password("SecureP@ss123"),
+        email="testadmin@example.com",
+    )
+    db_session.add(admin)
+    db_session.commit()
+    db_session.refresh(admin)
+    yield admin
+    db_session.delete(admin)
+    db_session.commit()
 
 
 @pytest.fixture
-def client(app) -> Any:
-    """Create test client."""
-    return TestClient(app)
-
-
-@pytest.fixture
-def authenticated_client(client) -> Any:
+def authenticated_client(client, admin_user) -> Any:
     """Create authenticated admin client."""
     login_response = client.post(
-        "/api/admin/login",
+        "/api/admin/auth/login",
         json={"username": "testadmin", "password": "SecureP@ss123"},
     )
     assert login_response.status_code == 200
-    csrf_token = login_response.cookies.get("csrftoken")
+    csrf_token = login_response.json()["csrf_token"]
     return client, csrf_token
 
 
 @pytest.fixture
-def sample_grant(app) -> Any:
+def sample_grant(db_session: Session) -> Any:
     """Create sample access grant in database."""
-    db: Session = next(get_session())
     grant = AccessGrant(
         mac_address="AA:BB:CC:DD:EE:FF",
-        start_utc=datetime.utcnow(),
-        end_utc=datetime.utcnow() + timedelta(hours=2),
+        start_utc=datetime.now(timezone.utc),
+        end_utc=datetime.now(timezone.utc) + timedelta(hours=2),
         booking_identifier="BOOKING123",
         integration_id="rental_1",
     )
-    db.add(grant)
-    db.commit()
-    db.refresh(grant)
+    db_session.add(grant)
+    db_session.commit()
+    db_session.refresh(grant)
     yield grant
-    db.delete(grant)
-    db.commit()
+    db_session.delete(grant)
+    db_session.commit()
 
 
 class TestAdminExtendRevokeGrant:
@@ -70,7 +72,7 @@ class TestAdminExtendRevokeGrant:
         extend_minutes = 60
 
         response = client.post(
-            f"/api/admin/grants/{grant_id}/extend",
+            f"/api/grants/{grant_id}/extend",
             json={"extend_minutes": extend_minutes},
             headers={"X-CSRF-Token": csrf_token},
         )
@@ -87,7 +89,7 @@ class TestAdminExtendRevokeGrant:
         client, csrf_token = authenticated_client
 
         response = client.post(
-            "/api/admin/grants/99999/extend",
+            "/api/grants/99999/extend",
             json={"extend_minutes": 60},
             headers={"X-CSRF-Token": csrf_token},
         )
@@ -100,7 +102,7 @@ class TestAdminExtendRevokeGrant:
 
         # Negative minutes
         response = client.post(
-            f"/api/admin/grants/{sample_grant.id}/extend",
+            f"/api/grants/{sample_grant.id}/extend",
             json={"extend_minutes": -30},
             headers={"X-CSRF-Token": csrf_token},
         )
@@ -112,7 +114,7 @@ class TestAdminExtendRevokeGrant:
         client, csrf_token = authenticated_client
 
         response = client.post(
-            f"/api/admin/grants/{sample_grant.id}/extend",
+            f"/api/grants/{sample_grant.id}/extend",
             json={"extend_minutes": 0},
             headers={"X-CSRF-Token": csrf_token},
         )
@@ -124,7 +126,7 @@ class TestAdminExtendRevokeGrant:
         client, _ = authenticated_client
 
         response = client.post(
-            f"/api/admin/grants/{sample_grant.id}/extend",
+            f"/api/grants/{sample_grant.id}/extend",
             json={"extend_minutes": 60},
         )
 
@@ -136,14 +138,14 @@ class TestAdminExtendRevokeGrant:
         grant_id = sample_grant.id
 
         response = client.post(
-            f"/api/admin/grants/{grant_id}/revoke",
+            f"/api/grants/{grant_id}/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
 
         assert response.status_code == 200
 
         # Verify grant is revoked (end_utc set to now or past)
-        verify_response = client.get(f"/api/admin/grants/{grant_id}")
+        verify_response = client.get(f"/api/grants/{grant_id}")
         assert verify_response.status_code == 200
         data = verify_response.json()
         end_utc = datetime.fromisoformat(data["end_utc"].replace("Z", "+00:00"))
@@ -154,44 +156,44 @@ class TestAdminExtendRevokeGrant:
         client, csrf_token = authenticated_client
 
         response = client.post(
-            "/api/admin/grants/99999/revoke",
+            "/api/grants/99999/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
 
         assert response.status_code == 404
 
-    def test_revoke_grant_already_expired(self, authenticated_client, app) -> None:
+    def test_revoke_grant_already_expired(self, authenticated_client, db_session: Session) -> None:
         """Revoking already expired grant should succeed (idempotent)."""
         client, csrf_token = authenticated_client
 
         # Create expired grant
-        db: Session = next(get_session())
         expired_grant = AccessGrant(
             mac_address="11:22:33:44:55:66",
-            start_utc=datetime.utcnow() - timedelta(hours=3),
-            end_utc=datetime.utcnow() - timedelta(hours=1),
+            start_utc=datetime.now(timezone.utc) - timedelta(hours=3),
+            end_utc=datetime.now(timezone.utc) - timedelta(hours=1),
             booking_identifier="EXPIRED123",
+            integration_id="rental_1",
         )
-        db.add(expired_grant)
-        db.commit()
-        db.refresh(expired_grant)
+        db_session.add(expired_grant)
+        db_session.commit()
+        db_session.refresh(expired_grant)
 
         response = client.post(
-            f"/api/admin/grants/{expired_grant.id}/revoke",
+            f"/api/grants/{expired_grant.id}/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
 
         # Should succeed (idempotent)
         assert response.status_code == 200
 
-        db.delete(expired_grant)
-        db.commit()
+        db_session.delete(expired_grant)
+        db_session.commit()
 
     def test_revoke_grant_without_csrf_fails(self, authenticated_client, sample_grant) -> None:
         """Revoking grant without CSRF token should fail."""
         client, _ = authenticated_client
 
-        response = client.post(f"/api/admin/grants/{sample_grant.id}/revoke")
+        response = client.post(f"/api/grants/{sample_grant.id}/revoke")
 
         assert response.status_code == 403
 
@@ -200,7 +202,7 @@ class TestAdminExtendRevokeGrant:
         client, csrf_token = authenticated_client
 
         response = client.post(
-            f"/api/admin/grants/{sample_grant.id}/extend",
+            f"/api/grants/{sample_grant.id}/extend",
             json={"extend_minutes": 60},
             headers={"X-CSRF-Token": csrf_token},
         )
@@ -215,7 +217,7 @@ class TestAdminExtendRevokeGrant:
         client, csrf_token = authenticated_client
 
         response = client.post(
-            f"/api/admin/grants/{sample_grant.id}/revoke",
+            f"/api/grants/{sample_grant.id}/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -229,7 +231,7 @@ class TestAdminExtendRevokeGrant:
 
         # Try to extend by very large amount
         response = client.post(
-            f"/api/admin/grants/{sample_grant.id}/extend",
+            f"/api/grants/{sample_grant.id}/extend",
             json={"extend_minutes": 100000},
             headers={"X-CSRF-Token": csrf_token},
         )
@@ -243,7 +245,7 @@ class TestAdminExtendRevokeGrant:
 
         # First extension
         response1 = client.post(
-            f"/api/admin/grants/{sample_grant.id}/extend",
+            f"/api/grants/{sample_grant.id}/extend",
             json={"extend_minutes": 30},
             headers={"X-CSRF-Token": csrf_token},
         )
@@ -252,7 +254,7 @@ class TestAdminExtendRevokeGrant:
 
         # Second extension
         response2 = client.post(
-            f"/api/admin/grants/{sample_grant.id}/extend",
+            f"/api/grants/{sample_grant.id}/extend",
             json={"extend_minutes": 30},
             headers={"X-CSRF-Token": csrf_token},
         )
@@ -268,14 +270,14 @@ class TestAdminExtendRevokeGrant:
 
         # First revoke
         response1 = client.post(
-            f"/api/admin/grants/{sample_grant.id}/revoke",
+            f"/api/grants/{sample_grant.id}/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
         assert response1.status_code == 200
 
         # Second revoke
         response2 = client.post(
-            f"/api/admin/grants/{sample_grant.id}/revoke",
+            f"/api/grants/{sample_grant.id}/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
         # Should succeed (idempotent)

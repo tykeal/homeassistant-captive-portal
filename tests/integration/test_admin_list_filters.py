@@ -3,35 +3,38 @@
 
 """Integration tests for admin list filtering and pagination."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from captive_portal.app import create_app
 from captive_portal.models.access_grant import AccessGrant
-from captive_portal.persistence.database import get_session  # type: ignore[attr-defined]
+from captive_portal.models.admin_user import AdminUser
+from captive_portal.security.password_hashing import hash_password
 
 
 @pytest.fixture
-def app() -> Any:
-    """Create test FastAPI app."""
-    return create_app()
+def admin_user(db_session: Session) -> Any:
+    """Create test admin user."""
+    admin = AdminUser(
+        username="testadmin",
+        password_hash=hash_password("SecureP@ss123"),
+        email="testadmin@example.com",
+    )
+    db_session.add(admin)
+    db_session.commit()
+    db_session.refresh(admin)
+    yield admin
+    db_session.delete(admin)
+    db_session.commit()
 
 
 @pytest.fixture
-def client(app) -> Any:
-    """Create test client."""
-    return TestClient(app)
-
-
-@pytest.fixture
-def authenticated_client(client) -> Any:
+def authenticated_client(client, admin_user) -> Any:
     """Create authenticated admin client."""
     login_response = client.post(
-        "/api/admin/login",
+        "/api/admin/auth/login",
         json={"username": "testadmin", "password": "SecureP@ss123"},
     )
     assert login_response.status_code == 200
@@ -39,17 +42,16 @@ def authenticated_client(client) -> Any:
 
 
 @pytest.fixture
-def sample_grants(app) -> Any:
+def sample_grants(db_session: Session) -> Any:
     """Create multiple sample grants for filtering tests."""
-    db: Session = next(get_session())
     grants = []
 
     # Active grant
     grants.append(
         AccessGrant(
             mac_address="AA:BB:CC:DD:EE:01",
-            start_utc=datetime.utcnow() - timedelta(hours=1),
-            end_utc=datetime.utcnow() + timedelta(hours=1),
+            start_utc=datetime.now(timezone.utc) - timedelta(hours=1),
+            end_utc=datetime.now(timezone.utc) + timedelta(hours=1),
             booking_identifier="ACTIVE001",
             integration_id="rental_1",
         )
@@ -59,8 +61,8 @@ def sample_grants(app) -> Any:
     grants.append(
         AccessGrant(
             mac_address="AA:BB:CC:DD:EE:02",
-            start_utc=datetime.utcnow() - timedelta(hours=3),
-            end_utc=datetime.utcnow() - timedelta(hours=1),
+            start_utc=datetime.now(timezone.utc) - timedelta(hours=3),
+            end_utc=datetime.now(timezone.utc) - timedelta(hours=1),
             booking_identifier="EXPIRED001",
             integration_id="rental_1",
         )
@@ -70,25 +72,25 @@ def sample_grants(app) -> Any:
     grants.append(
         AccessGrant(
             mac_address="AA:BB:CC:DD:EE:03",
-            start_utc=datetime.utcnow() + timedelta(hours=1),
-            end_utc=datetime.utcnow() + timedelta(hours=3),
+            start_utc=datetime.now(timezone.utc) + timedelta(hours=1),
+            end_utc=datetime.now(timezone.utc) + timedelta(hours=3),
             booking_identifier="FUTURE001",
             integration_id="rental_2",
         )
     )
 
     for grant in grants:
-        db.add(grant)
-    db.commit()
+        db_session.add(grant)
+    db_session.commit()
 
     for grant in grants:
-        db.refresh(grant)
+        db_session.refresh(grant)
 
     yield grants
 
     for grant in grants:
-        db.delete(grant)
-    db.commit()
+        db_session.delete(grant)
+    db_session.commit()
 
 
 class TestAdminListFilters:
@@ -98,7 +100,7 @@ class TestAdminListFilters:
         """Listing grants without filter should return all grants."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants")
+        response = client.get("/api/grants")
 
         assert response.status_code == 200
         data = response.json()
@@ -109,7 +111,7 @@ class TestAdminListFilters:
         """Filter grants by status=active."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants?status=active")
+        response = client.get("/api/grants?status=active")
 
         assert response.status_code == 200
         data = response.json()
@@ -122,7 +124,7 @@ class TestAdminListFilters:
         """Filter grants by status=expired."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants?status=expired")
+        response = client.get("/api/grants?status=expired")
 
         assert response.status_code == 200
         data = response.json()
@@ -135,7 +137,7 @@ class TestAdminListFilters:
         """Filter grants by integration_id."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants?integration_id=rental_1")
+        response = client.get("/api/grants?integration_id=rental_1")
 
         assert response.status_code == 200
         data = response.json()
@@ -146,7 +148,7 @@ class TestAdminListFilters:
         """Filter grants by booking_identifier."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants?booking_identifier=ACTIVE001")
+        response = client.get("/api/grants?booking_identifier=ACTIVE001")
 
         assert response.status_code == 200
         data = response.json()
@@ -157,7 +159,7 @@ class TestAdminListFilters:
         """Pagination with limit parameter."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants?limit=2")
+        response = client.get("/api/grants?limit=2")
 
         assert response.status_code == 200
         data = response.json()
@@ -168,12 +170,12 @@ class TestAdminListFilters:
         client = authenticated_client
 
         # Get first page
-        response1 = client.get("/api/admin/grants?limit=1&offset=0")
+        response1 = client.get("/api/grants?limit=1&offset=0")
         assert response1.status_code == 200
         page1 = response1.json()
 
         # Get second page
-        response2 = client.get("/api/admin/grants?limit=1&offset=1")
+        response2 = client.get("/api/grants?limit=1&offset=1")
         assert response2.status_code == 200
         page2 = response2.json()
 
@@ -185,7 +187,7 @@ class TestAdminListFilters:
         """Multiple filters combined."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants?status=active&integration_id=rental_1")
+        response = client.get("/api/grants?status=active&integration_id=rental_1")
 
         assert response.status_code == 200
         data = response.json()
@@ -199,7 +201,7 @@ class TestAdminListFilters:
         """Invalid status filter should return 422."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants?status=invalid_status")
+        response = client.get("/api/grants?status=invalid_status")
 
         assert response.status_code == 422
 
@@ -207,7 +209,7 @@ class TestAdminListFilters:
         """Negative limit should return 422."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants?limit=-1")
+        response = client.get("/api/grants?limit=-1")
 
         assert response.status_code == 422
 
@@ -215,7 +217,7 @@ class TestAdminListFilters:
         """Negative offset should return 422."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants?offset=-1")
+        response = client.get("/api/grants?offset=-1")
 
         assert response.status_code == 422
 
@@ -223,7 +225,7 @@ class TestAdminListFilters:
         """List response should include pagination metadata."""
         client = authenticated_client
 
-        response = client.get("/api/admin/grants?limit=2")
+        response = client.get("/api/grants?limit=2")
 
         assert response.status_code == 200
         # Check for pagination metadata in headers or response

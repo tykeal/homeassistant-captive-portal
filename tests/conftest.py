@@ -3,6 +3,7 @@
 """Pytest configuration and shared fixtures."""
 
 from collections.abc import Generator
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
@@ -85,3 +86,22 @@ def app(db_engine: Engine) -> FastAPI:
 def client(app: FastAPI) -> TestClient:
     """Create test client for API testing."""
     return TestClient(app)
+
+
+@pytest.fixture
+def admin_user(db_session: Session) -> Generator[Any, None, None]:
+    """Create a test admin user (available for all tests)."""
+    from captive_portal.models.admin_user import AdminUser
+    from captive_portal.security.password_hashing import hash_password
+
+    admin = AdminUser(
+        username="testadmin",
+        password_hash=hash_password("SecureP@ss123"),
+        email="testadmin@example.com",
+    )
+    db_session.add(admin)
+    db_session.commit()
+    db_session.refresh(admin)
+    yield admin
+    db_session.delete(admin)
+    db_session.commit()

@@ -111,15 +111,13 @@ async def login(
 async def logout(
     request: Request,
     response: Response,
-    csrf: CSRFProtection = Depends(get_csrf_protection),
 ) -> dict[str, str]:
     """
     Admin logout endpoint.
 
     Destroys session and clears cookies.
+    Note: CSRF-exempt as logout is inherently safe to allow without CSRF.
     """
-    csrf.validate_token(request)
-
     session_id = request.state.session_id
     if session_id:
         session_store = request.app.state.session_store

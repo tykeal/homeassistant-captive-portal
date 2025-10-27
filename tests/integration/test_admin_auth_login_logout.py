@@ -96,7 +96,7 @@ class TestAdminAuthLoginLogout:
 
     def test_protected_route_without_session_returns_401(self, client) -> None:
         """Accessing protected route without session should return 401."""
-        response = client.get("/api/admin/grants")
+        response = client.get("/api/grants")
 
         assert response.status_code == 401
 
@@ -113,7 +113,7 @@ class TestAdminAuthLoginLogout:
         session_cookie = login_response.cookies.get("session_id")
         client.cookies.set("session_id", session_cookie)
 
-        response = client.get("/api/admin/grants")
+        response = client.get("/api/grants")
 
         # Should succeed (200 or 204 if no grants)
         assert response.status_code in (200, 204)

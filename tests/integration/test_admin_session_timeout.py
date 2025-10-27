@@ -8,28 +8,13 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
-
-from captive_portal.app import create_app
 
 
 @pytest.fixture
-def app() -> Any:
-    """Create test FastAPI app."""
-    return create_app()
-
-
-@pytest.fixture
-def client(app) -> Any:
-    """Create test client."""
-    return TestClient(app)
-
-
-@pytest.fixture
-def authenticated_client(client) -> Any:
+def authenticated_client(client, admin_user) -> Any:
     """Create authenticated client with session."""
     login_response = client.post(
-        "/api/admin/login",
+        "/api/admin/auth/login",
         json={"username": "testadmin", "password": "SecureP@ss123"},
     )
     assert login_response.status_code == 200
@@ -158,7 +143,7 @@ class TestAdminSessionTimeout:
         client = authenticated_client
 
         # Logout
-        logout_response = client.post("/api/admin/logout")
+        logout_response = client.post("/api/admin/auth/logout")
         assert logout_response.status_code == 200
 
         # Immediate access should fail (no timeout needed)
@@ -171,8 +156,8 @@ class TestAdminSessionTimeout:
 
         protected_routes = [
             ("/api/admin/grants", "GET"),
-            ("/api/admin/vouchers/redeem", "POST"),
-            ("/api/admin/entity-mapping", "GET"),
+            ("/api/vouchers/redeem", "POST"),
+            ("/api/integrations/entity-mapping", "GET"),
         ]
 
         with patch("captive_portal.security.session_middleware.datetime") as mock_dt:
@@ -199,13 +184,13 @@ class TestAdminSessionTimeout:
         """Multiple sessions should timeout independently."""
         # Login twice to create two sessions
         response1 = client.post(
-            "/api/admin/login",
+            "/api/admin/auth/login",
             json={"username": "testadmin", "password": "SecureP@ss123"},
         )
         session1_cookie = response1.cookies.get("session_id")
 
         response2 = client.post(
-            "/api/admin/login",
+            "/api/admin/auth/login",
             json={"username": "testadmin", "password": "SecureP@ss123"},
         )
         session2_cookie = response2.cookies.get("session_id")

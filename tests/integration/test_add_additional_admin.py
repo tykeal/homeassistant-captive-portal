@@ -6,32 +6,16 @@
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlmodel import Session
+from sqlmodel import Session, select
 
-from captive_portal.app import create_app
-from captive_portal.models.admin_user import AdminAccount
-
-
-@pytest.fixture
-def app() -> Any:
-    """Create test FastAPI app."""
-    return create_app()
-
-
-@pytest.fixture
-def client(app: Any) -> Any:
-    """Create test client."""
-    return TestClient(app)
+from captive_portal.models.admin_user import AdminUser
 
 
 @pytest.fixture
 def bootstrapped_admin(client: Any, db_session: Session) -> dict[str, Any]:
     """Create initial admin via bootstrap."""
     # Clear all admins
-    from sqlmodel import select
-
-    stmt = select(AdminAccount)
+    stmt = select(AdminUser)
     admins = db_session.exec(stmt).all()
     for admin in admins:
         db_session.delete(admin)
@@ -227,7 +211,7 @@ class TestAddAdditionalAdmin:
         # Verify in database
         from sqlmodel import select
 
-        stmt = select(AdminAccount).where(AdminAccount.username == "admin2")
+        stmt = select(AdminUser).where(AdminUser.username == "admin2")
         admin = db_session.exec(stmt).first()
         assert admin is not None
         assert admin.password_hash.startswith("$argon2id$")
@@ -316,7 +300,7 @@ class TestAddAdditionalAdmin:
         # Verify deletion
         from sqlmodel import select
 
-        stmt = select(AdminAccount).where(AdminAccount.username == "admin2")
+        stmt = select(AdminUser).where(AdminUser.username == "admin2")
         admin = db_session.exec(stmt).first()
         assert admin is None
 
@@ -329,7 +313,7 @@ class TestAddAdditionalAdmin:
         # Get own admin ID
         from sqlmodel import select
 
-        stmt = select(AdminAccount).where(AdminAccount.username == "admin")
+        stmt = select(AdminUser).where(AdminUser.username == "admin")
         admin = db_session.exec(stmt).first()
         assert admin is not None
 

@@ -7,7 +7,7 @@ from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session, select
 
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
@@ -26,6 +26,8 @@ router = APIRouter(prefix="/api/grants", tags=["grants"])
 class GrantListResponse(BaseModel):
     """Response model for grant listing."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     voucher_code: str | None
     booking_ref: str | None
@@ -34,11 +36,6 @@ class GrantListResponse(BaseModel):
     end_utc: datetime
     status: GrantStatus
     created_utc: datetime
-
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
 
 
 class ExtendGrantRequest(BaseModel):

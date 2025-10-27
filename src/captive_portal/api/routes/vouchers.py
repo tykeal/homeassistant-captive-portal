@@ -6,7 +6,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session
 
 from captive_portal.models.voucher import Voucher
@@ -34,6 +34,8 @@ class CreateVoucherRequest(BaseModel):
 class VoucherResponse(BaseModel):
     """Response model for voucher operations."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     code: str
     duration_minutes: int
     booking_ref: str | None
@@ -41,11 +43,6 @@ class VoucherResponse(BaseModel):
     down_kbps: int | None
     status: str
     created_utc: datetime
-
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
 
 
 @router.post("/", response_model=VoucherResponse, status_code=status.HTTP_201_CREATED)

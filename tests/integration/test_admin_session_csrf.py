@@ -6,35 +6,20 @@
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
-
-from captive_portal.app import create_app
 
 
 @pytest.fixture
-def app() -> Any:
-    """Create test FastAPI app."""
-    return create_app()
-
-
-@pytest.fixture
-def client(app) -> Any:
-    """Create test client."""
-    return TestClient(app)
-
-
-@pytest.fixture
-def authenticated_client(client) -> Any:
+def authenticated_client(client, admin_user) -> Any:
     """Create authenticated client with session and CSRF token."""
     # Login to get session
     login_response = client.post(
-        "/api/admin/login",
+        "/api/admin/auth/login",
         json={"username": "testadmin", "password": "SecureP@ss123"},
     )
     assert login_response.status_code == 200
 
-    # Get CSRF token from cookie
-    csrf_token = login_response.cookies.get("csrftoken")
+    # Get CSRF token from response JSON
+    csrf_token = login_response.json()["csrf_token"]
     client.cookies.set("csrftoken", csrf_token)
 
     return client, csrf_token
@@ -46,7 +31,7 @@ class TestAdminSessionCSRF:
     def test_csrf_token_set_on_login(self, client) -> None:
         """Login should set csrftoken cookie."""
         response = client.post(
-            "/api/admin/login",
+            "/api/admin/auth/login",
             json={"username": "testadmin", "password": "SecureP@ss123"},
         )
 
@@ -58,7 +43,7 @@ class TestAdminSessionCSRF:
     def test_csrf_token_cookie_attributes(self, client) -> None:
         """CSRF cookie should have SameSite=Strict and Secure attributes."""
         response = client.post(
-            "/api/admin/login",
+            "/api/admin/auth/login",
             json={"username": "testadmin", "password": "SecureP@ss123"},
         )
 
@@ -70,7 +55,7 @@ class TestAdminSessionCSRF:
         client, _ = authenticated_client
 
         # Remove CSRF token from request
-        response = client.post("/api/admin/grants/1/revoke")
+        response = client.post("/api/grants/1/revoke")
 
         assert response.status_code == 403
         assert "csrf" in response.json().get("detail", "").lower()
@@ -81,7 +66,7 @@ class TestAdminSessionCSRF:
 
         # Include CSRF token in request header
         response = client.post(
-            "/api/admin/grants/1/revoke",
+            "/api/grants/1/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -94,7 +79,7 @@ class TestAdminSessionCSRF:
 
         # Use invalid token
         response = client.post(
-            "/api/admin/grants/1/revoke",
+            "/api/grants/1/revoke",
             headers={"X-CSRF-Token": "invalid-token-123"},
         )
 
@@ -106,7 +91,7 @@ class TestAdminSessionCSRF:
 
         # Submit form with CSRF token
         response = client.post(
-            "/api/admin/grants/1/revoke",
+            "/api/grants/1/revoke",
             data={"csrf_token": csrf_token},
         )
 
@@ -118,7 +103,7 @@ class TestAdminSessionCSRF:
         client, _ = authenticated_client
 
         # GET request without CSRF token
-        response = client.get("/api/admin/grants")
+        response = client.get("/api/grants")
 
         # Should succeed (may be empty list)
         assert response.status_code in (200, 204)
@@ -129,7 +114,7 @@ class TestAdminSessionCSRF:
 
         # Token in cookie should match token in header
         response = client.post(
-            "/api/admin/grants/1/revoke",
+            "/api/grants/1/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -142,11 +127,11 @@ class TestAdminSessionCSRF:
 
         # This is a behavioral test - both wrong tokens should fail identically
         response1 = client.post(
-            "/api/admin/grants/1/revoke",
+            "/api/grants/1/revoke",
             headers={"X-CSRF-Token": "a" * len(csrf_token)},
         )
         response2 = client.post(
-            "/api/admin/grants/1/revoke",
+            "/api/grants/1/revoke",
             headers={"X-CSRF-Token": "b" * len(csrf_token)},
         )
 
@@ -157,7 +142,7 @@ class TestAdminSessionCSRF:
         """POST request without csrftoken cookie should fail."""
         # Login
         client.post(
-            "/api/admin/login",
+            "/api/admin/auth/login",
             json={"username": "testadmin", "password": "SecureP@ss123"},
         )
 
@@ -165,7 +150,7 @@ class TestAdminSessionCSRF:
         client.cookies.clear()
 
         response = client.post(
-            "/api/admin/grants/1/revoke",
+            "/api/grants/1/revoke",
             headers={"X-CSRF-Token": "some-token"},
         )
 
@@ -177,7 +162,7 @@ class TestAdminSessionCSRF:
 
         # Use different token in header
         response = client.post(
-            "/api/admin/grants/1/revoke",
+            "/api/grants/1/revoke",
             headers={"X-CSRF-Token": "different-token-from-cookie"},
         )
 
@@ -187,7 +172,7 @@ class TestAdminSessionCSRF:
         """CSRF-exempt endpoints (login) should not require token."""
         # Login without CSRF token should succeed
         response = client.post(
-            "/api/admin/login",
+            "/api/admin/auth/login",
             json={"username": "testadmin", "password": "SecureP@ss123"},
         )
 
@@ -197,10 +182,10 @@ class TestAdminSessionCSRF:
     @pytest.mark.parametrize(
         "method,path",
         [
-            ("POST", "/api/admin/vouchers/redeem"),
-            ("POST", "/api/admin/grants/1/extend"),
-            ("DELETE", "/api/admin/grants/1"),
-            ("PUT", "/api/admin/entity-mapping/1"),
+            ("POST", "/api/vouchers/redeem"),
+            ("POST", "/api/grants/1/extend"),
+            ("DELETE", "/api/grants/1"),
+            ("PUT", "/api/integrations/entity-mapping/1"),
         ],
     )
     def test_state_changing_methods_require_csrf(self, authenticated_client, method, path) -> None:
