@@ -35,6 +35,12 @@ class BookingCodeValidator:
         Performs case-insensitive lookup using the configured auth attribute.
         Trims whitespace from input. Returns event with original case preserved.
 
+        Storage and display: Values are stored and displayed in their original case
+        as received from Home Assistant/Rental Control integration.
+
+        Matching logic: Comparison is case-insensitive to improve guest experience
+        (e.g., "ABC123", "abc123", and "AbC123" all match the same booking).
+
         Args:
             user_input: Guest-provided booking code (any case)
             integration: Integration config specifying auth attribute

@@ -13,7 +13,7 @@ import logging
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Generator
 
@@ -36,7 +36,7 @@ class MetricValue:
     value: float
     metric_type: MetricType
     labels: dict[str, str] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class MetricsCollector:

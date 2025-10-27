@@ -199,14 +199,20 @@ class OmadaClient:
 
                 return data
 
-            except (httpx.ConnectError, httpx.TimeoutException) as e:
-                # Retry on connection/timeout errors
+            except httpx.ConnectError as e:
+                # Retry on connection errors
                 if attempt < max_retries - 1:
                     await asyncio.sleep(backoff_ms[attempt] / 1000.0)
                     continue
                 raise OmadaRetryExhaustedError(
                     f"Connection error after {max_retries} attempts: {e}"
                 ) from e
+            except httpx.TimeoutException as e:
+                # Retry on timeout errors
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(backoff_ms[attempt] / 1000.0)
+                    continue
+                raise OmadaRetryExhaustedError(f"Timeout after {max_retries} attempts: {e}") from e
 
         # Should not reach here, but satisfy type checker
         raise OmadaRetryExhaustedError(f"Exhausted {max_retries} attempts")
