@@ -162,3 +162,26 @@ class SessionMiddleware(BaseHTTPMiddleware):
         """Delete a session and clear cookie."""
         response.delete_cookie(key=self.config.cookie_name)
         return self.store.delete(session_id)
+
+
+async def require_admin(request: Request) -> UUID:
+    """FastAPI dependency to require admin authentication.
+
+    Args:
+        request: FastAPI request
+
+    Returns:
+        Admin user ID (UUID)
+
+    Raises:
+        HTTPException: 401 if not authenticated
+    """
+    from fastapi import HTTPException, status
+
+    admin_id: UUID | None = getattr(request.state, "admin_id", None)
+    if not admin_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+        )
+    return admin_id
