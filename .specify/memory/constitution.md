@@ -59,7 +59,10 @@ Review Checklist MUST verify: atomic commit scope, SPDX headers, TDD adherence (
 This constitution supersedes informal practices; conflicts MUST be resolved in favor of the constitution.
 Amendment Process: proposal PR including diff + rationale + version bump classification (MAJOR principles redefined; MINOR principle added/expanded; PATCH clarifications). Approval requires ≥2 maintainers.
 Compliance Reviews: quarterly audit of coverage, complexity, performance baselines, and hook reliability—action items tracked as issues.
-Enforcement: PR reviewers BLOCK merges on violations; repeated bypass attempts trigger maintainer escalation. Task list updates MUST occur in a separate follow-up documentation commit after the functional/code commit(s) resolving the tasks; reviewers SHALL reject combined code+task-closure commits.
+Enforcement:
+- PR reviewers BLOCK merges on violations; repeated bypass attempts trigger maintainer escalation.
+- Task list updates MUST occur in a separate follow-up documentation commit after the functional/code commit(s) resolving the tasks.
+- Reviewers SHALL reject combined code+task-closure commits.
 Versioning: semantic as above; automated tooling MAY verify no unexplained bracket tokens or missing SPDX headers before tagging.
 Exceptions: temporary waivers MUST include expiration date and mitigation task ID.
 
