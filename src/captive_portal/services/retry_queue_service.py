@@ -5,7 +5,7 @@
 import asyncio
 import logging
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Callable, Deque, Optional
@@ -42,12 +42,7 @@ class RetryOperation:
     params: dict[str, Any]
     attempts: int = 0
     next_retry_utc: Optional[datetime] = None
-    created_utc: datetime = None  # type: ignore
-
-    def __post_init__(self) -> None:
-        """Initialize created_utc if not provided."""
-        if self.created_utc is None:
-            self.created_utc = datetime.now(timezone.utc)
+    created_utc: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class RetryQueueService:

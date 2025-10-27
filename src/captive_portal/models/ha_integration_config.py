@@ -38,7 +38,7 @@ class HAIntegrationConfig(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     integration_id: str = Field(unique=True, max_length=128, index=True)
     identifier_attr: IdentifierAttr = Field(default=IdentifierAttr.SLOT_CODE)
-    checkout_grace_minutes: int = Field(default=15)
+    checkout_grace_minutes: int = Field(default=15, ge=0, le=30)
     last_sync_utc: Optional[datetime] = Field(default=None)
     stale_count: int = Field(default=0, ge=0)
 
