@@ -124,10 +124,10 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0407 [P] NF tests/unit/security/test_argon2_password_hashing.py (D13: OWASP params)
 
 ### Implementation (Security & Auth per D12-D14, D17)
-- [ ] T0410 US4 security/password_hashing.py (D13: argon2-cffi, OWASP params m=65536/t=3/p=4)
-- [ ] T0411 US4 security/session_middleware.py (D12: HTTP-only session cookies, D17: 30min idle/8hr absolute)
-- [ ] T0412 US4 security/csrf.py (D14: double-submit cookie, 32-byte token)
-- [ ] T0413 US2 api/routes/admin_auth.py (login/logout, bootstrap)
+- [x] T0410 US4 security/password_hashing.py (D13: argon2-cffi, OWASP params m=65536/t=3/p=4)
+- [x] T0411 US4 security/session_middleware.py (D12: HTTP-only session cookies, D17: 30min idle/8hr absolute)
+- [x] T0412 US4 security/csrf.py (D14: double-submit cookie, 32-byte token)
+- [x] T0413 US2 api/routes/admin_auth.py (login/logout, bootstrap)
 - [ ] T0413a NF alembic/versions/XXX_create_admin_session_table.py (migration for AdminSession model)
 
 ### Implementation (Admin UI Routes & Templates per D15-D16)
