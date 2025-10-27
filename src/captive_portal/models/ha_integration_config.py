@@ -7,7 +7,6 @@ from enum import Enum
 from typing import Optional
 from uuid import UUID, uuid4
 
-from pydantic import field_validator
 from sqlmodel import Field, SQLModel
 
 
@@ -41,13 +40,3 @@ class HAIntegrationConfig(SQLModel, table=True):
     checkout_grace_minutes: int = Field(default=15, ge=0, le=30)
     last_sync_utc: Optional[datetime] = Field(default=None)
     stale_count: int = Field(default=0, ge=0)
-
-    @field_validator("checkout_grace_minutes")
-    @classmethod
-    def validate_checkout_grace_minutes(cls, v: int) -> int:
-        """Validate checkout_grace_minutes is between 0 and 30."""
-        if v < 0:
-            raise ValueError("checkout_grace_minutes must be >= 0")
-        if v > 30:
-            raise ValueError("checkout_grace_minutes must be <= 30")
-        return v
