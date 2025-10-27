@@ -90,7 +90,9 @@ class RetryQueueService:
         # Calculate next retry time with exponential backoff
         # Pre-truncate to second precision for consistent scheduling with 1s processor intervals
         delay = min(self._base_delay * (2**operation.attempts), self._max_delay)
-        operation.next_retry_utc = datetime.now(timezone.utc) + timedelta(seconds=delay)
+        operation.next_retry_utc = (datetime.now(timezone.utc) + timedelta(seconds=delay)).replace(
+            microsecond=0
+        )
 
         self._queue.append(operation)
         logger.info(
