@@ -5,7 +5,10 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from captive_portal.controllers.tp_omada.base_client import OmadaClient
+from captive_portal.controllers.tp_omada.base_client import (
+    OmadaClient,
+    OmadaClientError,
+)
 
 
 class OmadaAdapter:
@@ -98,9 +101,9 @@ class OmadaAdapter:
         try:
             await self.client.post_with_retry("/extportal/revoke", payload)
             return {"success": True, "mac": mac}
-        except Exception as e:
+        except OmadaClientError as e:
             # Log but don't fail on 404 (already revoked/not found)
-            if "404" in str(e) or "not found" in str(e).lower():
+            if e.status_code == 404:
                 return {"success": True, "mac": mac, "note": "Already revoked"}
             raise
 

@@ -12,7 +12,15 @@ import httpx
 class OmadaClientError(Exception):
     """Base exception for Omada client errors."""
 
-    pass
+    def __init__(self, message: str, status_code: int | None = None) -> None:
+        """Initialize the exception.
+
+        Args:
+            message: Error message
+            status_code: HTTP status code if applicable
+        """
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class OmadaAuthenticationError(OmadaClientError):
@@ -161,7 +169,8 @@ class OmadaClient:
                 if 400 <= response.status_code < 500:
                     error_data = response.json() if response.content else {}
                     raise OmadaClientError(
-                        f"Client error {response.status_code}: {error_data.get('msg', response.text)}"
+                        f"Client error {response.status_code}: {error_data.get('msg', response.text)}",
+                        status_code=response.status_code,
                     )
 
                 # 5xx errors are retryable (server errors)
