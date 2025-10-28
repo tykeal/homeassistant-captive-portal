@@ -39,6 +39,8 @@ def authenticated_client(client, admin_user) -> Any:
     )
     assert login_response.status_code == 200
     csrf_token = login_response.json()["csrf_token"]
+    # Set CSRF cookie for subsequent requests
+    client.cookies.set("csrftoken", csrf_token)
     return client, csrf_token
 
 

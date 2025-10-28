@@ -6,12 +6,13 @@ from datetime import datetime, timezone
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session, select
 
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.persistence.database import get_session
+from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
 from captive_portal.security.session_middleware import require_admin
 from captive_portal.services.audit_service import AuditService
 from captive_portal.services.grant_service import (
@@ -83,10 +84,36 @@ async def list_grants(
 
     statement = select(AccessGrant).order_by(desc(AccessGrant.created_utc)).limit(limit)
 
-    if status_filter:
-        statement = statement.where(AccessGrant.status == status_filter)
-
+    # Don't filter in SQL if we need to compute status
+    # We'll filter after computing current status
     grants = list(session.exec(statement).all())
+
+    # Update status for each grant based on current time
+    current_time = datetime.now(timezone.utc)
+    for grant in grants:
+        if grant.status != GrantStatus.REVOKED:
+            # Ensure grant timestamps are timezone-aware for comparison
+            start_utc = (
+                grant.start_utc
+                if grant.start_utc.tzinfo
+                else grant.start_utc.replace(tzinfo=timezone.utc)
+            )
+            end_utc = (
+                grant.end_utc
+                if grant.end_utc.tzinfo
+                else grant.end_utc.replace(tzinfo=timezone.utc)
+            )
+
+            if current_time < start_utc:
+                grant.status = GrantStatus.PENDING
+            elif current_time >= end_utc:
+                grant.status = GrantStatus.EXPIRED
+            else:
+                grant.status = GrantStatus.ACTIVE
+
+    # Filter by status if requested
+    if status_filter:
+        grants = [g for g in grants if g.status == status_filter]
 
     # Audit log
     audit_service = AuditService(session)
@@ -103,35 +130,87 @@ async def list_grants(
     return grants
 
 
+@router.get("/{grant_id}", response_model=GrantListResponse)
+async def get_grant(
+    grant_id: UUID,
+    session: Session = Depends(get_session),
+    admin_id: UUID = Depends(require_admin),
+) -> AccessGrant:
+    """Get specific access grant by ID (admin only).
+
+    Args:
+        grant_id: Grant UUID
+        session: Database session
+        admin_id: Authenticated admin user ID
+
+    Returns:
+        Access grant
+
+    Raises:
+        404: Grant not found
+    """
+    grant = session.get(AccessGrant, grant_id)
+    if not grant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grant not found")
+
+    # Update status based on current time
+    current_time = datetime.now(timezone.utc)
+    if grant.status != GrantStatus.REVOKED:
+        # Ensure grant timestamps are timezone-aware for comparison
+        start_utc = (
+            grant.start_utc
+            if grant.start_utc.tzinfo
+            else grant.start_utc.replace(tzinfo=timezone.utc)
+        )
+        end_utc = (
+            grant.end_utc if grant.end_utc.tzinfo else grant.end_utc.replace(tzinfo=timezone.utc)
+        )
+
+        if current_time < start_utc:
+            grant.status = GrantStatus.PENDING
+        elif current_time >= end_utc:
+            grant.status = GrantStatus.EXPIRED
+        else:
+            grant.status = GrantStatus.ACTIVE
+
+    return grant
+
+
 @router.post("/{grant_id}/extend", response_model=GrantExtendResponse)
 async def extend_grant(
     grant_id: UUID,
-    request: ExtendGrantRequest,
+    extend_request: ExtendGrantRequest,
+    request: Request,
     session: Session = Depends(get_session),
     admin_id: UUID = Depends(require_admin),
+    csrf: CSRFProtection = Depends(get_csrf_protection),
 ) -> AccessGrant:
     """Extend grant duration (admin only).
 
     Args:
         grant_id: Grant UUID
-        request: Extension parameters
+        extend_request: Extension parameters
+        request: HTTP request
         session: Database session
         admin_id: Authenticated admin user ID
+        csrf: CSRF protection
 
     Returns:
         Updated grant
 
     Raises:
+        403: Invalid CSRF token
         404: Grant not found
         409: Grant cannot be extended (revoked)
     """
+    csrf.validate_token(request)
     grant_service = GrantService(session)
     audit_service = AuditService(session)
 
     try:
         grant = await grant_service.extend(
             grant_id=grant_id,
-            additional_minutes=request.additional_minutes,
+            additional_minutes=extend_request.additional_minutes,
             current_time=datetime.now(timezone.utc),
         )
 
@@ -141,7 +220,7 @@ async def extend_grant(
             target_type="access_grant",
             target_id=str(grant_id),
             metadata={
-                "additional_minutes": request.additional_minutes,
+                "additional_minutes": extend_request.additional_minutes,
                 "new_end_utc": grant.end_utc.isoformat(),
             },
         )
@@ -157,22 +236,28 @@ async def extend_grant(
 @router.post("/{grant_id}/revoke", response_model=RevokeGrantResponse)
 async def revoke_grant(
     grant_id: UUID,
+    request: Request,
     session: Session = Depends(get_session),
     admin_id: UUID = Depends(require_admin),
+    csrf: CSRFProtection = Depends(get_csrf_protection),
 ) -> AccessGrant:
     """Revoke access grant (admin only).
 
     Args:
         grant_id: Grant UUID
+        request: HTTP request
         session: Database session
         admin_id: Authenticated admin user ID
+        csrf: CSRF protection
 
     Returns:
         Revoked grant
 
     Raises:
+        403: Invalid CSRF token
         404: Grant not found
     """
+    csrf.validate_token(request)
     grant_service = GrantService(session)
     audit_service = AuditService(session)
 
