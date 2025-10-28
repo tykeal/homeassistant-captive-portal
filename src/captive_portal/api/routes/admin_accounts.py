@@ -12,6 +12,7 @@ Implements:
 """
 
 from uuid import UUID
+from typing import cast, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
@@ -62,8 +63,8 @@ def get_current_admin(request: Request, db: Session = Depends(get_session)) -> A
             detail="Authentication required",
         )
 
-    stmt = select(AdminUser).where(AdminUser.id == request.state.admin_id)
-    admin = db.exec(stmt).first()
+    stmt: Any = select(AdminUser).where(AdminUser.id == request.state.admin_id)
+    admin = cast(Optional[AdminUser], db.exec(stmt).first())
 
     if not admin:
         raise HTTPException(
@@ -85,8 +86,8 @@ async def list_admin_accounts(
 
     Requires authentication.
     """
-    stmt = select(AdminUser)
-    admins = db.exec(stmt).all()
+    stmt: Any = select(AdminUser)
+    admins = cast(list[AdminUser], db.exec(stmt).all())
 
     return [
         AdminAccountResponse(
@@ -115,8 +116,8 @@ async def create_admin_account(
     await csrf.validate_token(request)
 
     # Check for duplicate username
-    stmt = select(AdminUser).where(AdminUser.username == account.username)
-    existing_username = db.exec(stmt).first()
+    stmt: Any = select(AdminUser).where(AdminUser.username == account.username)
+    existing_username = cast(Optional[AdminUser], db.exec(stmt).first())
     if existing_username:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -125,7 +126,7 @@ async def create_admin_account(
 
     # Check for duplicate email
     stmt = select(AdminUser).where(AdminUser.email == account.email)
-    existing_email = db.exec(stmt).first()
+    existing_email = cast(Optional[AdminUser], db.exec(stmt).first())
     if existing_email:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -168,8 +169,8 @@ async def update_admin_account(
     """
     await csrf.validate_token(request)
 
-    stmt = select(AdminUser).where(AdminUser.id == admin_id)
-    admin = db.exec(stmt).first()
+    stmt: Any = select(AdminUser).where(AdminUser.id == admin_id)
+    admin = cast(Optional[AdminUser], db.exec(stmt).first())
 
     if not admin:
         raise HTTPException(
@@ -180,7 +181,7 @@ async def update_admin_account(
     if updates.email is not None:
         # Check for duplicate email
         stmt = select(AdminUser).where(AdminUser.email == updates.email, AdminUser.id != admin_id)
-        existing_email = db.exec(stmt).first()
+        existing_email = cast(Optional[AdminUser], db.exec(stmt).first())
         if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -224,8 +225,8 @@ async def delete_admin_account(
             detail="Cannot delete your own account",
         )
 
-    stmt = select(AdminUser).where(AdminUser.id == admin_id)
-    admin = db.exec(stmt).first()
+    stmt: Any = select(AdminUser).where(AdminUser.id == admin_id)
+    admin = cast(Optional[AdminUser], db.exec(stmt).first())
 
     if not admin:
         raise HTTPException(

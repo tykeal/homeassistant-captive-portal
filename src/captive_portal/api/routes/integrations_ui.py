@@ -3,6 +3,7 @@
 """Admin UI routes for Home Assistant integration management."""
 
 from uuid import UUID
+from typing import cast, Any
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -39,8 +40,8 @@ async def list_integrations(
     """
     csrf_token = csrf.generate_token()
 
-    statement = select(HAIntegrationConfig)
-    integrations = list(session.exec(statement).all())
+    statement: Any = select(HAIntegrationConfig)
+    integrations = list(cast(list[HAIntegrationConfig], session.exec(statement).all()))
 
     return templates.TemplateResponse(
         "admin/integrations.html",
@@ -82,8 +83,8 @@ async def edit_integration(
 
     csrf_token = csrf.generate_token()
 
-    statement = select(HAIntegrationConfig)
-    integrations = list(session.exec(statement).all())
+    statement: Any = select(HAIntegrationConfig)
+    integrations = list(cast(list[HAIntegrationConfig], session.exec(statement).all()))
 
     return templates.TemplateResponse(
         "admin/integrations.html",

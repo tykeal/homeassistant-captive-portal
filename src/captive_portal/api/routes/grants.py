@@ -3,7 +3,7 @@
 """Admin API routes for access grant management."""
 
 from datetime import datetime, timezone
-from typing import List
+from typing import List, cast, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -82,11 +82,11 @@ async def list_grants(
 
     from sqlmodel import desc
 
-    statement = select(AccessGrant).order_by(desc(AccessGrant.created_utc)).limit(limit)
+    statement: Any = select(AccessGrant).order_by(desc(AccessGrant.created_utc)).limit(limit)
 
     # Don't filter in SQL if we need to compute status
     # We'll filter after computing current status
-    grants = list(session.exec(statement).all())
+    grants = list(cast(list[AccessGrant], session.exec(statement).all()))
 
     # Update status for each grant based on current time
     current_time = datetime.now(timezone.utc)
@@ -172,6 +172,7 @@ async def get_grant(
             grant.status = GrantStatus.EXPIRED
         else:
             grant.status = GrantStatus.ACTIVE
+    assert isinstance(grant, AccessGrant)
 
     return grant
 

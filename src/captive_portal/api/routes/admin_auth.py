@@ -11,6 +11,7 @@ Implements:
 """
 
 from uuid import UUID
+from typing import cast, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr
@@ -72,8 +73,8 @@ async def login(
 
     Validates credentials and creates session cookie.
     """
-    stmt = select(AdminUser).where(AdminUser.username == login_data.username)
-    admin = db.exec(stmt).first()
+    stmt: Any = select(AdminUser).where(AdminUser.username == login_data.username)
+    admin = cast(Optional[AdminUser], db.exec(stmt).first())
 
     if not admin or not verify_password(login_data.password, admin.password_hash):
         raise HTTPException(
@@ -149,8 +150,8 @@ async def bootstrap_admin(
     Creates the first admin user if no admins exist.
     Subsequent calls will be rejected.
     """
-    stmt = select(AdminUser)
-    existing_admins = db.exec(stmt).first()
+    stmt: Any = select(AdminUser)
+    existing_admins = cast(Optional[AdminUser], db.exec(stmt).first())
 
     if existing_admins:
         raise HTTPException(
