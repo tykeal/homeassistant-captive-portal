@@ -52,21 +52,27 @@ class TestAdminSessionCSRF:
 
     def test_post_request_without_csrf_token_fails(self, authenticated_client) -> None:
         """POST request without CSRF token should return 403."""
+        from uuid import uuid4
+
         client, _ = authenticated_client
 
-        # Remove CSRF token from request
-        response = client.post("/api/grants/1/revoke")
+        # Remove CSRF token from request (use valid UUID to pass path validation)
+        grant_id = uuid4()
+        response = client.post(f"/api/grants/{grant_id}/revoke")
 
         assert response.status_code == 403
         assert "csrf" in response.json().get("detail", "").lower()
 
     def test_post_request_with_valid_csrf_token_succeeds(self, authenticated_client) -> None:
         """POST request with valid CSRF token should succeed."""
+        from uuid import uuid4
+
         client, csrf_token = authenticated_client
 
-        # Include CSRF token in request header
+        # Include CSRF token in request header (use valid UUID to pass path validation)
+        grant_id = uuid4()
         response = client.post(
-            "/api/grants/1/revoke",
+            f"/api/grants/{grant_id}/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -75,11 +81,14 @@ class TestAdminSessionCSRF:
 
     def test_post_request_with_invalid_csrf_token_fails(self, authenticated_client) -> None:
         """POST request with invalid CSRF token should return 403."""
+        from uuid import uuid4
+
         client, _ = authenticated_client
 
-        # Use invalid token
+        # Use invalid token (use valid UUID to pass path validation)
+        grant_id = uuid4()
         response = client.post(
-            "/api/grants/1/revoke",
+            f"/api/grants/{grant_id}/revoke",
             headers={"X-CSRF-Token": "invalid-token-123"},
         )
 
@@ -87,11 +96,14 @@ class TestAdminSessionCSRF:
 
     def test_csrf_token_from_form_field(self, authenticated_client) -> None:
         """CSRF token can be provided via form field."""
+        from uuid import uuid4
+
         client, csrf_token = authenticated_client
 
-        # Submit form with CSRF token
+        # Submit form with CSRF token (use valid UUID to pass path validation)
+        grant_id = uuid4()
         response = client.post(
-            "/api/grants/1/revoke",
+            f"/api/grants/{grant_id}/revoke",
             data={"csrf_token": csrf_token},
         )
 
@@ -110,11 +122,14 @@ class TestAdminSessionCSRF:
 
     def test_csrf_token_double_submit_cookie_pattern(self, authenticated_client) -> None:
         """CSRF uses double-submit cookie pattern (cookie + header/form)."""
+        from uuid import uuid4
+
         client, csrf_token = authenticated_client
 
-        # Token in cookie should match token in header
+        # Token in cookie should match token in header (use valid UUID to pass path validation)
+        grant_id = uuid4()
         response = client.post(
-            "/api/grants/1/revoke",
+            f"/api/grants/{grant_id}/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -123,34 +138,37 @@ class TestAdminSessionCSRF:
 
     def test_csrf_token_constant_time_comparison(self, authenticated_client) -> None:
         """CSRF token comparison should be constant-time to prevent timing attacks."""
+        from uuid import uuid4
+
         client, csrf_token = authenticated_client
 
         # This is a behavioral test - both wrong tokens should fail identically
+        grant_id = uuid4()
         response1 = client.post(
-            "/api/grants/1/revoke",
+            f"/api/grants/{grant_id}/revoke",
             headers={"X-CSRF-Token": "a" * len(csrf_token)},
         )
         response2 = client.post(
-            "/api/grants/1/revoke",
+            f"/api/grants/{grant_id}/revoke",
             headers={"X-CSRF-Token": "b" * len(csrf_token)},
         )
 
         assert response1.status_code == 403
         assert response2.status_code == 403
 
-    def test_csrf_token_missing_from_cookie_fails(self, client) -> None:
+    def test_csrf_token_missing_from_cookie_fails(self, authenticated_client) -> None:
         """POST request without csrftoken cookie should fail."""
-        # Login
-        client.post(
-            "/api/admin/auth/login",
-            json={"username": "testadmin", "password": "SecureP@ss123"},
-        )
+        from uuid import uuid4
 
-        # Remove CSRF cookie
-        client.cookies.clear()
+        client, _ = authenticated_client
 
+        # Remove only CSRF cookie (delete by name)
+        client.cookies.delete("csrftoken")
+
+        # Use valid UUID to pass path validation
+        grant_id = uuid4()
         response = client.post(
-            "/api/grants/1/revoke",
+            f"/api/grants/{grant_id}/revoke",
             headers={"X-CSRF-Token": "some-token"},
         )
 
@@ -158,11 +176,14 @@ class TestAdminSessionCSRF:
 
     def test_csrf_token_mismatch_cookie_header_fails(self, authenticated_client) -> None:
         """Cookie and header tokens must match."""
+        from uuid import uuid4
+
         client, csrf_token = authenticated_client
 
-        # Use different token in header
+        # Use different token in header (use valid UUID to pass path validation)
+        grant_id = uuid4()
         response = client.post(
-            "/api/grants/1/revoke",
+            f"/api/grants/{grant_id}/revoke",
             headers={"X-CSRF-Token": "different-token-from-cookie"},
         )
 
@@ -179,20 +200,57 @@ class TestAdminSessionCSRF:
         # Login itself should not require CSRF token
         assert response.status_code in (200, 401)  # Success or wrong credentials
 
-    @pytest.mark.parametrize(
-        "method,path",
-        [
-            ("POST", "/api/vouchers/redeem"),
-            ("POST", "/api/grants/1/extend"),
-            ("DELETE", "/api/grants/1"),
-            ("PUT", "/api/integrations/entity-mapping/1"),
-        ],
-    )
-    def test_state_changing_methods_require_csrf(self, authenticated_client, method, path) -> None:
-        """All state-changing methods should require CSRF token."""
+    def test_grant_extend_requires_csrf(self, authenticated_client) -> None:
+        """Grant extend endpoint requires CSRF token."""
+        from uuid import uuid4
+
+        client, _ = authenticated_client
+        grant_id = uuid4()
+
+        # Request without CSRF token should fail with 403
+        response = client.post(
+            f"/api/grants/{grant_id}/extend",
+            json={"additional_minutes": 60},
+        )
+
+        assert response.status_code == 403
+
+    def test_grant_revoke_requires_csrf(self, authenticated_client) -> None:
+        """Grant revoke endpoint requires CSRF token."""
+        from uuid import uuid4
+
+        client, _ = authenticated_client
+        grant_id = uuid4()
+
+        # Request without CSRF token should fail with 403
+        response = client.post(f"/api/grants/{grant_id}/revoke")
+
+        assert response.status_code == 403
+
+    def test_admin_account_create_requires_csrf(self, authenticated_client) -> None:
+        """Admin account creation requires CSRF token."""
         client, _ = authenticated_client
 
-        # Request without CSRF token
-        response = client.request(method, path)
+        # Request without CSRF token should fail with 403
+        response = client.post(
+            "/api/admin/accounts",
+            json={
+                "username": "newadmin",
+                "email": "new@example.com",
+                "password": "SecureP@ss456",
+            },
+        )
+
+        assert response.status_code == 403
+
+    def test_admin_account_delete_requires_csrf(self, authenticated_client) -> None:
+        """Admin account deletion requires CSRF token."""
+        from uuid import uuid4
+
+        client, _ = authenticated_client
+        admin_id = uuid4()
+
+        # Request without CSRF token should fail with 403
+        response = client.delete(f"/api/admin/accounts/{admin_id}")
 
         assert response.status_code == 403

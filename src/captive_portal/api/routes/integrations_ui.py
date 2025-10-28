@@ -125,7 +125,7 @@ async def save_integration(
     Raises:
         400: Invalid form data
     """
-    csrf.validate_token(request)
+    await csrf.validate_token(request)
     audit_service = AuditService(session)
 
     if id:
@@ -194,7 +194,7 @@ async def delete_integration(
     Raises:
         404: Integration not found
     """
-    csrf.validate_token(request)
+    await csrf.validate_token(request)
 
     integration = session.get(HAIntegrationConfig, integration_id)
     if not integration:

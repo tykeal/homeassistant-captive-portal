@@ -41,7 +41,7 @@ class CSRFProtection:
         """Generate a new CSRF token (32 bytes, base64-encoded)."""
         return secrets.token_urlsafe(self.config.token_length)
 
-    def validate_token(self, request: Request) -> None:
+    async def validate_token(self, request: Request) -> None:
         """
         Validate CSRF token from request.
 
@@ -55,7 +55,7 @@ class CSRFProtection:
                 detail="CSRF token missing from cookies",
             )
 
-        request_token = self._extract_request_token(request)
+        request_token = await self._extract_request_token(request)
         if not request_token:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -68,16 +68,28 @@ class CSRFProtection:
                 detail="CSRF token validation failed",
             )
 
-    def _extract_request_token(self, request: Request) -> Optional[str]:
+    async def _extract_request_token(self, request: Request) -> Optional[str]:
         """Extract CSRF token from form field or header."""
         # Check header first (simpler)
         header_token = request.headers.get(self.config.header_name)
         if header_token:
             return header_token
 
-        # For POST/PUT/DELETE/PATCH, try to get form data
-        # Note: This won't work in async context - forms need to be awaited
-        # For now, just rely on header for API requests
+        # Try to get from form data if content type is form-encoded
+        content_type = request.headers.get("content-type", "")
+        if (
+            "application/x-www-form-urlencoded" in content_type
+            or "multipart/form-data" in content_type
+        ):
+            try:
+                form = await request.form()
+                token = form.get(self.config.form_field_name)
+                # Ensure we only return strings, not UploadFile objects
+                if isinstance(token, str):
+                    return token
+            except Exception:
+                pass
+
         return None
 
     def set_csrf_cookie(self, response: Response, token: str) -> None:

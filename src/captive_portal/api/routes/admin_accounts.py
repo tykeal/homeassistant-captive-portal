@@ -112,7 +112,7 @@ async def create_admin_account(
 
     Requires authentication and valid CSRF token.
     """
-    csrf.validate_token(request)
+    await csrf.validate_token(request)
 
     # Check for duplicate username
     stmt = select(AdminUser).where(AdminUser.username == account.username)
@@ -166,7 +166,7 @@ async def update_admin_account(
 
     Requires authentication and valid CSRF token.
     """
-    csrf.validate_token(request)
+    await csrf.validate_token(request)
 
     stmt = select(AdminUser).where(AdminUser.id == admin_id)
     admin = db.exec(stmt).first()
@@ -216,7 +216,7 @@ async def delete_admin_account(
 
     Cannot delete own account. Requires authentication and valid CSRF token.
     """
-    csrf.validate_token(request)
+    await csrf.validate_token(request)
 
     if current_admin.id == admin_id:
         raise HTTPException(

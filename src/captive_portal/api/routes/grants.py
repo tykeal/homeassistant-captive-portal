@@ -203,7 +203,7 @@ async def extend_grant(
         404: Grant not found
         409: Grant cannot be extended (revoked)
     """
-    csrf.validate_token(request)
+    await csrf.validate_token(request)
     grant_service = GrantService(session)
     audit_service = AuditService(session)
 
@@ -257,7 +257,7 @@ async def revoke_grant(
         403: Invalid CSRF token
         404: Grant not found
     """
-    csrf.validate_token(request)
+    await csrf.validate_token(request)
     grant_service = GrantService(session)
     audit_service = AuditService(session)
 
