@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from captive_portal.models.access_grant import AccessGrant
@@ -31,7 +32,7 @@ def admin_user(db_session: Session) -> Any:
 
 
 @pytest.fixture
-def authenticated_client(client, admin_user) -> Any:
+def authenticated_client(client: TestClient, admin_user: Any) -> Any:
     """Create authenticated admin client."""
     login_response = client.post(
         "/api/admin/auth/login",
@@ -93,7 +94,9 @@ def sample_grants(db_session: Session) -> Any:
 class TestAdminListFilters:
     """Test admin list filtering and pagination."""
 
-    def test_list_all_grants_without_filter(self, authenticated_client, sample_grants) -> None:
+    def test_list_all_grants_without_filter(
+        self, authenticated_client: Any, sample_grants: Any
+    ) -> None:
         """Listing grants without filter should return all grants."""
         client = authenticated_client
 
@@ -104,7 +107,9 @@ class TestAdminListFilters:
         assert isinstance(data, list)
         assert len(data) >= 3  # At least our sample grants
 
-    def test_filter_grants_by_status_active(self, authenticated_client, sample_grants) -> None:
+    def test_filter_grants_by_status_active(
+        self, authenticated_client: Any, sample_grants: Any
+    ) -> None:
         """Filter grants by status=active."""
         client = authenticated_client
 
@@ -120,7 +125,9 @@ class TestAdminListFilters:
                 end_utc = end_utc.replace(tzinfo=timezone.utc)
             assert end_utc > datetime.now(timezone.utc)
 
-    def test_filter_grants_by_status_expired(self, authenticated_client, sample_grants) -> None:
+    def test_filter_grants_by_status_expired(
+        self, authenticated_client: Any, sample_grants: Any
+    ) -> None:
         """Filter grants by status=expired."""
         client = authenticated_client
 
@@ -137,7 +144,9 @@ class TestAdminListFilters:
             assert end_utc <= datetime.now(timezone.utc)
 
     @pytest.mark.skip(reason="integration_id filter not implemented yet")
-    def test_filter_grants_by_integration_id(self, authenticated_client, sample_grants) -> None:
+    def test_filter_grants_by_integration_id(
+        self, authenticated_client: Any, sample_grants: Any
+    ) -> None:
         """Filter grants by integration_id."""
         client = authenticated_client
 
@@ -149,7 +158,9 @@ class TestAdminListFilters:
             assert grant.get("integration_id") == "rental_1"
 
     @pytest.mark.skip(reason="booking_identifier filter not implemented yet")
-    def test_filter_grants_by_booking_identifier(self, authenticated_client, sample_grants) -> None:
+    def test_filter_grants_by_booking_identifier(
+        self, authenticated_client: Any, sample_grants: Any
+    ) -> None:
         """Filter grants by booking_identifier."""
         client = authenticated_client
 
@@ -160,7 +171,7 @@ class TestAdminListFilters:
         assert len(data) == 1
         assert data[0]["booking_identifier"] == "ACTIVE001"
 
-    def test_pagination_limit(self, authenticated_client, sample_grants) -> None:
+    def test_pagination_limit(self, authenticated_client: Any, sample_grants: Any) -> None:
         """Pagination with limit parameter."""
         client = authenticated_client
 
@@ -171,7 +182,7 @@ class TestAdminListFilters:
         assert len(data) <= 2
 
     @pytest.mark.skip(reason="offset pagination not implemented yet")
-    def test_pagination_offset(self, authenticated_client, sample_grants) -> None:
+    def test_pagination_offset(self, authenticated_client: Any, sample_grants: Any) -> None:
         """Pagination with offset parameter."""
         client = authenticated_client
 
@@ -190,7 +201,7 @@ class TestAdminListFilters:
             assert page1[0]["id"] != page2[0]["id"]
 
     @pytest.mark.skip(reason="integration_id filter not implemented yet")
-    def test_combined_filters(self, authenticated_client, sample_grants) -> None:
+    def test_combined_filters(self, authenticated_client: Any, sample_grants: Any) -> None:
         """Multiple filters combined."""
         client = authenticated_client
 
@@ -207,7 +218,7 @@ class TestAdminListFilters:
                 end_utc = end_utc.replace(tzinfo=timezone.utc)
             assert end_utc > datetime.now(timezone.utc)
 
-    def test_filter_invalid_status(self, authenticated_client) -> None:
+    def test_filter_invalid_status(self, authenticated_client: Any) -> None:
         """Invalid status filter should return 422."""
         client = authenticated_client
 
@@ -216,7 +227,7 @@ class TestAdminListFilters:
         assert response.status_code == 422
 
     @pytest.mark.skip(reason="negative limit validation not implemented yet")
-    def test_pagination_negative_limit(self, authenticated_client) -> None:
+    def test_pagination_negative_limit(self, authenticated_client: Any) -> None:
         """Negative limit should return 422."""
         client = authenticated_client
 
@@ -225,7 +236,7 @@ class TestAdminListFilters:
         assert response.status_code == 422
 
     @pytest.mark.skip(reason="negative offset validation not implemented yet")
-    def test_pagination_negative_offset(self, authenticated_client) -> None:
+    def test_pagination_negative_offset(self, authenticated_client: Any) -> None:
         """Negative offset should return 422."""
         client = authenticated_client
 
@@ -233,7 +244,9 @@ class TestAdminListFilters:
 
         assert response.status_code == 422
 
-    def test_list_grants_returns_metadata(self, authenticated_client, sample_grants) -> None:
+    def test_list_grants_returns_metadata(
+        self, authenticated_client: Any, sample_grants: Any
+    ) -> None:
         """List response should include pagination metadata."""
         client = authenticated_client
 

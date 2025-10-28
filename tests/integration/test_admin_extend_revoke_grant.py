@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from captive_portal.models.access_grant import AccessGrant
@@ -31,7 +32,7 @@ def admin_user(db_session: Session) -> Any:
 
 
 @pytest.fixture
-def authenticated_client(client, admin_user) -> Any:
+def authenticated_client(client: TestClient, admin_user: Any) -> Any:
     """Create authenticated admin client."""
     login_response = client.post(
         "/api/admin/auth/login",
@@ -64,7 +65,7 @@ def sample_grant(db_session: Session) -> Any:
 class TestAdminExtendRevokeGrant:
     """Test admin operations for extending and revoking access grants."""
 
-    def test_extend_grant_success(self, authenticated_client, sample_grant) -> None:
+    def test_extend_grant_success(self, authenticated_client: Any, sample_grant: Any) -> None:
         """Admin should be able to extend grant end time."""
         client, csrf_token = authenticated_client
         grant_id = sample_grant.id
@@ -90,7 +91,7 @@ class TestAdminExtendRevokeGrant:
             new_end = new_end.replace(tzinfo=timezone.utc)
         assert new_end > original_end
 
-    def test_extend_grant_not_found(self, authenticated_client) -> None:
+    def test_extend_grant_not_found(self, authenticated_client: Any) -> None:
         """Extending non-existent grant should return 404."""
         client, csrf_token = authenticated_client
         from uuid import UUID
@@ -105,7 +106,9 @@ class TestAdminExtendRevokeGrant:
 
         assert response.status_code == 404
 
-    def test_extend_grant_invalid_minutes(self, authenticated_client, sample_grant) -> None:
+    def test_extend_grant_invalid_minutes(
+        self, authenticated_client: Any, sample_grant: Any
+    ) -> None:
         """Extending grant with invalid minutes should return 422."""
         client, csrf_token = authenticated_client
 
@@ -118,7 +121,7 @@ class TestAdminExtendRevokeGrant:
 
         assert response.status_code == 422
 
-    def test_extend_grant_zero_minutes(self, authenticated_client, sample_grant) -> None:
+    def test_extend_grant_zero_minutes(self, authenticated_client: Any, sample_grant: Any) -> None:
         """Extending grant by zero minutes should return 422."""
         client, csrf_token = authenticated_client
 
@@ -130,7 +133,9 @@ class TestAdminExtendRevokeGrant:
 
         assert response.status_code == 422
 
-    def test_extend_grant_without_csrf_fails(self, authenticated_client, sample_grant) -> None:
+    def test_extend_grant_without_csrf_fails(
+        self, authenticated_client: Any, sample_grant: Any
+    ) -> None:
         """Extending grant without CSRF token should fail."""
         client, _ = authenticated_client
 
@@ -141,7 +146,7 @@ class TestAdminExtendRevokeGrant:
 
         assert response.status_code == 403
 
-    def test_revoke_grant_success(self, authenticated_client, sample_grant) -> None:
+    def test_revoke_grant_success(self, authenticated_client: Any, sample_grant: Any) -> None:
         """Admin should be able to revoke access grant."""
         client, csrf_token = authenticated_client
         grant_id = sample_grant.id
@@ -163,7 +168,7 @@ class TestAdminExtendRevokeGrant:
             end_utc = end_utc.replace(tzinfo=timezone.utc)
         assert end_utc <= datetime.now(timezone.utc)
 
-    def test_revoke_grant_not_found(self, authenticated_client) -> None:
+    def test_revoke_grant_not_found(self, authenticated_client: Any) -> None:
         """Revoking non-existent grant should return 404."""
         client, csrf_token = authenticated_client
         from uuid import UUID
@@ -177,7 +182,9 @@ class TestAdminExtendRevokeGrant:
 
         assert response.status_code == 404
 
-    def test_revoke_grant_already_expired(self, authenticated_client, db_session: Session) -> None:
+    def test_revoke_grant_already_expired(
+        self, authenticated_client: Any, db_session: Session
+    ) -> None:
         """Revoking already expired grant should succeed (idempotent)."""
         client, csrf_token = authenticated_client
 
@@ -203,7 +210,9 @@ class TestAdminExtendRevokeGrant:
         db_session.delete(expired_grant)
         db_session.commit()
 
-    def test_revoke_grant_without_csrf_fails(self, authenticated_client, sample_grant) -> None:
+    def test_revoke_grant_without_csrf_fails(
+        self, authenticated_client: Any, sample_grant: Any
+    ) -> None:
         """Revoking grant without CSRF token should fail."""
         client, _ = authenticated_client
 
@@ -211,7 +220,9 @@ class TestAdminExtendRevokeGrant:
 
         assert response.status_code == 403
 
-    def test_extend_grant_creates_audit_log(self, authenticated_client, sample_grant) -> None:
+    def test_extend_grant_creates_audit_log(
+        self, authenticated_client: Any, sample_grant: Any
+    ) -> None:
         """Extending grant should create audit log entry."""
         client, csrf_token = authenticated_client
 
@@ -226,7 +237,9 @@ class TestAdminExtendRevokeGrant:
         # Verify audit log created (would check audit_log table)
         # This is implementation-specific
 
-    def test_revoke_grant_creates_audit_log(self, authenticated_client, sample_grant) -> None:
+    def test_revoke_grant_creates_audit_log(
+        self, authenticated_client: Any, sample_grant: Any
+    ) -> None:
         """Revoking grant should create audit log entry."""
         client, csrf_token = authenticated_client
 
@@ -239,7 +252,7 @@ class TestAdminExtendRevokeGrant:
 
         # Verify audit log created (would check audit_log table)
 
-    def test_extend_grant_max_limit(self, authenticated_client, sample_grant) -> None:
+    def test_extend_grant_max_limit(self, authenticated_client: Any, sample_grant: Any) -> None:
         """Extending grant should respect maximum extension limit."""
         client, csrf_token = authenticated_client
 
@@ -253,7 +266,9 @@ class TestAdminExtendRevokeGrant:
         # Should either succeed with capped value or return 422
         assert response.status_code in (200, 422)
 
-    def test_extend_grant_multiple_times(self, authenticated_client, sample_grant) -> None:
+    def test_extend_grant_multiple_times(
+        self, authenticated_client: Any, sample_grant: Any
+    ) -> None:
         """Grant should be extendable multiple times."""
         client, csrf_token = authenticated_client
 
@@ -278,7 +293,7 @@ class TestAdminExtendRevokeGrant:
         # Second end should be later than first
         assert end2 > end1
 
-    def test_revoke_grant_idempotent(self, authenticated_client, sample_grant) -> None:
+    def test_revoke_grant_idempotent(self, authenticated_client: Any, sample_grant: Any) -> None:
         """Revoking grant multiple times should be idempotent."""
         client, csrf_token = authenticated_client
 

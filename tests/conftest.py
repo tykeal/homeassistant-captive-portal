@@ -15,7 +15,7 @@ from captive_portal.persistence import database
 
 
 @pytest.fixture
-def db_engine():  # type: ignore[no-untyped-def]
+def db_engine() -> Generator[Engine, None, None]:
     """Create test database engine (temporary file-based SQLite)."""
     import tempfile
     import os

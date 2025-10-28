@@ -8,10 +8,11 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def authenticated_client(client, admin_user) -> Any:
+def authenticated_client(client: TestClient, admin_user: Any) -> Any:
     """Create authenticated client with session."""
     login_response = client.post(
         "/api/admin/auth/login",
@@ -24,7 +25,7 @@ def authenticated_client(client, admin_user) -> Any:
 class TestAdminSessionTimeout:
     """Test admin session timeout (idle 30min, absolute 8hr)."""
 
-    def test_session_idle_timeout_default_30_minutes(self, authenticated_client) -> None:
+    def test_session_idle_timeout_default_30_minutes(self, authenticated_client: Any) -> None:
         """Session should expire after 30 minutes of inactivity."""
         client = authenticated_client
 
@@ -50,7 +51,7 @@ class TestAdminSessionTimeout:
             # Session expired results in authentication required
             assert "authentication required" in response.json().get("detail", "").lower()
 
-    def test_session_activity_resets_idle_timeout(self, authenticated_client) -> None:
+    def test_session_activity_resets_idle_timeout(self, authenticated_client: Any) -> None:
         """Activity should reset idle timeout."""
         client = authenticated_client
 
@@ -81,7 +82,7 @@ class TestAdminSessionTimeout:
             response = client.get("/api/grants")
             assert response.status_code in (200, 204)
 
-    def test_session_absolute_timeout_8_hours(self, authenticated_client) -> None:
+    def test_session_absolute_timeout_8_hours(self, authenticated_client: Any) -> None:
         """Session should expire after 8 hours regardless of activity."""
         client = authenticated_client
 
@@ -113,7 +114,9 @@ class TestAdminSessionTimeout:
             response = client.get("/api/grants")
             assert response.status_code == 401
 
-    def test_session_absolute_timeout_overrides_idle_timeout(self, authenticated_client) -> None:
+    def test_session_absolute_timeout_overrides_idle_timeout(
+        self, authenticated_client: Any
+    ) -> None:
         """Absolute timeout should enforce even with continuous activity."""
         client = authenticated_client
 
@@ -140,7 +143,9 @@ class TestAdminSessionTimeout:
         # Implementation would read from config
         pass
 
-    def test_expired_session_returns_401_with_clear_message(self, authenticated_client) -> None:
+    def test_expired_session_returns_401_with_clear_message(
+        self, authenticated_client: Any
+    ) -> None:
         """Expired session should return 401 with clear error message."""
         client = authenticated_client
 
@@ -160,7 +165,9 @@ class TestAdminSessionTimeout:
                 "authentication" in data["detail"].lower() or "required" in data["detail"].lower()
             )
 
-    def test_logout_clears_session_preventing_timeout_check(self, authenticated_client) -> None:
+    def test_logout_clears_session_preventing_timeout_check(
+        self, authenticated_client: Any
+    ) -> None:
         """Logout should clear session immediately."""
         client = authenticated_client
 
@@ -172,7 +179,9 @@ class TestAdminSessionTimeout:
         response = client.get("/api/grants")
         assert response.status_code == 401
 
-    def test_session_timeout_enforced_on_all_protected_routes(self, authenticated_client) -> None:
+    def test_session_timeout_enforced_on_all_protected_routes(
+        self, authenticated_client: Any
+    ) -> None:
         """Session timeout should be enforced on all protected admin routes."""
         client = authenticated_client
 
@@ -191,19 +200,19 @@ class TestAdminSessionTimeout:
                 response = client.request(method, path)
                 assert response.status_code == 401
 
-    def test_session_created_timestamp_stored(self, authenticated_client) -> None:
+    def test_session_created_timestamp_stored(self, authenticated_client: Any) -> None:
         """Session should store creation timestamp for absolute timeout."""
         # This tests internal session storage structure
         # Would verify AdminSession.created_utc is set correctly
         pass
 
-    def test_session_last_activity_timestamp_updated(self, authenticated_client) -> None:
+    def test_session_last_activity_timestamp_updated(self, authenticated_client: Any) -> None:
         """Session should update last_activity timestamp on each request."""
         # This tests internal session storage structure
         # Would verify AdminSession.last_activity_utc is updated
         pass
 
-    def test_concurrent_sessions_timeout_independently(self, app, admin_user) -> None:
+    def test_concurrent_sessions_timeout_independently(self, app: Any, admin_user: Any) -> None:
         """Multiple sessions should timeout independently."""
         from starlette.testclient import TestClient
 

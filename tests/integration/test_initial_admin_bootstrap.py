@@ -6,6 +6,7 @@
 from typing import Any
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from captive_portal.models.admin_user import AdminUser
@@ -30,7 +31,9 @@ def empty_admin_table(db_session: Session) -> Any:
 class TestInitialAdminBootstrap:
     """Test initial admin account bootstrap on first run."""
 
-    def test_bootstrap_creates_default_admin_on_first_run(self, client, empty_admin_table) -> None:
+    def test_bootstrap_creates_default_admin_on_first_run(
+        self, client: TestClient, empty_admin_table: Any
+    ) -> None:
         """First run should create default admin account."""
         # Access bootstrap endpoint
         response = client.post(
@@ -47,7 +50,7 @@ class TestInitialAdminBootstrap:
         assert data["username"] == "admin"
         assert "password_hash" not in data  # Should not expose hash
 
-    def test_bootstrap_fails_if_admin_exists(self, client) -> None:
+    def test_bootstrap_fails_if_admin_exists(self, client: TestClient) -> None:
         """Bootstrap should fail if admin already exists."""
         # Create initial admin
         client.post(
@@ -73,7 +76,9 @@ class TestInitialAdminBootstrap:
         assert "already exists" in response.json().get("detail", "").lower()
 
     @pytest.mark.skip(reason="Password validation not yet implemented - Phase 4")
-    def test_bootstrap_requires_strong_password(self, client, empty_admin_table) -> None:
+    def test_bootstrap_requires_strong_password(
+        self, client: TestClient, empty_admin_table: Any
+    ) -> None:
         """Bootstrap should require strong password."""
         # Weak password
         response = client.post(
@@ -87,7 +92,9 @@ class TestInitialAdminBootstrap:
 
         assert response.status_code == 422
 
-    def test_bootstrap_requires_valid_email(self, client, empty_admin_table) -> None:
+    def test_bootstrap_requires_valid_email(
+        self, client: TestClient, empty_admin_table: Any
+    ) -> None:
         """Bootstrap should require valid email format."""
         response = client.post(
             "/api/admin/auth/bootstrap",
@@ -100,7 +107,7 @@ class TestInitialAdminBootstrap:
 
         assert response.status_code == 422
 
-    def test_bootstrap_creates_admin_role(self, client, empty_admin_table) -> None:
+    def test_bootstrap_creates_admin_role(self, client: TestClient, empty_admin_table: Any) -> None:
         """Bootstrapped account should have admin role."""
         response = client.post(
             "/api/admin/auth/bootstrap",
@@ -115,7 +122,9 @@ class TestInitialAdminBootstrap:
         data = response.json()
         assert data["role"] == "admin"
 
-    def test_bootstrap_username_must_be_unique(self, client, empty_admin_table) -> None:
+    def test_bootstrap_username_must_be_unique(
+        self, client: TestClient, empty_admin_table: Any
+    ) -> None:
         """Bootstrap username must be unique."""
         # First bootstrap
         client.post(
@@ -139,7 +148,7 @@ class TestInitialAdminBootstrap:
 
         assert response.status_code == 409
 
-    def test_bootstrapped_admin_can_login(self, client, empty_admin_table) -> None:
+    def test_bootstrapped_admin_can_login(self, client: TestClient, empty_admin_table: Any) -> None:
         """Bootstrapped admin should be able to login."""
         # Bootstrap
         client.post(
@@ -161,7 +170,7 @@ class TestInitialAdminBootstrap:
         assert "session_id" in login_response.cookies
 
     def test_bootstrap_hashes_password_with_argon2(
-        self, client, empty_admin_table, db_session: Session
+        self, client: TestClient, empty_admin_table: Any, db_session: Session
     ) -> None:
         """Bootstrap should hash password with argon2."""
         response = client.post(
@@ -181,7 +190,9 @@ class TestInitialAdminBootstrap:
         assert admin is not None
         assert admin.password_hash.startswith("$argon2id$")
 
-    def test_bootstrap_missing_fields_returns_422(self, client, empty_admin_table) -> None:
+    def test_bootstrap_missing_fields_returns_422(
+        self, client: TestClient, empty_admin_table: Any
+    ) -> None:
         """Bootstrap with missing required fields should return 422."""
         response = client.post(
             "/api/admin/auth/bootstrap",
@@ -190,7 +201,9 @@ class TestInitialAdminBootstrap:
 
         assert response.status_code == 422
 
-    def test_bootstrap_creates_audit_log_entry(self, client, empty_admin_table) -> None:
+    def test_bootstrap_creates_audit_log_entry(
+        self, client: TestClient, empty_admin_table: Any
+    ) -> None:
         """Bootstrap should create audit log entry."""
         response = client.post(
             "/api/admin/auth/bootstrap",
