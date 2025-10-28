@@ -94,14 +94,15 @@ class TestAdminSessionTimeout:
             response = client.get("/api/grants")
             assert response.status_code in (200, 204)
 
-            # Advance time by 7 hours 50 minutes, keep active
-            for hours in range(1, 8):
-                time_n = now + timedelta(hours=hours)
+            # Advance time in 20-minute increments to stay within idle timeout
+            # but approach the 8-hour absolute timeout
+            for minutes in range(20, 480, 20):  # 20, 40, 60, ... 460 minutes (7h 40m)
+                time_n = now + timedelta(minutes=minutes)
                 mock_dt.now.return_value = time_n
                 mock_dt.side_effect = lambda *args, **kw: datetime(*args, **kw) if args else time_n
                 response = client.get("/api/grants")
-                # Should still be valid
-                assert response.status_code in (200, 204)
+                # Should still be valid (within 8 hours and active)
+                assert response.status_code in (200, 204), f"Failed at {minutes} minutes"
 
             # Advance past 8 hours absolute timeout
             time_past = now + timedelta(hours=8, minutes=1)
@@ -202,16 +203,23 @@ class TestAdminSessionTimeout:
         # Would verify AdminSession.last_activity_utc is updated
         pass
 
-    def test_concurrent_sessions_timeout_independently(self, client) -> None:
+    def test_concurrent_sessions_timeout_independently(self, app, admin_user) -> None:
         """Multiple sessions should timeout independently."""
-        # Login twice to create two sessions
-        response1 = client.post(
+        from starlette.testclient import TestClient
+
+        # Create two separate clients to simulate concurrent sessions
+        client1 = TestClient(app)
+        client2 = TestClient(app)
+
+        # Login with client1
+        response1 = client1.post(
             "/api/admin/auth/login",
             json={"username": "testadmin", "password": "SecureP@ss123"},
         )
         session1_cookie = response1.cookies.get("session_id")
 
-        response2 = client.post(
+        # Login with client2
+        response2 = client2.post(
             "/api/admin/auth/login",
             json={"username": "testadmin", "password": "SecureP@ss123"},
         )
