@@ -72,7 +72,7 @@ class TestAdminExtendRevokeGrant:
 
         response = client.post(
             f"/api/grants/{grant_id}/extend",
-            json={"extend_minutes": extend_minutes},
+            json={"additional_minutes": extend_minutes},
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -86,10 +86,13 @@ class TestAdminExtendRevokeGrant:
     def test_extend_grant_not_found(self, authenticated_client) -> None:
         """Extending non-existent grant should return 404."""
         client, csrf_token = authenticated_client
+        from uuid import UUID
 
+        # Use a valid UUID that doesn't exist in the database
+        non_existent_id = UUID("00000000-0000-0000-0000-000000000000")
         response = client.post(
-            "/api/grants/99999/extend",
-            json={"extend_minutes": 60},
+            f"/api/grants/{non_existent_id}/extend",
+            json={"additional_minutes": 60},
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -102,7 +105,7 @@ class TestAdminExtendRevokeGrant:
         # Negative minutes
         response = client.post(
             f"/api/grants/{sample_grant.id}/extend",
-            json={"extend_minutes": -30},
+            json={"additional_minutes": -30},
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -114,7 +117,7 @@ class TestAdminExtendRevokeGrant:
 
         response = client.post(
             f"/api/grants/{sample_grant.id}/extend",
-            json={"extend_minutes": 0},
+            json={"additional_minutes": 0},
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -126,7 +129,7 @@ class TestAdminExtendRevokeGrant:
 
         response = client.post(
             f"/api/grants/{sample_grant.id}/extend",
-            json={"extend_minutes": 60},
+            json={"additional_minutes": 60},
         )
 
         assert response.status_code == 403
@@ -153,9 +156,12 @@ class TestAdminExtendRevokeGrant:
     def test_revoke_grant_not_found(self, authenticated_client) -> None:
         """Revoking non-existent grant should return 404."""
         client, csrf_token = authenticated_client
+        from uuid import UUID
 
+        # Use a valid UUID that doesn't exist in the database
+        non_existent_id = UUID("00000000-0000-0000-0000-000000000000")
         response = client.post(
-            "/api/grants/99999/revoke",
+            f"/api/grants/{non_existent_id}/revoke",
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -201,7 +207,7 @@ class TestAdminExtendRevokeGrant:
 
         response = client.post(
             f"/api/grants/{sample_grant.id}/extend",
-            json={"extend_minutes": 60},
+            json={"additional_minutes": 60},
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -230,7 +236,7 @@ class TestAdminExtendRevokeGrant:
         # Try to extend by very large amount
         response = client.post(
             f"/api/grants/{sample_grant.id}/extend",
-            json={"extend_minutes": 100000},
+            json={"additional_minutes": 100000},
             headers={"X-CSRF-Token": csrf_token},
         )
 
@@ -244,7 +250,7 @@ class TestAdminExtendRevokeGrant:
         # First extension
         response1 = client.post(
             f"/api/grants/{sample_grant.id}/extend",
-            json={"extend_minutes": 30},
+            json={"additional_minutes": 30},
             headers={"X-CSRF-Token": csrf_token},
         )
         assert response1.status_code == 200
@@ -253,7 +259,7 @@ class TestAdminExtendRevokeGrant:
         # Second extension
         response2 = client.post(
             f"/api/grants/{sample_grant.id}/extend",
-            json={"extend_minutes": 30},
+            json={"additional_minutes": 30},
             headers={"X-CSRF-Token": csrf_token},
         )
         assert response2.status_code == 200

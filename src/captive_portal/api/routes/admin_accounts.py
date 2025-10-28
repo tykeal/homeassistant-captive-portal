@@ -157,9 +157,9 @@ async def update_admin_account(
     request: Request,
     admin_id: UUID,
     updates: AdminAccountUpdate,
+    _current_admin: AdminUser = Depends(get_current_admin),
     db: Session = Depends(get_session),
     csrf: CSRFProtection = Depends(get_csrf_protection),
-    _current_admin: AdminUser = Depends(get_current_admin),
 ) -> AdminAccountResponse:
     """
     Update an admin account.
@@ -207,9 +207,9 @@ async def update_admin_account(
 async def delete_admin_account(
     request: Request,
     admin_id: UUID,
+    current_admin: AdminUser = Depends(get_current_admin),
     db: Session = Depends(get_session),
     csrf: CSRFProtection = Depends(get_csrf_protection),
-    current_admin: AdminUser = Depends(get_current_admin),
 ) -> None:
     """
     Delete an admin account.

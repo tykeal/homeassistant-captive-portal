@@ -74,10 +74,14 @@ class TestAddAdditionalAdmin:
         assert "password_hash" not in data
 
     def test_unauthenticated_cannot_add_admin(
-        self, client: Any, bootstrapped_admin: dict[str, Any]
+        self, app: Any, bootstrapped_admin: dict[str, Any]
     ) -> None:
         """Unauthenticated request should fail to add admin."""
-        response = client.post(
+        # Create a fresh client without cookies to simulate unauthenticated request
+        from starlette.testclient import TestClient
+
+        fresh_client = TestClient(app)
+        response = fresh_client.post(
             "/api/admin/accounts",
             json={
                 "username": "admin2",
