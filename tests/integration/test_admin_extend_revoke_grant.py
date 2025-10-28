@@ -70,6 +70,8 @@ class TestAdminExtendRevokeGrant:
         grant_id = sample_grant.id
 
         original_end = sample_grant.end_utc
+        if original_end.tzinfo is None:
+            original_end = original_end.replace(tzinfo=timezone.utc)
         extend_minutes = 60
 
         response = client.post(
@@ -82,7 +84,10 @@ class TestAdminExtendRevokeGrant:
         data = response.json()
         assert "end_utc" in data
         # New end should be ~60 minutes later
-        new_end = datetime.fromisoformat(data["end_utc"].replace("Z", "+00:00"))
+        new_end_str = data["end_utc"].replace("Z", "+00:00")
+        new_end = datetime.fromisoformat(new_end_str)
+        if new_end.tzinfo is None:
+            new_end = new_end.replace(tzinfo=timezone.utc)
         assert new_end > original_end
 
     def test_extend_grant_not_found(self, authenticated_client) -> None:
@@ -152,8 +157,11 @@ class TestAdminExtendRevokeGrant:
         verify_response = client.get(f"/api/grants/{grant_id}")
         assert verify_response.status_code == 200
         data = verify_response.json()
-        end_utc = datetime.fromisoformat(data["end_utc"].replace("Z", "+00:00"))
-        assert end_utc <= datetime.utcnow()
+        end_utc_str = data["end_utc"].replace("Z", "+00:00")
+        end_utc = datetime.fromisoformat(end_utc_str)
+        if end_utc.tzinfo is None:
+            end_utc = end_utc.replace(tzinfo=timezone.utc)
+        assert end_utc <= datetime.now(timezone.utc)
 
     def test_revoke_grant_not_found(self, authenticated_client) -> None:
         """Revoking non-existent grant should return 404."""
