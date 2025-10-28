@@ -28,7 +28,7 @@ def authenticated_client(client, admin_user) -> Any:
 class TestAdminSessionCSRF:
     """Test CSRF protection for admin sessions."""
 
-    def test_csrf_token_set_on_login(self, client) -> None:
+    def test_csrf_token_set_on_login(self, client, admin_user) -> None:
         """Login should set csrftoken cookie."""
         response = client.post(
             "/api/admin/auth/login",
@@ -40,7 +40,7 @@ class TestAdminSessionCSRF:
         csrf_token = response.cookies.get("csrftoken")
         assert len(csrf_token) >= 32  # 32-byte minimum
 
-    def test_csrf_token_cookie_attributes(self, client) -> None:
+    def test_csrf_token_cookie_attributes(self, client, admin_user) -> None:
         """CSRF cookie should have SameSite=Strict and Secure attributes."""
         response = client.post(
             "/api/admin/auth/login",
