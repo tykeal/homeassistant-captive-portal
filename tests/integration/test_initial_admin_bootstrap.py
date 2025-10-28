@@ -185,8 +185,7 @@ class TestInitialAdminBootstrap:
         assert response.status_code == 201
 
         # Verify in database (would check AdminUser.password_hash format)
-        stmt = select(AdminUser).where(AdminUser.username == "admin")
-        admin = db_session.exec(stmt).first()
+        admin = db_session.exec(select(AdminUser).where(AdminUser.username == "admin")).first()
         assert admin is not None
         assert admin.password_hash.startswith("$argon2id$")
 

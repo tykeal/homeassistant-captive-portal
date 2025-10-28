@@ -15,8 +15,7 @@ from captive_portal.models.admin_user import AdminUser
 def bootstrapped_admin(client: Any, db_session: Session) -> dict[str, Any]:
     """Create initial admin via bootstrap."""
     # Clear all admins
-    stmt = select(AdminUser)
-    admins = db_session.exec(stmt).all()
+    admins = db_session.exec(select(AdminUser)).all()
     for admin in admins:
         db_session.delete(admin)
     db_session.commit()
@@ -226,10 +225,7 @@ class TestAddAdditionalAdmin:
         assert response.status_code == 201
 
         # Verify in database
-        from sqlmodel import select
-
-        stmt = select(AdminUser).where(AdminUser.username == "admin2")
-        admin = db_session.exec(stmt).first()
+        admin = db_session.exec(select(AdminUser).where(AdminUser.username == "admin2")).first()
         assert admin is not None
         assert admin.password_hash.startswith("$argon2id$")
 
@@ -326,10 +322,7 @@ class TestAddAdditionalAdmin:
         assert delete_response.status_code == 204
 
         # Verify deletion
-        from sqlmodel import select
-
-        stmt = select(AdminUser).where(AdminUser.username == "admin2")
-        admin = db_session.exec(stmt).first()
+        admin = db_session.exec(select(AdminUser).where(AdminUser.username == "admin2")).first()
         assert admin is None
 
     def test_cannot_delete_self(
@@ -340,10 +333,7 @@ class TestAddAdditionalAdmin:
         client.cookies.set("csrftoken", bootstrapped_admin["csrf_token"])
 
         # Get own admin ID
-        from sqlmodel import select
-
-        stmt = select(AdminUser).where(AdminUser.username == "admin")
-        admin = db_session.exec(stmt).first()
+        admin = db_session.exec(select(AdminUser).where(AdminUser.username == "admin")).first()
         assert admin is not None
 
         # Try to delete self

@@ -35,6 +35,7 @@ python_version = "3.13"
 strict = true
 exclude = [
     "^tests/integration/test_admin_.*\\.py$",
+    "^tests/integration/test_add_additional_admin\\.py$",
     "^tests/integration/test_initial_admin_bootstrap\\.py$",
 ]
 
@@ -48,6 +49,7 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
+    "tests.integration.test_add_additional_admin",
     "tests.integration.test_admin_auth_login_logout",
     "tests.integration.test_admin_extend_revoke_grant",
     "tests.integration.test_admin_list_filters",
