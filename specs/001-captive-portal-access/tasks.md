@@ -176,11 +176,11 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0516 [P] NF tests/integration/test_guest_authorization_flow_booking.py (direct + redirect access) (2025-10-29T19:03:10.000Z)
 
 ### Implementation (Portal Routes & Templates per D18, D19)
-- [ ] T0520 US1 web/routes/guest_portal.py (D18: /guest/authorize direct access)
-- [ ] T0521 US1 web/routes/captive_detect.py (D18: detection URL redirects)
-- [ ] T0522 US1 web/templates/guest/authorize.html (D19: unified input field)
-- [ ] T0523 US1 web/templates/guest/welcome.html (D21: success page)
-- [ ] T0524 NF web/templates/guest/error.html (themed error messages)
+- [x] T0520 US1 web/routes/guest_portal.py (D18: /guest/authorize direct access) (2025-10-29T20:26:19.000Z)
+- [x] T0521 US1 web/routes/captive_detect.py (D18: detection URL redirects) (2025-10-29T20:26:19.000Z)
+- [x] T0522 US1 web/templates/guest/authorize.html (D19: unified input field) (2025-10-29T20:26:19.000Z)
+- [x] T0523 US1 web/templates/guest/welcome.html (D21: success page) (2025-10-29T20:26:19.000Z)
+- [x] T0524 NF web/templates/guest/error.html (themed error messages) (2025-10-29T20:26:19.000Z)
 
 ### Implementation (Security & Rate Limiting per D20)
 - [x] T0525 NF security/rate_limiter.py (D20: per-IP, configurable limits, rolling window) (2025-10-29T19:03:10.000Z)
@@ -192,11 +192,11 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0529 NF services/redirect_validator.py (D21: whitelist external domains, prevent open redirect) (2025-10-29T19:03:10.000Z)
 
 ### Implementation (Models & Config per D21, D22)
-- [ ] T0530 NF models/portal_config.py (add success_redirect_url, rate_limit_attempts, rate_limit_window_seconds)
-- [ ] T0531 NF models/ha_integration_config.py (checkout_grace_minutes already added in Phase 3)
+- [x] T0530 NF models/portal_config.py (add success_redirect_url, rate_limit_attempts, rate_limit_window_seconds) (2025-10-29T20:26:19.000Z)
+- [x] T0531 NF models/ha_integration_config.py (checkout_grace_minutes already added in Phase 3) (2025-10-28T09:28:00.000Z)
 
 ### Implementation (Documentation & Review)
-- [ ] T0532 NF docs/guest_authorization.md (FR-018 details, flows, error matrix, D18-D22 decisions)
+- [x] T0532 NF docs/guest_authorization.md (FR-018 details, flows, error matrix, D18-D22 decisions) (2025-10-29T20:26:19.000Z)
 - [ ] T0533 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6
 
 ## Phase 6: Performance & Hardening
