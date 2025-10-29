@@ -25,6 +25,7 @@ class TestGuestAuthorizationFlowVoucher:
             code="ABCD1234",
             created_utc=datetime.now(timezone.utc),
             expires_utc=datetime.now(timezone.utc) + timedelta(days=7),
+            duration_minutes=1440,  # 24 hours
         )
         db_session.add(voucher)
         db_session.commit()
@@ -51,6 +52,7 @@ class TestGuestAuthorizationFlowVoucher:
             code="XYZ789AB",
             created_utc=datetime.now(timezone.utc),
             expires_utc=datetime.now(timezone.utc) + timedelta(days=7),
+            duration_minutes=1440,  # 24 hours
         )
         db_session.add(voucher)
         db_session.commit()

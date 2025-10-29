@@ -190,8 +190,8 @@ class BookingCodeValidator:
             event.end_utc if event.end_utc.tzinfo else event.end_utc.replace(tzinfo=timezone.utc)
         )
 
-        # Allow early check-in up to 24 hours before start (Phase 5: guests can arrive early)
-        early_checkin_window = start_utc - timedelta(hours=24)
+        # Allow early check-in up to 60 minutes before start (Phase 5: guests can arrive early)
+        early_checkin_window = start_utc - timedelta(minutes=60)
         if now < early_checkin_window:
             raise BookingOutsideWindowError("Booking not yet active")
 
