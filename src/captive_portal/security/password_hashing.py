@@ -3,8 +3,9 @@
 
 """Password hashing using argon2 with OWASP parameters."""
 
-from argon2 import PasswordHasher, Type
+from argon2._password_hasher import PasswordHasher
 from argon2.exceptions import InvalidHash, VerificationError, VerifyMismatchError
+from argon2.low_level import Type
 
 # OWASP recommended parameters for argon2id
 # m=65536 (64 MiB memory), t=3 iterations, p=4 parallelism
@@ -32,7 +33,8 @@ def hash_password(password: str) -> str:
         ValueError: If password hashing fails
     """
     try:
-        return _ph.hash(password)
+        hashed: str = _ph.hash(password)
+        return hashed
     except Exception as e:
         raise ValueError(f"Password hashing failed: {e}") from e
 

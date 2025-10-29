@@ -39,10 +39,6 @@ module = "httpx"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["argon2", "argon2.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
 module = [
     "tests.integration.test_add_additional_admin",
     "tests.integration.test_admin_auth_login_logout",
