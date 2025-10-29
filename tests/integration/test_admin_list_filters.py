@@ -50,6 +50,7 @@ def sample_grants(db_session: Session) -> Any:
     # Active grant
     grants.append(
         AccessGrant(
+            device_id="test-device-active",
             mac="AA:BB:CC:DD:EE:01",
             start_utc=datetime.now(timezone.utc) - timedelta(hours=1),
             end_utc=datetime.now(timezone.utc) + timedelta(hours=1),
@@ -60,6 +61,7 @@ def sample_grants(db_session: Session) -> Any:
     # Expired grant
     grants.append(
         AccessGrant(
+            device_id="test-device-expired",
             mac="AA:BB:CC:DD:EE:02",
             start_utc=datetime.now(timezone.utc) - timedelta(hours=3),
             end_utc=datetime.now(timezone.utc) - timedelta(hours=1),
@@ -70,6 +72,7 @@ def sample_grants(db_session: Session) -> Any:
     # Future grant
     grants.append(
         AccessGrant(
+            device_id="test-device-future",
             mac="AA:BB:CC:DD:EE:03",
             start_utc=datetime.now(timezone.utc) + timedelta(hours=1),
             end_utc=datetime.now(timezone.utc) + timedelta(hours=3),

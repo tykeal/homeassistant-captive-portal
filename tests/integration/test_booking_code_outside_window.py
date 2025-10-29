@@ -35,11 +35,12 @@ class TestBookingCodeOutsideWindow:
         event = RentalControlEvent(
             integration_id="rental1",
             event_index=0,
-            start=now + timedelta(hours=2),  # starts in 2 hours
-            end=now + timedelta(days=1),
+            start_utc=now + timedelta(hours=2),  # starts in 2 hours
+            end_utc=now + timedelta(days=1),
             slot_code="1234",
             slot_name="Future",
             last_four="5678",
+            raw_attributes="{}",
         )
         db_session.add(event)
         db_session.commit()
@@ -62,11 +63,12 @@ class TestBookingCodeOutsideWindow:
         event = RentalControlEvent(
             integration_id="rental1",
             event_index=0,
-            start=now - timedelta(days=2),
-            end=now - timedelta(hours=1),  # ended 1 hour ago (> 15min grace)
+            start_utc=now - timedelta(days=2),
+            end_utc=now - timedelta(hours=1),  # ended 1 hour ago (> 15min grace)
             slot_code="1234",
             slot_name="Expired",
             last_four="5678",
+            raw_attributes="{}",
         )
         db_session.add(event)
         db_session.commit()

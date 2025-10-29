@@ -33,11 +33,12 @@ class TestGuestAuthorizationFlowBooking:
         event = RentalControlEvent(
             integration_id="rental1",
             event_index=0,
-            start=now - timedelta(hours=1),
-            end=now + timedelta(hours=23),
+            start_utc=now - timedelta(hours=1),
+            end_utc=now + timedelta(hours=23),
             slot_code="1234",
             slot_name="Smith",
             last_four="5678",
+            raw_attributes="{}",
         )
         db_session.add(event)
         db_session.commit()
@@ -70,11 +71,12 @@ class TestGuestAuthorizationFlowBooking:
         event = RentalControlEvent(
             integration_id="rental1",
             event_index=0,
-            start=now - timedelta(hours=1),
-            end=now + timedelta(hours=23),
+            start_utc=now - timedelta(hours=1),
+            end_utc=now + timedelta(hours=23),
             slot_code="5678",
             slot_name="Doe",
             last_four="1234",
+            raw_attributes="{}",
         )
         db_session.add(event)
         db_session.commit()

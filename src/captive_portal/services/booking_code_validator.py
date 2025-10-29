@@ -3,7 +3,7 @@
 """Booking code validation service with case-insensitive matching."""
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlmodel import Session, func, select
@@ -85,7 +85,7 @@ class BookingCodeValidator:
         # LOWER(field) = LOWER(input)
         statement: Any = (
             select(RentalControlEvent)
-            .where(RentalControlEvent.integration_id == integration.id)
+            .where(RentalControlEvent.integration_id == integration.integration_id)
             .where(func.lower(getattr(RentalControlEvent, attr_name)) == normalized_input.lower())
         )
 
@@ -180,14 +180,24 @@ class BookingCodeValidator:
         now = datetime.now(timezone.utc)
         grace_minutes = integration.checkout_grace_minutes
 
-        # Check if before start
-        if now < event.start_utc:
+        # Ensure event times are timezone-aware for comparison
+        start_utc = (
+            event.start_utc
+            if event.start_utc.tzinfo
+            else event.start_utc.replace(tzinfo=timezone.utc)
+        )
+        end_utc = (
+            event.end_utc if event.end_utc.tzinfo else event.end_utc.replace(tzinfo=timezone.utc)
+        )
+
+        # Allow early check-in up to 24 hours before start (Phase 5: guests can arrive early)
+        early_checkin_window = start_utc - timedelta(hours=24)
+        if now < early_checkin_window:
             raise BookingOutsideWindowError("Booking not yet active")
 
         # Check if after end + grace
-        from datetime import timedelta
 
-        effective_end = event.end_utc + timedelta(minutes=grace_minutes)
+        effective_end = end_utc + timedelta(minutes=grace_minutes)
         if now > effective_end:
             raise BookingOutsideWindowError("Booking expired")
 
@@ -207,7 +217,7 @@ class BookingCodeValidator:
             booking_ref=code,  # Use booking_ref field
             mac="00:00:00:00:00:00",  # Placeholder, will be updated by controller
             integration_id=integration.integration_id,
-            start_utc=event.start_utc,
+            start_utc=start_utc,
             end_utc=effective_end,
         )
 

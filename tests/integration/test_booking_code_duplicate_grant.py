@@ -36,11 +36,12 @@ class TestBookingCodeDuplicateGrant:
         event = RentalControlEvent(
             integration_id="rental1",
             event_index=0,
-            start=now - timedelta(hours=1),
-            end=now + timedelta(hours=23),
+            start_utc=now - timedelta(hours=1),
+            end_utc=now + timedelta(hours=23),
             slot_code="1234",
             slot_name="Smith",
             last_four="5678",
+            raw_attributes="{}",
         )
         db_session.add(event)
         db_session.commit()
@@ -76,11 +77,12 @@ class TestBookingCodeDuplicateGrant:
         event = RentalControlEvent(
             integration_id="rental1",
             event_index=0,
-            start=now - timedelta(hours=1),
-            end=now + timedelta(hours=23),
+            start_utc=now - timedelta(hours=1),
+            end_utc=now + timedelta(hours=23),
             slot_code="1234",
             slot_name="Smith",
             last_four="5678",
+            raw_attributes="{}",
         )
         db_session.add(event)
         db_session.commit()
@@ -88,7 +90,8 @@ class TestBookingCodeDuplicateGrant:
         # Create expired grant
         old_grant = AccessGrant(
             device_id="device_old",
-            booking_identifier="1234",
+            mac="00:00:00:00:00:01",
+            booking_ref="1234",
             integration_id="rental1",
             start_utc=now - timedelta(days=2),
             end_utc=now - timedelta(days=1),  # expired
@@ -101,4 +104,4 @@ class TestBookingCodeDuplicateGrant:
         grant = await validator.validate_and_create_grant(code="1234", device_id="device_new")
 
         assert grant is not None
-        assert grant.booking_identifier == "1234"
+        assert grant.booking_ref == "1234"

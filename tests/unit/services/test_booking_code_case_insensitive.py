@@ -51,7 +51,7 @@ def sample_event(
 ) -> RentalControlEvent:
     """Create a sample rental control event with mixed case slot_code."""
     event = RentalControlEvent(
-        integration_id=sample_integration.id,
+        integration_id=sample_integration.integration_id,
         event_index=0,
         slot_code="ABC123",  # Mixed case
         slot_name="John Doe",
@@ -160,7 +160,7 @@ def test_booking_code_respects_identifier_attr_slot_name(
 
     # Create event with different slot_name case
     event = RentalControlEvent(
-        integration_id=integration.id,
+        integration_id=integration.integration_id,
         event_index=0,
         slot_code="999999",
         slot_name="Jane Smith",  # Mixed case

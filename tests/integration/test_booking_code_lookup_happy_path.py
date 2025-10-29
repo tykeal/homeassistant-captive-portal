@@ -34,11 +34,12 @@ class TestBookingCodeLookupHappyPath:
         event = RentalControlEvent(
             integration_id="rental1",
             event_index=0,
-            start=now - timedelta(hours=2),
-            end=now + timedelta(hours=2),
+            start_utc=now - timedelta(hours=2),
+            end_utc=now + timedelta(hours=2),
             slot_code="1234",
             slot_name="Smith",
             last_four="5678",
+            raw_attributes="{}",
         )
         db_session.add(event)
         db_session.commit()
@@ -66,11 +67,12 @@ class TestBookingCodeLookupHappyPath:
         event = RentalControlEvent(
             integration_id="rental1",
             event_index=1,
-            start=now + timedelta(hours=1),
-            end=now + timedelta(days=1),
+            start_utc=now + timedelta(hours=1),
+            end_utc=now + timedelta(days=1),
             slot_code="5678",
             slot_name="Doe",
             last_four="1234",
+            raw_attributes="{}",
         )
         db_session.add(event)
         db_session.commit()
@@ -97,11 +99,12 @@ class TestBookingCodeLookupHappyPath:
         event = RentalControlEvent(
             integration_id="rental1",
             event_index=0,
-            start=now - timedelta(hours=24),
-            end=now + timedelta(minutes=15),  # ends in 15 min
+            start_utc=now - timedelta(hours=24),
+            end_utc=now + timedelta(minutes=15),  # ends in 15 min
             slot_code="9999",
             slot_name="Grace",
             last_four="0000",
+            raw_attributes="{}",
         )
         db_session.add(event)
         db_session.commit()
