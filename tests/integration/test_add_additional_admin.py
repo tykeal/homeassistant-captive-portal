@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Andrew Grimberg
 # SPDX-License-Identifier: Apache-2.0
+# mypy: disable-error-code="no-untyped-call"
 
 """Integration tests for adding additional admin accounts."""
 
@@ -15,7 +16,7 @@ from captive_portal.models.admin_user import AdminUser
 def bootstrapped_admin(client: Any, db_session: Session) -> dict[str, Any]:
     """Create initial admin via bootstrap."""
     # Clear all admins
-    admins = db_session.exec(select(AdminUser)).all()
+    admins = list(db_session.exec(select(AdminUser)).all())
     for admin in admins:
         db_session.delete(admin)
     db_session.commit()

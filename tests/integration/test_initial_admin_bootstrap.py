@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2025 Andrew Grimberg
 # SPDX-License-Identifier: Apache-2.0
+# mypy: disable-error-code="no-untyped-call"
 
 """Integration tests for initial admin bootstrap on first run."""
 
@@ -16,13 +17,13 @@ from captive_portal.models.admin_user import AdminUser
 def empty_admin_table(db_session: Session) -> Any:
     """Ensure admin table is empty."""
     # Clear all admins
-    admins = db_session.exec(select(AdminUser)).all()
+    admins = list(db_session.exec(select(AdminUser)).all())
     for admin in admins:
         db_session.delete(admin)
     db_session.commit()
     yield
     # Cleanup
-    admins = db_session.exec(select(AdminUser)).all()
+    admins = list(db_session.exec(select(AdminUser)).all())
     for admin in admins:
         db_session.delete(admin)
     db_session.commit()

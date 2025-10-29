@@ -33,11 +33,18 @@ fail-under = 100
 [tool.mypy]
 python_version = "3.13"
 strict = true
-exclude = [
-    "^tests/integration/test_admin_.*\\.py$",
-    "^tests/integration/test_add_additional_admin\\.py$",
-    "^tests/integration/test_initial_admin_bootstrap\\.py$",
-]
+
+[[tool.mypy.overrides]]
+module = "tests.integration.test_admin_*"
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+module = "tests.integration.test_add_additional_admin"
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+module = "tests.integration.test_initial_admin_bootstrap"
+disallow_untyped_calls = false
 
 [[tool.mypy.overrides]]
 module = "httpx"
