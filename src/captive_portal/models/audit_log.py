@@ -28,10 +28,10 @@ class AuditLog(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     actor: str = Field(max_length=128, index=True)
-    role_snapshot: str = Field(max_length=32)
+    role_snapshot: str | None = Field(default=None, max_length=32)
     action: str = Field(max_length=64, index=True)
-    target_type: str = Field(max_length=32)
-    target_id: str = Field(max_length=128)
+    target_type: str | None = Field(default=None, max_length=32)
+    target_id: str | None = Field(default=None, max_length=128)
     timestamp_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     outcome: str = Field(max_length=32)
     meta: Optional[dict[str, Any]] = Field(default=None, sa_column=Column(JSON))

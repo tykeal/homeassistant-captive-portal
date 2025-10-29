@@ -27,6 +27,6 @@ def test_grants_list_allow(role: str, status: int) -> None:
 
 def test_health_allows_viewer() -> None:
     """Viewer role allowed to read health endpoint."""
-    r = client.get("/health", headers={"X-Role": "viewer"})
+    r = client.get("/api/health", headers={"X-Role": "viewer"})
     assert r.status_code == 200
     assert r.json()["status"] == "ok"

@@ -2,11 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """Database initialization and table creation via SQLModel."""
 
+from collections.abc import Generator
+from typing import Optional
+
 from sqlalchemy.engine import Engine
-from sqlmodel import create_engine, SQLModel
+from sqlmodel import create_engine, Session, SQLModel
 
 # Import all models to ensure they're registered with SQLModel metadata
 from captive_portal.models.access_grant import AccessGrant
+from captive_portal.models.admin_session import AdminSession
 from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.audit_log import AuditLog
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
@@ -15,6 +19,7 @@ from captive_portal.models.voucher import Voucher
 
 __all__ = [
     "AccessGrant",
+    "AdminSession",
     "AdminUser",
     "AuditLog",
     "HAIntegrationConfig",
@@ -22,7 +27,11 @@ __all__ = [
     "Voucher",
     "create_db_engine",
     "init_db",
+    "get_session",
 ]
+
+# Global engine instance (initialized by application)
+_engine: Optional[Engine] = None
 
 
 def create_db_engine(database_url: str, echo: bool = False) -> Engine:
@@ -35,12 +44,14 @@ def create_db_engine(database_url: str, echo: bool = False) -> Engine:
     Returns:
         Configured SQLAlchemy engine
     """
+    global _engine
     connect_args = {}
     if database_url.startswith("sqlite"):
         # SQLite-specific: enable foreign key constraints
         connect_args = {"check_same_thread": False}
 
-    return create_engine(database_url, echo=echo, connect_args=connect_args)
+    _engine = create_engine(database_url, echo=echo, connect_args=connect_args)
+    return _engine
 
 
 def init_db(engine: Engine, drop_existing: bool = False) -> None:
@@ -53,3 +64,15 @@ def init_db(engine: Engine, drop_existing: bool = False) -> None:
     if drop_existing:
         SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
+
+
+def get_session() -> Generator[Session, None, None]:
+    """FastAPI dependency for database sessions.
+
+    Yields:
+        Database session that will be automatically closed after use.
+    """
+    if _engine is None:
+        raise RuntimeError("Database engine not initialized. Call create_db_engine() first.")
+    with Session(_engine) as session:
+        yield session

@@ -16,6 +16,9 @@ dependencies = [
   "pydantic",
   "jinja2",
   "passlib[bcrypt]",
+  "argon2-cffi>=25.1.0",
+  "email-validator>=2.3.0",
+  "python-multipart>=0.0.20",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +37,19 @@ strict = true
 [[tool.mypy.overrides]]
 module = "httpx"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.integration.test_add_additional_admin",
+    "tests.integration.test_admin_auth_login_logout",
+    "tests.integration.test_admin_extend_revoke_grant",
+    "tests.integration.test_admin_list_filters",
+    "tests.integration.test_admin_session_csrf",
+    "tests.integration.test_admin_session_timeout",
+    "tests.integration.test_initial_admin_bootstrap",
+]
+disallow_untyped_calls = false
+disallow_untyped_defs = false
 
 [build-system]
 requires = ["setuptools", "wheel"]

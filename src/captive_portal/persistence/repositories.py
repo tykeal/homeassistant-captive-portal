@@ -4,7 +4,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Generic, Optional, TypeVar, List
+from typing import Generic, Optional, TypeVar, List, cast, Any
 from uuid import UUID
 
 from sqlmodel import Session, select
@@ -78,7 +78,7 @@ class VoucherRepository(BaseRepository[Voucher]):
         Returns:
             Voucher instance or None
         """
-        return self.session.get(Voucher, code)
+        return cast(Optional[Voucher], self.session.get(Voucher, code))
 
     def find_by_booking_ref(self, booking_ref: str) -> List[Voucher]:
         """Find vouchers by booking reference (case-sensitive).
@@ -89,8 +89,9 @@ class VoucherRepository(BaseRepository[Voucher]):
         Returns:
             List of matching vouchers
         """
-        statement = select(Voucher).where(Voucher.booking_ref == booking_ref)
-        return list(self.session.exec(statement).all())
+        statement: Any = select(Voucher).where(Voucher.booking_ref == booking_ref)
+        results: list[Voucher] = list(self.session.exec(statement).all())
+        return results
 
 
 class AccessGrantRepository(BaseRepository[AccessGrant]):
@@ -109,7 +110,7 @@ class AccessGrantRepository(BaseRepository[AccessGrant]):
         Returns:
             AccessGrant instance or None
         """
-        return self.session.get(AccessGrant, grant_id)
+        return cast(Optional[AccessGrant], self.session.get(AccessGrant, grant_id))
 
     def find_active_by_mac(self, mac: str) -> List[AccessGrant]:
         """Find active grants for MAC address.
@@ -122,12 +123,13 @@ class AccessGrantRepository(BaseRepository[AccessGrant]):
         """
         from captive_portal.models.access_grant import GrantStatus
 
-        statement = (
+        statement: Any = (
             select(AccessGrant)
             .where(AccessGrant.mac == mac)
             .where(AccessGrant.status == GrantStatus.ACTIVE)
         )
-        return list(self.session.exec(statement).all())
+        results: list[AccessGrant] = list(self.session.exec(statement).all())
+        return results
 
 
 class AdminUserRepository(BaseRepository[AdminUser]):
@@ -146,7 +148,7 @@ class AdminUserRepository(BaseRepository[AdminUser]):
         Returns:
             AdminUser instance or None
         """
-        return self.session.get(AdminUser, user_id)
+        return cast(Optional[AdminUser], self.session.get(AdminUser, user_id))
 
     def get_by_username(self, username: str) -> Optional[AdminUser]:
         """Retrieve admin user by username.
@@ -157,8 +159,9 @@ class AdminUserRepository(BaseRepository[AdminUser]):
         Returns:
             AdminUser instance or None
         """
-        statement = select(AdminUser).where(AdminUser.username == username)
-        return self.session.exec(statement).first()
+        statement: Any = select(AdminUser).where(AdminUser.username == username)
+        result: AdminUser | None = self.session.exec(statement).first()
+        return result
 
 
 class AuditLogRepository(BaseRepository[AuditLog]):
@@ -177,7 +180,7 @@ class AuditLogRepository(BaseRepository[AuditLog]):
         Returns:
             AuditLog instance or None
         """
-        return self.session.get(AuditLog, log_id)
+        return cast(Optional[AuditLog], self.session.get(AuditLog, log_id))
 
 
 class HAIntegrationConfigRepository(BaseRepository[HAIntegrationConfig]):
@@ -196,7 +199,7 @@ class HAIntegrationConfigRepository(BaseRepository[HAIntegrationConfig]):
         Returns:
             HAIntegrationConfig instance or None
         """
-        return self.session.get(HAIntegrationConfig, config_id)
+        return cast(Optional[HAIntegrationConfig], self.session.get(HAIntegrationConfig, config_id))
 
     def get_by_integration_id(self, integration_id: str) -> Optional[HAIntegrationConfig]:
         """Retrieve config by integration ID.
@@ -207,10 +210,11 @@ class HAIntegrationConfigRepository(BaseRepository[HAIntegrationConfig]):
         Returns:
             HAIntegrationConfig instance or None
         """
-        statement = select(HAIntegrationConfig).where(
+        statement: Any = select(HAIntegrationConfig).where(
             HAIntegrationConfig.integration_id == integration_id
         )
-        return self.session.exec(statement).first()
+        result: HAIntegrationConfig | None = self.session.exec(statement).first()
+        return result
 
 
 class RentalControlEventRepository(BaseRepository[RentalControlEvent]):
@@ -229,7 +233,7 @@ class RentalControlEventRepository(BaseRepository[RentalControlEvent]):
         Returns:
             RentalControlEvent instance or None
         """
-        return self.session.get(RentalControlEvent, event_id)
+        return cast(Optional[RentalControlEvent], self.session.get(RentalControlEvent, event_id))
 
     async def upsert(self, event: RentalControlEvent) -> RentalControlEvent:
         """Insert or update event record.
@@ -243,11 +247,11 @@ class RentalControlEventRepository(BaseRepository[RentalControlEvent]):
             Updated event instance
         """
         # Check for existing event
-        statement = select(RentalControlEvent).where(
+        statement: Any = select(RentalControlEvent).where(
             RentalControlEvent.integration_id == event.integration_id,
             RentalControlEvent.event_index == event.event_index,
         )
-        existing = self.session.exec(statement).first()
+        existing: RentalControlEvent | None = self.session.exec(statement).first()
 
         if existing:
             # Update existing
@@ -275,8 +279,8 @@ class RentalControlEventRepository(BaseRepository[RentalControlEvent]):
         Returns:
             Number of deleted events
         """
-        statement = select(RentalControlEvent).where(RentalControlEvent.end_utc < cutoff_date)
-        events_to_delete = list(self.session.exec(statement).all())
+        statement: Any = select(RentalControlEvent).where(RentalControlEvent.end_utc < cutoff_date)
+        events_to_delete: list[RentalControlEvent] = list(self.session.exec(statement).all())
 
         for event in events_to_delete:
             self.session.delete(event)

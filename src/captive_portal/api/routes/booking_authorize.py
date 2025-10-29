@@ -5,7 +5,7 @@
 import logging
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, cast, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -108,7 +108,10 @@ async def authorize_booking(
     # This is a placeholder that validates the structure
 
     # Get all integrations (simplified - should use proper lookup)
-    integrations = session.exec(select(HAIntegrationConfig)).all()
+    statement: Any = select(HAIntegrationConfig)
+    integrations: list[HAIntegrationConfig] = list(
+        cast(list[HAIntegrationConfig], session.exec(statement).all())
+    )
 
     if not integrations:
         raise HTTPException(
@@ -154,9 +157,8 @@ async def authorize_booking(
         )
 
     # Check for existing grant (idempotency)
-    existing_grant = session.exec(
-        select(AccessGrant).where(AccessGrant.booking_ref == request.booking_code)
-    ).first()
+    check_stmt: Any = select(AccessGrant).where(AccessGrant.booking_ref == request.booking_code)
+    existing_grant = cast(Optional[AccessGrant], session.exec(check_stmt).first())
 
     if existing_grant:
         logger.info(f"Duplicate authorization attempt for booking {request.booking_code}")

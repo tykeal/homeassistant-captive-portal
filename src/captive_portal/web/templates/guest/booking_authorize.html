@@ -1,0 +1,206 @@
+<!--
+SPDX-FileCopyrightText: 2025 Andrew Grimberg
+SPDX-License-Identifier: Apache-2.0
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guest Authorization - Booking Code</title>
+    <style>
+        :root {
+            --primary-color: {{ theme.primary_color if theme else '#007bff' }};
+            --background-color: {{ theme.background_color if theme else '#ffffff' }};
+            --text-color: {{ theme.text_color if theme else '#333333' }};
+            --logo-url: {{ 'url(' + theme.logo_url + ')' if theme and theme.logo_url else 'none' }};
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .logo {
+            width: 200px;
+            height: 80px;
+            margin-bottom: 2rem;
+            background-image: var(--logo-url);
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-size: 1.75rem;
+        }
+
+        .instructions {
+            text-align: center;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .button {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .button:hover {
+            opacity: 0.9;
+        }
+
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 0.75rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            border: 1px solid #c3e6cb;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+
+        .back-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.875rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo" role="img" aria-label="Property Logo"></div>
+    <div class="container">
+        <h1>Booking Authorization</h1>
+
+        {% if error %}
+        <div class="error-message" role="alert">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        {% if success %}
+        <div class="success-message" role="alert">
+            {{ success }}
+        </div>
+        {% else %}
+        <div class="instructions">
+            <p>Please enter your booking code to connect to WiFi.</p>
+            <p><small>Your booking code can be found in your reservation confirmation.</small></p>
+        </div>
+
+        <form method="POST" action="/guest/booking/authorize">
+            <div class="form-group">
+                <label for="booking_code" class="form-label">Booking Code</label>
+                <input type="text"
+                       id="booking_code"
+                       name="booking_code"
+                       class="form-control"
+                       required
+                       autofocus
+                       placeholder="Enter your booking code"
+                       autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="button">Connect to WiFi</button>
+            </div>
+        </form>
+
+        <div class="back-link">
+            <a href="/guest">&larr; Back to main page</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        <p>Captive Portal v1.0 | Powered by Home Assistant</p>
+    </div>
+</body>
+</html>

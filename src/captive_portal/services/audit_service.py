@@ -223,3 +223,32 @@ class AuditService:
             target_id=target_id,
             meta={"rbac_denial": True},
         )
+
+    async def log_admin_action(
+        self,
+        admin_id: UUID,
+        action: str,
+        target_type: Optional[str] = None,
+        target_id: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> AuditLog:
+        """Log general admin action.
+
+        Args:
+            admin_id: Admin user ID performing action
+            action: Action identifier (e.g., 'list_grants', 'extend_grant')
+            target_type: Optional target entity type
+            target_id: Optional target entity ID
+            metadata: Optional additional metadata
+
+        Returns:
+            Audit log entry
+        """
+        return await self.log(
+            actor=str(admin_id),
+            action=action,
+            outcome="success",
+            target_type=target_type,
+            target_id=target_id,
+            meta=metadata,
+        )

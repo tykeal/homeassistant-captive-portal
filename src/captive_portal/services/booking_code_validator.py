@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Booking code validation service with case-insensitive matching."""
 
-from typing import Optional
+from typing import Optional, Any
 
 from sqlmodel import Session, func, select
 
@@ -56,11 +56,11 @@ class BookingCodeValidator:
 
         # Build case-insensitive query
         # LOWER(field) = LOWER(input)
-        statement = (
+        statement: Any = (
             select(RentalControlEvent)
             .where(RentalControlEvent.integration_id == integration.id)
             .where(func.lower(getattr(RentalControlEvent, attr_name)) == normalized_input.lower())
         )
 
-        result = self.session.exec(statement).first()
+        result: RentalControlEvent | None = self.session.exec(statement).first()
         return result

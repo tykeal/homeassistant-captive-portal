@@ -4,7 +4,7 @@
 
 import logging
 from collections.abc import Generator
-from typing import Optional
+from typing import Optional, cast, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -121,11 +121,12 @@ async def create_integration(
         HTTPException: If integration_id already exists (409 Conflict)
     """
     # Check for duplicate integration_id
-    existing = session.exec(
-        select(HAIntegrationConfig).where(
-            HAIntegrationConfig.integration_id == config.integration_id
-        )
-    ).first()
+    statement: Any = select(HAIntegrationConfig).where(
+        HAIntegrationConfig.integration_id == config.integration_id
+    )
+    existing: HAIntegrationConfig | None = cast(
+        Optional[HAIntegrationConfig], session.exec(statement).first()
+    )
 
     if existing:
         raise HTTPException(
@@ -165,8 +166,11 @@ async def list_integrations(
     Returns:
         List of integration configurations
     """
-    configs = session.exec(select(HAIntegrationConfig)).all()
-    return list(configs)
+    statement: Any = select(HAIntegrationConfig)
+    configs: list[HAIntegrationConfig] = list(
+        cast(list[HAIntegrationConfig], session.exec(statement).all())
+    )
+    return configs
 
 
 @router.get("/{config_id}", response_model=IntegrationConfigResponse)
@@ -188,7 +192,7 @@ async def get_integration(
     Raises:
         HTTPException: If configuration not found (404)
     """
-    config = session.get(HAIntegrationConfig, config_id)
+    config = cast(Optional[HAIntegrationConfig], session.get(HAIntegrationConfig, config_id))
 
     if not config:
         raise HTTPException(
@@ -237,6 +241,7 @@ async def update_integration(
     session.add(config)
     session.commit()
     session.refresh(config)
+    assert isinstance(config, HAIntegrationConfig)
 
     logger.info(f"Updated HA integration config: {config.integration_id}")
 

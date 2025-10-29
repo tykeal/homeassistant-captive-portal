@@ -2,10 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """App factory and minimal health endpoint (Phase 0 placeholder)."""
 
-from typing import Any, Callable
-from fastapi import FastAPI, Depends
-from . import middleware
 import logging
+from typing import Any, Callable
+
+from fastapi import Depends, FastAPI, Request
+
+from captive_portal.security.session_middleware import (
+    SessionConfig,
+    SessionMiddleware,
+)
 
 logger = logging.getLogger("captive_portal")
 
@@ -18,17 +23,37 @@ def create_app() -> FastAPI:
     """
     app = FastAPI(title="Captive Portal Guest Access")
 
-    @app.get("/health", tags=["internal"])  # basic health for addon
-    async def health() -> dict[str, str]:  # pragma: no cover - trivial
-        """Health check endpoint.
+    # Initialize shared session store and config
+    from captive_portal.security.session_middleware import SessionStore
 
-        Returns:
-            Status dictionary
-        """
-        return {"status": "ok"}
+    session_config = SessionConfig()
+    session_store = SessionStore()
+    # Store both in app state for access by routes
+    app.state.session_config = session_config
+    app.state.session_store = session_store
+
+    # Add session middleware with shared store
+    app.add_middleware(SessionMiddleware, config=session_config, store=session_store)
+
+    # Register routes
+    from captive_portal.api.routes import (
+        admin_accounts,
+        admin_auth,
+        grants,
+        health,
+        integrations_ui,
+        vouchers,
+    )
+    from captive_portal import middleware
+
+    app.include_router(admin_accounts.router)
+    app.include_router(admin_auth.router)
+    app.include_router(grants.router)
+    app.include_router(health.router)
+    app.include_router(vouchers.router)
+    app.include_router(integrations_ui.router)
 
     # Example protected listing endpoint placeholder (no real data yet)
-    from fastapi import Request  # local import inside factory
 
     def enforce(action: str) -> Callable[..., Any]:
         """Create RBAC enforcement dependency.

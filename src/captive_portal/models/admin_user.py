@@ -25,8 +25,9 @@ class AdminUser(SQLModel, table=True):
     Attributes:
         id: Primary key (UUID)
         username: Unique username
+        email: Admin email address
         role: RBAC role (viewer, auditor, operator, admin)
-        password_hash: Bcrypt password hash
+        password_hash: Argon2 password hash (PHC format)
         created_utc: Creation timestamp (UTC)
         last_login_utc: Last successful login timestamp (UTC, nullable)
         active: Account active flag
@@ -35,9 +36,14 @@ class AdminUser(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     username: str = Field(unique=True, max_length=64, index=True)
+    email: str = Field(max_length=255, index=True)
     role: AdminRole = Field(default=AdminRole.VIEWER)
-    password_hash: str = Field(max_length=128)  # Bcrypt hash
+    password_hash: str = Field(max_length=255)  # Argon2 PHC format
     created_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_login_utc: Optional[datetime] = Field(default=None)
     active: bool = Field(default=True)
     version: int = Field(default=1, sa_column_kwargs={"server_default": "1"})
+
+
+# Alias for API response models to distinguish from database models
+AdminAccount = AdminUser

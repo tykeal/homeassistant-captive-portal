@@ -109,45 +109,45 @@ SPDX-License-Identifier: Apache-2.0
 
 ### Implementation (Metrics & Review)
 - [x] T0313 NF metrics instrumentation (authorize latency, polling errors, cleanup counts, booking_code validation) (2025-10-26T21:22:00.000Z)
-- [ ] T0314 NF Phase 3 review: re-evaluate spec analysis & list decisions required for Phase 4
+- [x] T0314 NF Phase 3 review: re-evaluate spec analysis & list decisions required for Phase 4 (2025-10-27T12:43:00.000Z)
 
 ## Phase 4: Admin Web Interface & Theming (See phase4_decisions.md for D12-D17)
 ### Tests First
-- [ ] T0400 [P] US2 tests/integration/test_admin_auth_login_logout.py
-- [ ] T0401 [P] US2 tests/integration/test_admin_session_csrf.py (D14: double-submit cookie)
-- [ ] T0401a [P] US2 tests/integration/test_admin_session_timeout.py (D17: idle 30min + absolute 8hr)
-- [ ] T0402 [P] US2 tests/integration/test_admin_extend_revoke_grant.py
-- [ ] T0403 [P] US2 tests/integration/test_admin_list_filters.py
-- [ ] T0404 [P] US3 tests/integration/test_entity_mapping_save_retrieve.py
-- [ ] T0405 [P] US4 tests/integration/test_initial_admin_bootstrap.py
-- [ ] T0406 [P] US4 tests/integration/test_add_additional_admin.py
-- [ ] T0407 [P] NF tests/unit/security/test_argon2_password_hashing.py (D13: OWASP params)
+- [x] T0400 [P] US2 tests/integration/test_admin_auth_login_logout.py (2025-10-27T12:10:00.000Z)
+- [x] T0401 [P] US2 tests/integration/test_admin_session_csrf.py (D14: double-submit cookie) (2025-10-27T11:14:00.000Z)
+- [x] T0401a [P] US2 tests/integration/test_admin_session_timeout.py (D17: idle 30min + absolute 8hr) (2025-10-27T11:14:00.000Z)
+- [x] T0402 [P] US2 tests/integration/test_admin_extend_revoke_grant.py (2025-10-27T11:14:00.000Z)
+- [x] T0403 [P] US2 tests/integration/test_admin_list_filters.py (2025-10-27T11:14:00.000Z)
+- [x] T0404 [P] US3 tests/integration/test_entity_mapping_save_retrieve.py (2025-10-27T11:14:00.000Z)
+- [x] T0405 [P] US4 tests/integration/test_initial_admin_bootstrap.py (2025-10-27T11:14:00.000Z)
+- [x] T0406 [P] US4 tests/integration/test_add_additional_admin.py (2025-10-27T20:20:00.000Z)
+- [x] T0407 [P] NF tests/unit/security/test_argon2_password_hashing.py (D13: OWASP params) (2025-10-27T11:14:00.000Z)
 
 ### Implementation (Security & Auth per D12-D14, D17)
-- [ ] T0410 US4 security/password_hashing.py (D13: argon2-cffi, OWASP params m=65536/t=3/p=4)
-- [ ] T0411 US4 security/session_middleware.py (D12: HTTP-only session cookies, D17: 30min idle/8hr absolute)
-- [ ] T0412 US4 security/csrf.py (D14: double-submit cookie, 32-byte token)
-- [ ] T0413 US2 api/routes/admin_auth.py (login/logout, bootstrap)
-- [ ] T0413a NF alembic/versions/XXX_create_admin_session_table.py (migration for AdminSession model)
+- [x] T0410 US4 security/password_hashing.py (D13: argon2-cffi, OWASP params m=65536/t=3/p=4)
+- [x] T0411 US4 security/session_middleware.py (D12: HTTP-only session cookies, D17: 30min idle/8hr absolute)
+- [x] T0412 US4 security/csrf.py (D14: double-submit cookie, 32-byte token)
+- [x] T0413 US2 api/routes/admin_auth.py (login/logout, bootstrap)
+- [x] T0413a NF N/A - Tables auto-created via SQLModel.metadata.create_all (AdminSession model) (2025-10-27T19:22:00.000Z)
 
 ### Implementation (Admin UI Routes & Templates per D15-D16)
-- [ ] T0414 US2 api/routes/grants.py (list/extend/revoke)
-- [ ] T0415 US1 api/routes/vouchers.py (redeem)
-- [ ] T0416 US3 api/routes/entity_mapping.py
-- [ ] T0417 NF api/routes/health.py
-- [ ] T0418 NF web/templates/portal/index.html (D16: CSS variable theming)
-- [ ] T0419 NF web/templates/admin/dashboard.html
-- [ ] T0420 NF web/themes/default/theme.css (D15: minimal CSS, no framework)
-- [ ] T0420a NF alembic/versions/XXX_create_guest_portal_theme_table.py (migration for GuestPortalTheme model per D16)
+- [x] T0414 US2 api/routes/grants.py (list/extend/revoke) (2025-10-27T19:22:00.000Z)
+- [x] T0415 US1 api/routes/vouchers.py (redeem) (2025-10-27T19:22:00.000Z)
+- [x] T0416 US3 N/A - Entity mapping handled via existing integrations route (2025-10-27T19:22:00.000Z)
+- [x] T0417 NF api/routes/health.py (2025-10-27T19:22:00.000Z)
+- [x] T0418 NF web/templates/portal/index.html (D16: CSS variable theming) (2025-10-27T19:22:00.000Z)
+- [x] T0419 NF web/templates/admin/dashboard.html (2025-10-27T19:22:00.000Z)
+- [x] T0420 NF web/themes/default/theme.css (D15: minimal CSS, no framework) (2025-10-27T19:22:00.000Z)
+- [x] T0420a NF N/A - Tables auto-created via SQLModel.metadata.create_all (GuestPortalTheme model) (2025-10-27T19:22:00.000Z)
 
 ### Implementation (Phase 3 UI Deferred per D11)
-- [ ] T0422 US3 web/templates/admin/integrations.html (HA config form: integration_id, auth_attribute dropdown, grace_minutes)
-- [ ] T0423 US3 web/templates/guest/booking_authorize.html (guest booking code form, D16: themed)
-- [ ] T0424 US2 web/templates/admin/grants_enhanced.html (show booking identifier, grace period, integration source)
-- [ ] T0425 US3 api/routes/integrations_ui.py (UI routes for integration config forms)
+- [x] T0422 US3 web/templates/admin/integrations.html (HA config form: integration_id, auth_attribute dropdown, grace_minutes) (2025-10-27T19:22:00.000Z)
+- [x] T0423 US3 web/templates/guest/booking_authorize.html (guest booking code form, D16: themed) (2025-10-27T19:22:00.000Z)
+- [x] T0424 US2 web/templates/admin/grants_enhanced.html (show booking identifier, grace period, integration source) (2025-10-27T19:22:00.000Z)
+- [x] T0425 US3 api/routes/integrations_ui.py (UI routes for integration config forms) (2025-10-27T19:22:00.000Z)
 
 ### Review
-- [ ] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5
+- [x] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5 (2025-10-27T20:20:00.000Z)
 
 ## Phase 5: Guest Authorization & Booking Code Validation
 ### Tests First

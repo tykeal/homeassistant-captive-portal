@@ -146,7 +146,8 @@ class GrantService:
             current_time: Optional current time (defaults to now UTC)
 
         Returns:
-            Updated grant with REVOKED status
+            Updated grant with REVOKED status and end_utc set to current time
+            (truncated to second precision)
 
         Raises:
             GrantNotFoundError: If grant_id not found
@@ -162,8 +163,9 @@ class GrantService:
         if grant.status == GrantStatus.REVOKED:
             return grant
 
-        # Revoke expired grant is also idempotent (but update status)
+        # Revoke grant: set status and end time to current time
         grant.status = GrantStatus.REVOKED
+        grant.end_utc = current_time.replace(microsecond=0)
         grant.updated_utc = current_time
 
         self.grant_repo.commit()
