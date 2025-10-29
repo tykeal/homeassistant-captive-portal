@@ -58,7 +58,8 @@ Phase 5 implements the guest-facing captive portal with authentication via vouch
 - Form: Single `<input type="text" name="code">` field
 - Validation: Try voucher format first, then booking code lookup
 - Error handling: "Invalid authorization code" (generic for security)
-- Case sensitivity: Booking codes case-sensitive, vouchers case-insensitive
+- Case sensitivity: All guest input case-insensitive for matching
+- Storage/Display: Codes stored and displayed to admin in original case-sensitive format
 
 **File**: `src/captive_portal/web/templates/guest/authorize.html`
 
