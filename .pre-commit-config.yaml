@@ -58,7 +58,6 @@ repos:
     hooks:
       - id: interrogate
         files: ^(scripts|tests|custom_components|addon|src)/.+\.py$
-        exclude: ^tests/integration/(test_admin_|test_initial_admin_bootstrap)
         args: [-vv, --fail-under=100]
         additional_dependencies:
           - setuptools
@@ -68,7 +67,6 @@ repos:
     hooks:
       - id: mypy
         files: ^(scripts|tests|custom_components|addon|src)/.+\.py$
-        exclude: ^tests/integration/(test_admin_|test_initial_admin_bootstrap)
         args: [--config-file=.mypy.ini]
         additional_dependencies:
           - types-pytz
