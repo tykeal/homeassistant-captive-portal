@@ -92,7 +92,8 @@ class BookingCodeValidator:
         result: RentalControlEvent | None = self.session.exec(statement).first()
         return result
 
-    def is_valid_slot_code(self, code: str) -> bool:
+    @staticmethod
+    def is_valid_slot_code(code: str) -> bool:
         r"""
         Validate slot_code format (^\d{4,}$).
 
@@ -104,7 +105,8 @@ class BookingCodeValidator:
         """
         return bool(re.match(r"^\d{4,}$", code))
 
-    def is_valid_last_four(self, code: str) -> bool:
+    @staticmethod
+    def is_valid_last_four(code: str) -> bool:
         r"""
         Validate last_four format (^\d{4}$).
 
@@ -116,7 +118,8 @@ class BookingCodeValidator:
         """
         return bool(re.match(r"^\d{4}$", code))
 
-    def is_valid_slot_name(self, name: str) -> bool:
+    @staticmethod
+    def is_valid_slot_name(name: str) -> bool:
         """
         Validate slot_name format (non-empty, trimmed, <=128 chars).
 
@@ -131,7 +134,8 @@ class BookingCodeValidator:
         trimmed = name.strip()
         return len(trimmed) <= 128
 
-    def normalize_slot_name(self, name: str) -> str:
+    @staticmethod
+    def normalize_slot_name(name: str) -> str:
         """
         Normalize slot_name by trimming whitespace.
 
