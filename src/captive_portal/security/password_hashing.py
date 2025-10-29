@@ -3,8 +3,6 @@
 
 """Password hashing using argon2 with OWASP parameters."""
 
-from typing import cast
-
 from argon2 import PasswordHasher, Type
 from argon2.exceptions import InvalidHash, VerificationError, VerifyMismatchError
 
@@ -34,7 +32,7 @@ def hash_password(password: str) -> str:
         ValueError: If password hashing fails
     """
     try:
-        return cast(str, _ph.hash(password))
+        return _ph.hash(password)
     except Exception as e:
         raise ValueError(f"Password hashing failed: {e}") from e
 

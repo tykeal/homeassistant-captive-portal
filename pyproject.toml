@@ -35,23 +35,11 @@ python_version = "3.13"
 strict = true
 
 [[tool.mypy.overrides]]
-module = "tests.integration.test_admin_*"
-disallow_untyped_calls = false
-
-[[tool.mypy.overrides]]
-module = "tests.integration.test_add_additional_admin"
-disallow_untyped_calls = false
-
-[[tool.mypy.overrides]]
-module = "tests.integration.test_initial_admin_bootstrap"
-disallow_untyped_calls = false
-
-[[tool.mypy.overrides]]
 module = "httpx"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["argon2", "argon2.exceptions"]
+module = ["argon2", "argon2.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -64,6 +52,7 @@ module = [
     "tests.integration.test_admin_session_timeout",
     "tests.integration.test_initial_admin_bootstrap",
 ]
+disallow_untyped_calls = false
 disallow_untyped_defs = false
 
 [build-system]
