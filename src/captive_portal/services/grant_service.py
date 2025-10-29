@@ -13,6 +13,20 @@ from captive_portal.persistence.repositories import AccessGrantRepository
 from captive_portal.utils.time_utils import ceil_to_minute
 
 
+def calculate_grant_end_with_grace(booking_end: datetime, grace_minutes: int) -> datetime:
+    """
+    Calculate grant end time with grace period.
+
+    Args:
+        booking_end: Booking end time
+        grace_minutes: Grace period in minutes (0-30)
+
+    Returns:
+        End time with grace period added
+    """
+    return booking_end + timedelta(minutes=grace_minutes)
+
+
 class GrantNotFoundError(Exception):
     """Raised when grant ID not found."""
 

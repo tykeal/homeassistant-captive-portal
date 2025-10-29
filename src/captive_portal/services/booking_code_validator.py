@@ -2,12 +2,39 @@
 # SPDX-License-Identifier: Apache-2.0
 """Booking code validation service with case-insensitive matching."""
 
-from typing import Optional, Any
+import re
+from datetime import datetime, timezone
+from typing import Any, Optional
 
 from sqlmodel import Session, func, select
 
+from captive_portal.models.access_grant import AccessGrant
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.models.rental_control_event import RentalControlEvent
+
+
+class BookingNotFoundError(Exception):
+    """Booking code not found in any event."""
+
+    pass
+
+
+class BookingOutsideWindowError(Exception):
+    """Booking is outside the active time window."""
+
+    pass
+
+
+class DuplicateGrantError(Exception):
+    """Active grant already exists for this booking."""
+
+    pass
+
+
+class IntegrationUnavailableError(Exception):
+    """Integration is not available or configured."""
+
+    pass
 
 
 class BookingCodeValidator:
@@ -64,3 +91,124 @@ class BookingCodeValidator:
 
         result: RentalControlEvent | None = self.session.exec(statement).first()
         return result
+
+    def is_valid_slot_code(self, code: str) -> bool:
+        r"""
+        Validate slot_code format (^\d{4,}$).
+
+        Args:
+            code: The code to validate
+
+        Returns:
+            True if valid slot_code format, False otherwise
+        """
+        return bool(re.match(r"^\d{4,}$", code))
+
+    def is_valid_last_four(self, code: str) -> bool:
+        r"""
+        Validate last_four format (^\d{4}$).
+
+        Args:
+            code: The code to validate
+
+        Returns:
+            True if valid last_four format, False otherwise
+        """
+        return bool(re.match(r"^\d{4}$", code))
+
+    def is_valid_slot_name(self, name: str) -> bool:
+        """
+        Validate slot_name format (non-empty, trimmed, <=128 chars).
+
+        Args:
+            name: The slot name to validate
+
+        Returns:
+            True if valid slot_name format, False otherwise
+        """
+        if not name or not name.strip():
+            return False
+        trimmed = name.strip()
+        return len(trimmed) <= 128
+
+    def normalize_slot_name(self, name: str) -> str:
+        """
+        Normalize slot_name by trimming whitespace.
+
+        Args:
+            name: The slot name to normalize
+
+        Returns:
+            Trimmed slot name
+        """
+        return name.strip()
+
+    async def validate_and_create_grant(self, code: str, device_id: str) -> AccessGrant:
+        """
+        Validate booking code and create access grant.
+
+        Args:
+            code: Booking code from guest
+            device_id: Device identifier
+
+        Returns:
+            Created access grant
+
+        Raises:
+            IntegrationUnavailableError: No integration configured
+            BookingNotFoundError: Booking not found
+            BookingOutsideWindowError: Booking not in active window
+            DuplicateGrantError: Active grant already exists
+        """
+        # Get first integration (for now, single integration support)
+        integration = self.session.exec(select(HAIntegrationConfig).limit(1)).first()
+
+        if not integration:
+            raise IntegrationUnavailableError("No integration configured")
+
+        # Find matching event
+        event = self.validate_code(code, integration)
+
+        if not event:
+            raise BookingNotFoundError("Booking not found")
+
+        # Check time window
+        now = datetime.now(timezone.utc)
+        grace_minutes = integration.checkout_grace_minutes
+
+        # Check if before start
+        if now < event.start_utc:
+            raise BookingOutsideWindowError("Booking not yet active")
+
+        # Check if after end + grace
+        from datetime import timedelta
+
+        effective_end = event.end_utc + timedelta(minutes=grace_minutes)
+        if now > effective_end:
+            raise BookingOutsideWindowError("Booking expired")
+
+        # Check for duplicate active grant
+        existing = self.session.exec(
+            select(AccessGrant)
+            .where(AccessGrant.booking_ref == code)
+            .where(AccessGrant.end_utc > now)
+        ).first()
+
+        if existing:
+            raise DuplicateGrantError("Active grant already exists")
+
+        # Create new grant
+        grant = AccessGrant(
+            device_id=device_id,
+            booking_ref=code,  # Use booking_ref field
+            mac="00:00:00:00:00:00",  # Placeholder, will be updated by controller
+            integration_id=integration.integration_id,
+            start_utc=event.start_utc,
+            end_utc=effective_end,
+        )
+
+        self.session.add(grant)
+        self.session.commit()
+        self.session.refresh(grant)
+
+        return grant
