@@ -45,5 +45,5 @@ class AdminUser(SQLModel, table=True):
     version: int = Field(default=1, sa_column_kwargs={"server_default": "1"})
 
 
-# Alias for backward compatibility
+# Alias for API response models to distinguish from database models
 AdminAccount = AdminUser

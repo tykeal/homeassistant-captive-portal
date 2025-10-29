@@ -147,6 +147,7 @@ class GrantService:
 
         Returns:
             Updated grant with REVOKED status and end_utc set to current time
+            (truncated to second precision)
 
         Raises:
             GrantNotFoundError: If grant_id not found
