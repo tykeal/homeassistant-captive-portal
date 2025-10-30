@@ -86,3 +86,16 @@ class RateLimiter:
             self._attempts[ip] = [ts for ts in self._attempts[ip] if ts > window_start]
             if not self._attempts[ip]:
                 del self._attempts[ip]
+
+    def clear(self, ip_address: str) -> None:
+        """
+        Clear all attempts for an IP address.
+
+        Used when authorization succeeds to prevent rate limiting
+        on subsequent legitimate requests.
+
+        Args:
+            ip_address: Client IP address to clear
+        """
+        if ip_address in self._attempts:
+            del self._attempts[ip_address]

@@ -88,6 +88,9 @@ async def handle_authorization(
     # For now, just validate the code type
     _ = validation_result  # Used for future grant creation
 
+    # Clear rate limit on successful authorization
+    rate_limiter.clear(client_ip)
+
     # Validate and determine redirect destination
     if continue_url and redirect_validator.is_safe(continue_url):
         redirect_url = continue_url

@@ -102,8 +102,8 @@ class OmadaAdapter:
             await self.client.post_with_retry("/extportal/revoke", payload)
             return {"success": True, "mac": mac}
         except OmadaClientError as e:
-            # Log but don't fail on 404 (already revoked/not found)
-            if e.status_code == 404:
+            # Treat 404 as success (already revoked/not found)
+            if hasattr(e, "status_code") and e.status_code == 404:
                 return {"success": True, "mac": mac, "note": "Already revoked"}
             raise
 
