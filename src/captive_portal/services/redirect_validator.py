@@ -40,6 +40,13 @@ class RedirectValidator:
         if not url:
             return False
 
+        # Block protocol-relative URLs (//evil.com)
+        if url.startswith("//"):
+            return False
+
+        # Normalize backslashes to prevent bypass attempts
+        url = url.replace("\\", "/")
+
         # Parse URL
         parsed = urlparse(url)
 
@@ -49,7 +56,9 @@ class RedirectValidator:
 
         # Allow relative URLs (no scheme or netloc)
         if not parsed.scheme and not parsed.netloc:
-            return True
+            # Ensure it's a true relative path starting with /
+            # Block protocol-relative and triple-slash attempts
+            return url.startswith("/") and not url.startswith("//")
 
         # Allow only http/https protocols
         if parsed.scheme and parsed.scheme.lower() not in ["http", "https"]:
