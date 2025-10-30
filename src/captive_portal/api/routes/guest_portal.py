@@ -16,6 +16,7 @@ from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.persistence.repositories import AccessGrantRepository
 from captive_portal.security.csrf import CSRFConfig, CSRFProtection
 from captive_portal.security.rate_limiter import RateLimiter
+from captive_portal.services.audit_service import AuditService
 from captive_portal.services.booking_code_validator import (
     BookingCodeValidator,
     BookingNotFoundError,
@@ -41,6 +42,18 @@ _guest_csrf_config = CSRFConfig(
     cookie_samesite="lax",  # Lax mode for redirect scenarios
 )
 _guest_csrf = CSRFProtection(_guest_csrf_config)
+
+
+def get_audit_service(session: Session = Depends(get_session)) -> AuditService:
+    """Dependency for creating AuditService.
+
+    Args:
+        session: Database session
+
+    Returns:
+        Configured AuditService instance
+    """
+    return AuditService(session)
 
 
 def _add_security_headers(response: HTMLResponse) -> HTMLResponse:
@@ -182,6 +195,7 @@ async def handle_authorization(
     unified_code_service: UnifiedCodeService = Depends(),
     redirect_validator: RedirectValidator = Depends(),
     session: Session = Depends(get_session),
+    audit_service: AuditService = Depends(get_audit_service),
 ) -> RedirectResponse:
     """Process guest authorization code submission.
 
@@ -214,6 +228,19 @@ async def handle_authorization(
     # Check rate limit
     if not rate_limiter.is_allowed(client_ip):
         retry_after = rate_limiter.get_retry_after_seconds(client_ip)
+
+        # Log rate limit violation
+        await audit_service.log(
+            actor=f"guest@{client_ip}",
+            action="guest.authorize",
+            outcome="rate_limited",
+            meta={
+                "client_ip": client_ip,
+                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "retry_after": retry_after,
+            },
+        )
+
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many authorization attempts. Please try again later.",
@@ -223,13 +250,38 @@ async def handle_authorization(
     # Extract device MAC address
     try:
         mac_address = _extract_mac_address(request)
-    except HTTPException:
+    except HTTPException as e:
+        # Log MAC extraction failure
+        await audit_service.log(
+            actor=f"guest@{client_ip}",
+            action="guest.authorize",
+            outcome="error",
+            meta={
+                "client_ip": client_ip,
+                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "error": "mac_extraction_failed",
+                "detail": str(e.detail),
+            },
+        )
         raise
 
     # Validate code format and determine type
     try:
         validation_result = await unified_code_service.validate_code(code)
     except ValueError as e:
+        # Log code validation failure
+        await audit_service.log(
+            actor=f"guest@{client_ip}",
+            action="guest.authorize",
+            outcome="denied",
+            meta={
+                "client_ip": client_ip,
+                "mac": mac_address,
+                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "error": "invalid_code_format",
+                "detail": str(e),
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -330,26 +382,99 @@ async def handle_authorization(
             )
 
     except VoucherRedemptionError as e:
+        # Log voucher redemption failure
+        await audit_service.log(
+            actor=f"guest@{client_ip}",
+            action="guest.authorize",
+            outcome="denied",
+            target_type="voucher",
+            target_id=validation_result.normalized_code,
+            meta={
+                "client_ip": client_ip,
+                "mac": mac_address,
+                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "error": "voucher_redemption_failed",
+                "detail": str(e),
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
             detail=str(e),
         ) from e
     except BookingNotFoundError as e:
+        # Log booking not found
+        await audit_service.log(
+            actor=f"guest@{client_ip}",
+            action="guest.authorize",
+            outcome="denied",
+            target_type="booking",
+            target_id=validation_result.normalized_code,
+            meta={
+                "client_ip": client_ip,
+                "mac": mac_address,
+                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "error": "booking_not_found",
+                "detail": str(e),
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
         ) from e
     except BookingOutsideWindowError as e:
+        # Log booking outside time window
+        await audit_service.log(
+            actor=f"guest@{client_ip}",
+            action="guest.authorize",
+            outcome="denied",
+            target_type="booking",
+            target_id=validation_result.normalized_code,
+            meta={
+                "client_ip": client_ip,
+                "mac": mac_address,
+                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "error": "booking_outside_window",
+                "detail": str(e),
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(e),
         ) from e
     except DuplicateGrantError as e:
+        # Log duplicate grant attempt
+        await audit_service.log(
+            actor=f"guest@{client_ip}",
+            action="guest.authorize",
+            outcome="denied",
+            target_type="booking",
+            target_id=validation_result.normalized_code,
+            meta={
+                "client_ip": client_ip,
+                "mac": mac_address,
+                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "error": "duplicate_grant",
+                "detail": str(e),
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e),
         ) from e
     except IntegrationUnavailableError as e:
+        # Log integration unavailable
+        await audit_service.log(
+            actor=f"guest@{client_ip}",
+            action="guest.authorize",
+            outcome="error",
+            meta={
+                "client_ip": client_ip,
+                "mac": mac_address,
+                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "error": "integration_unavailable",
+                "detail": str(e),
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e),
@@ -357,6 +482,23 @@ async def handle_authorization(
 
     # Clear rate limit on successful authorization
     rate_limiter.clear(client_ip)
+
+    # Log successful authorization
+    await audit_service.log(
+        actor=f"guest@{client_ip}",
+        action="guest.authorize",
+        outcome="success",
+        target_type="voucher" if validation_result.code_type == CodeType.VOUCHER else "booking",
+        target_id=str(grant.id),
+        meta={
+            "client_ip": client_ip,
+            "mac": mac_address,
+            "user_agent": request.headers.get("User-Agent", "unknown"),
+            "code_type": validation_result.code_type.value,
+            "grant_start": grant.start_utc.isoformat(),
+            "grant_end": grant.end_utc.isoformat(),
+        },
+    )
 
     # Validate and determine redirect destination
     if continue_url and redirect_validator.is_safe(continue_url):

@@ -278,10 +278,11 @@ def cleanup(self) -> None:
 
 ## Medium Priority Issues (Should Address)
 
-### M1: Redirect Validation Too Permissive
+### M1: Redirect Validation Too Permissive ✅ RESOLVED
 **Severity**: 🟡 MEDIUM
 **File**: `src/captive_portal/services/redirect_validator.py`
 **Lines**: 30-71
+**Status**: ✅ FIXED in commit 5f47e13
 
 **Issue**:
 ```python
@@ -300,29 +301,16 @@ if not parsed.scheme and not parsed.netloc:
 - User could be redirected to phishing sites
 - Browser-dependent parsing could lead to bypasses
 
-**Recommendation**:
-```python
-def is_safe(self, url: str) -> bool:
-    """Check if redirect URL is safe."""
-    if not url:
-        return False
-
-    # Block protocol-relative URLs
-    if url.startswith("//"):
-        return False
-
-    # Normalize backslashes to forward slashes
-    url = url.replace("\\", "/")
-
-    parsed = urlparse(url)
-
-    # Allow only paths starting with / (true relative URLs)
-    if not parsed.scheme and not parsed.netloc:
-        # Ensure it's a true relative path
-        return url.startswith("/") and not url.startswith("//")
-
-    # Rest of validation...
-```
+**Resolution**:
+- ✅ Added check to block protocol-relative URLs (starting with //)
+- ✅ Added backslash normalization to prevent bypass attempts
+- ✅ Only allow relative paths starting with single / (not // or ///)
+- ✅ Added comprehensive tests for all bypass scenarios:
+  - Protocol-relative URLs blocked
+  - Triple-slash URLs blocked
+  - Backslash normalization working correctly
+  - Relative paths not starting with / blocked (../path, ./path, etc.)
+- ✅ All redirect-related tests passing
 
 **Required for**: Security hardening
 
