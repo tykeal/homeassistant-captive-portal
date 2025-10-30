@@ -212,7 +212,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0611 NF add caching layer for frequently read vouchers (optional) (2025-10-30T19:32:00.000Z)
 - [x] T0612 NF api/routes/portal_config.py (GET/PUT endpoints for PortalConfig) (2025-10-30T19:06:00.000Z)
 - [x] T0613 NF web/templates/admin/portal_settings.html (UI for rate limits, grace periods, redirect behavior) (2025-10-30T19:33:00.000Z)
-- [ ] T0614 NF finalize performance thresholds documentation
+- [x] T0614 NF finalize performance thresholds documentation (2025-10-30T20:00:00.000Z)
 - [ ] T0615 NF Phase 6 review: re-evaluate spec analysis & list decisions required for Phase 7
 
 ## Phase 7: Polish & Documentation
