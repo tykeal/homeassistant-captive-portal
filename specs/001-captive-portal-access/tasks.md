@@ -197,7 +197,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ### Implementation (Documentation & Review)
 - [x] T0532 NF docs/guest_authorization.md (FR-018 details, flows, error matrix, D18-D22 decisions) (2025-10-29T20:26:19.000Z)
-- [ ] T0533 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6
+- [x] T0533 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6 (2025-10-30T17:24:00.000Z)
 
 ## Phase 6: Performance & Hardening
 ### Tests First
