@@ -316,10 +316,11 @@ if not parsed.scheme and not parsed.netloc:
 
 ---
 
-### M2: No Logging of Authorization Attempts
+### M2: No Logging of Authorization Attempts ✅ RESOLVED
 **Severity**: 🟡 MEDIUM
 **File**: `src/captive_portal/api/routes/guest_portal.py`
 **Lines**: 42-103
+**Status**: ✅ FIXED in commit 85eaef5
 
 **Issue**: Authorization attempts (success/failure) are not logged to audit trail.
 
@@ -334,32 +335,42 @@ if not parsed.scheme and not parsed.netloc:
 - Compliance issues (PCI, GDPR, etc. require access logs)
 - Cannot investigate suspicious activity
 
-**Recommendation**:
-- Log all authorization attempts with:
-  - Timestamp
+**Resolution**:
+- ✅ Added `AuditService` dependency to guest authorization handler
+- ✅ Log all authorization attempts with comprehensive metadata:
+  - Timestamp (automatic via AuditLog)
   - Client IP
-  - Code type (voucher/booking)
-  - Success/failure
-  - Failure reason
+  - MAC address
   - User agent
-- Use `AuditService` for structured logging
-- Add rate limit violations to logs
-- Consider SIEM integration for security events
+  - Code type (voucher/booking)
+  - Success/failure outcome
+  - Specific failure reason (rate_limited, mac_extraction_failed, invalid_code_format, etc.)
+  - Grant details on success (start/end times)
+- ✅ Logged events include:
+  - Rate limit violations with retry-after duration
+  - MAC address extraction failures
+  - Invalid code format errors
+  - Voucher redemption failures (expired, revoked, not found)
+  - Booking code failures (not found, outside window, duplicate grant)
+  - Integration unavailability errors
+  - Successful authorizations with grant details
+- ✅ Provides complete audit trail for security monitoring and compliance
 
 **Required for**: Security monitoring and compliance
 
 ---
 
-### M3: HTML Templates Not Security-Reviewed
+### M3: HTML Templates Not Security-Reviewed ✅ RESOLVED
 **Severity**: 🟡 MEDIUM
 **Files**:
 - `src/captive_portal/web/templates/guest/authorize.html`
 - `src/captive_portal/web/templates/guest/welcome.html`
 - `src/captive_portal/web/templates/guest/error.html`
+**Status**: ✅ FIXED (all critical security measures implemented)
 
 **Issue**: Templates include inline CSS/JavaScript and user-controlled content without explicit XSS protection documentation.
 
-**Observations**:
+**Original Observations**:
 - ✅ Good: Using Jinja2's auto-escaping (should prevent XSS)
 - ❌ Concern: Error messages from query parameters displayed directly
 - ❌ Concern: No Content-Security-Policy headers
@@ -372,16 +383,26 @@ if not parsed.scheme and not parsed.netloc:
 
 **Impact**: Potential XSS vulnerabilities in guest-facing pages
 
-**Recommendation**:
-- Verify Jinja2 auto-escaping is enabled (should be by default)
-- Add Content-Security-Policy headers:
-  ```python
-  response.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'unsafe-inline'"
-  ```
-- Move inline CSS to external stylesheet
-- Sanitize error message query parameters
-- Add security headers (X-Frame-Options, X-Content-Type-Options)
-- Perform manual XSS testing on error page with malicious payloads
+**Resolution**:
+- ✅ Explicitly enabled Jinja2 auto-escaping (`templates.env.autoescape = True`)
+- ✅ Added comprehensive CSP headers allowing inline styles but blocking inline scripts
+- ✅ Implemented error message sanitization (`_sanitize_error_message()`)
+  - Strips HTML tags from user input
+  - Limits message length to 500 characters
+  - Falls back to safe default for empty/malicious messages
+- ✅ Added defense-in-depth security headers:
+  - X-Frame-Options: DENY (clickjacking protection)
+  - X-Content-Type-Options: nosniff (MIME-sniffing protection)
+  - Referrer-Policy: strict-origin-when-cross-origin
+- ✅ Created comprehensive test suite (10 integration tests) covering:
+  - Security header presence on all guest pages
+  - XSS payload sanitization (script tags, img tags, event handlers)
+  - HTML entity escaping verification
+  - Error message truncation
+  - Jinja2 auto-escape validation
+  - Inline script detection
+
+**Note**: Inline CSS remains in templates but is explicitly allowed via CSP `style-src 'unsafe-inline'`. Moving to external stylesheet is a future enhancement for stricter CSP compliance but does not present a security risk in current implementation.
 
 **Required for**: Security hardening
 
