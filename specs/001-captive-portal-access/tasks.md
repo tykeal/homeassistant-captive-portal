@@ -211,7 +211,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0610 NF optimize DB indices (voucher.code, access_grant.expiration) (2025-10-30T19:30:00.000Z)
 - [x] T0611 NF add caching layer for frequently read vouchers (optional) (2025-10-30T19:32:00.000Z)
 - [x] T0612 NF api/routes/portal_config.py (GET/PUT endpoints for PortalConfig) (2025-10-30T19:06:00.000Z)
-- [ ] T0613 NF web/templates/admin/portal_settings.html (UI for rate limits, grace periods, redirect behavior)
+- [x] T0613 NF web/templates/admin/portal_settings.html (UI for rate limits, grace periods, redirect behavior) (2025-10-30T19:33:00.000Z)
 - [ ] T0614 NF finalize performance thresholds documentation
 - [ ] T0615 NF Phase 6 review: re-evaluate spec analysis & list decisions required for Phase 7
 
