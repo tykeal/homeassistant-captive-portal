@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
         health,
         integrations_ui,
         portal_config,
+        portal_settings_ui,
         vouchers,
     )
     from captive_portal import middleware
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(guest_portal.router)
     app.include_router(health.router)
     app.include_router(portal_config.router)
+    app.include_router(portal_settings_ui.router)
     app.include_router(vouchers.router)
     app.include_router(integrations_ui.router)
 

@@ -1,0 +1,176 @@
+<!--
+SPDX-FileCopyrightText: 2025 Andrew Grimberg
+SPDX-License-Identifier: Apache-2.0
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Settings - Captive Portal Admin</title>
+    <link rel="stylesheet" href="/static/themes/default/admin.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>Captive Portal Admin</h1>
+            <nav>
+                <a href="/admin/dashboard" class="nav-link">Dashboard</a>
+                <a href="/admin/grants" class="nav-link">Grants</a>
+                <a href="/admin/vouchers" class="nav-link">Vouchers</a>
+                <a href="/admin/integrations" class="nav-link">Integrations</a>
+                <a href="/admin/portal-settings" class="nav-link active">Settings</a>
+                <form action="/api/admin/logout" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn-link">Logout</button>
+                </form>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="settings-form">
+            <h2>Portal Configuration</h2>
+
+            {% if success_message %}
+            <div class="alert alert-success">
+                {{ success_message }}
+            </div>
+            {% endif %}
+
+            {% if error_message %}
+            <div class="alert alert-error">
+                {{ error_message }}
+            </div>
+            {% endif %}
+
+            <form id="portal-config-form" method="POST" action="/admin/portal-settings">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <div class="form-section">
+                    <h3>Rate Limiting</h3>
+                    <p class="form-help">Configure guest authorization attempt limits</p>
+
+                    <div class="form-group">
+                        <label for="rate_limit_attempts">Maximum Attempts:</label>
+                        <input
+                            type="number"
+                            id="rate_limit_attempts"
+                            name="rate_limit_attempts"
+                            value="{{ config.rate_limit_attempts }}"
+                            min="1"
+                            max="1000"
+                            required
+                        >
+                        <span class="help-text">Number of authorization attempts allowed per IP (1-1000)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="rate_limit_window_seconds">Time Window (seconds):</label>
+                        <input
+                            type="number"
+                            id="rate_limit_window_seconds"
+                            name="rate_limit_window_seconds"
+                            value="{{ config.rate_limit_window_seconds }}"
+                            min="1"
+                            max="3600"
+                            required
+                        >
+                        <span class="help-text">Rolling time window in seconds (1-3600, e.g., 60 = 1 minute)</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Redirect Behavior</h3>
+                    <p class="form-help">Configure post-authentication redirect behavior</p>
+
+                    <div class="form-group">
+                        <label for="redirect_to_original_url">
+                            <input
+                                type="checkbox"
+                                id="redirect_to_original_url"
+                                name="redirect_to_original_url"
+                                value="true"
+                                {% if config.redirect_to_original_url %}checked{% endif %}
+                            >
+                            Redirect to Original URL
+                        </label>
+                        <span class="help-text">
+                            When enabled, guests are redirected to the page they were trying to access.
+                            When disabled, they are redirected to the success page below.
+                        </span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="success_redirect_url">Success Redirect URL:</label>
+                        <input
+                            type="text"
+                            id="success_redirect_url"
+                            name="success_redirect_url"
+                            value="{{ config.success_redirect_url }}"
+                            maxlength="2048"
+                            required
+                        >
+                        <span class="help-text">
+                            Default redirect URL when original URL redirect is disabled (max 2048 characters)
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                    <button type="reset" class="btn btn-secondary">Reset</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="settings-info">
+            <h3>Configuration Notes</h3>
+            <ul class="info-list">
+                <li>
+                    <strong>Rate Limiting:</strong> Protects against brute force attempts.
+                    Default: 5 attempts per minute per IP address.
+                </li>
+                <li>
+                    <strong>Redirect Behavior:</strong> Controls where guests go after successful authorization.
+                    Enable "Redirect to Original URL" for seamless browsing experience.
+                </li>
+                <li>
+                    <strong>Grace Periods:</strong> Checkout grace periods are configured per integration
+                    in the <a href="/admin/integrations">Integrations</a> page.
+                </li>
+                <li>
+                    <strong>Admin Role Required:</strong> Only users with the "admin" role can modify
+                    portal settings. Viewers and operators have read-only access.
+                </li>
+            </ul>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Captive Portal v1.0 | Powered by Home Assistant</p>
+        </div>
+    </footer>
+
+    <script>
+        // Client-side validation
+        document.getElementById('portal-config-form').addEventListener('submit', function(e) {
+            const attempts = parseInt(document.getElementById('rate_limit_attempts').value);
+            const window = parseInt(document.getElementById('rate_limit_window_seconds').value);
+
+            if (attempts < 1 || attempts > 1000) {
+                e.preventDefault();
+                alert('Rate limit attempts must be between 1 and 1000');
+                return false;
+            }
+
+            if (window < 1 || window > 3600) {
+                e.preventDefault();
+                alert('Rate limit window must be between 1 and 3600 seconds');
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>
