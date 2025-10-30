@@ -2,15 +2,30 @@
 # SPDX-License-Identifier: Apache-2.0
 """Guest portal routes for authorization and welcome pages."""
 
-from typing import Annotated, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlmodel import Session, select
 
+from captive_portal.persistence.database import get_session
+from captive_portal.models.access_grant import AccessGrant, GrantStatus
+from captive_portal.models.ha_integration_config import HAIntegrationConfig
+from captive_portal.persistence.repositories import AccessGrantRepository
 from captive_portal.security.rate_limiter import RateLimiter
+from captive_portal.services.booking_code_validator import (
+    BookingCodeValidator,
+    BookingNotFoundError,
+    BookingOutsideWindowError,
+    DuplicateGrantError,
+    IntegrationUnavailableError,
+)
 from captive_portal.services.redirect_validator import RedirectValidator
-from captive_portal.services.unified_code_service import UnifiedCodeService
+from captive_portal.services.unified_code_service import CodeType, UnifiedCodeService
+from captive_portal.services.voucher_service import VoucherRedemptionError, VoucherService
+from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
 router = APIRouter(prefix="/guest", tags=["guest"])
 templates = Jinja2Templates(directory="src/captive_portal/web/templates")
@@ -39,6 +54,35 @@ async def show_authorize_form(
     )
 
 
+def _extract_mac_address(request: Request) -> str:
+    """Extract MAC address from request.
+
+    For now, this extracts from X-MAC-Address header (commonly set by captive portal controllers).
+    Future enhancement: integrate with ARP/DHCP lookup for IP-to-MAC resolution.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        MAC address string (format: AA:BB:CC:DD:EE:FF)
+
+    Raises:
+        HTTPException: If MAC address cannot be determined
+    """
+    mac = request.headers.get("X-MAC-Address")
+    if not mac:
+        # Fallback: check alternate header names used by various controllers
+        mac = request.headers.get("X-Client-Mac") or request.headers.get("Client-MAC")
+
+    if not mac:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Unable to determine device MAC address. Please ensure you're connecting through the captive portal.",
+        )
+
+    return mac.upper()
+
+
 @router.post("/authorize")
 async def handle_authorization(
     request: Request,
@@ -47,8 +91,12 @@ async def handle_authorization(
     rate_limiter: RateLimiter = Depends(),
     unified_code_service: UnifiedCodeService = Depends(),
     redirect_validator: RedirectValidator = Depends(),
+    session: Session = Depends(get_session),
 ) -> RedirectResponse:
     """Process guest authorization code submission.
+
+    Validates the authorization code, creates an access grant, and authorizes the
+    client device on the network controller.
 
     Args:
         request: FastAPI request object
@@ -57,6 +105,7 @@ async def handle_authorization(
         rate_limiter: Rate limiting service
         unified_code_service: Code validation and grant creation service
         redirect_validator: Redirect URL validation service
+        session: Database session
 
     Returns:
         RedirectResponse: Redirect to success page or original destination
@@ -75,7 +124,13 @@ async def handle_authorization(
             headers={"Retry-After": str(retry_after or 60)},
         )
 
-    # Validate code format
+    # Extract device MAC address
+    try:
+        mac_address = _extract_mac_address(request)
+    except HTTPException:
+        raise
+
+    # Validate code format and determine type
     try:
         validation_result = await unified_code_service.validate_code(code)
     except ValueError as e:
@@ -84,9 +139,122 @@ async def handle_authorization(
             detail=str(e),
         ) from e
 
-    # TODO: Process validated code and create access grant
-    # For now, just validate the code type
-    _ = validation_result  # Used for future grant creation
+    # Process code and create access grant based on type
+    grant: AccessGrant
+    try:
+        if validation_result.code_type == CodeType.VOUCHER:
+            # Redeem voucher
+            voucher_service = VoucherService(session)
+            grant = await voucher_service.redeem(
+                code=validation_result.normalized_code,
+                mac=mac_address,
+            )
+        elif validation_result.code_type == CodeType.BOOKING:
+            # Validate booking code and create grant
+            booking_validator = BookingCodeValidator(session)
+
+            # Get integration config
+            stmt: Any = select(HAIntegrationConfig).limit(1)
+            integration: HAIntegrationConfig | None = session.exec(stmt).first()
+            if not integration:
+                raise IntegrationUnavailableError("No rental control integration configured")
+
+            # Find matching event
+            event = booking_validator.validate_code(validation_result.normalized_code, integration)
+            if not event:
+                raise BookingNotFoundError("Booking not found")
+
+            # Check time window with grace period
+            now = datetime.now(timezone.utc)
+            grace_minutes = integration.checkout_grace_minutes
+
+            # Ensure event times are timezone-aware
+            start_utc = (
+                event.start_utc
+                if event.start_utc.tzinfo
+                else event.start_utc.replace(tzinfo=timezone.utc)
+            )
+            end_utc = (
+                event.end_utc
+                if event.end_utc.tzinfo
+                else event.end_utc.replace(tzinfo=timezone.utc)
+            )
+
+            # Allow early check-in up to 60 minutes before start
+            early_checkin_window = start_utc - timedelta(minutes=60)
+            if now < early_checkin_window:
+                raise BookingOutsideWindowError(
+                    f"Your booking begins on {start_utc.strftime('%Y-%m-%d at %H:%M')} UTC. Early check-in is available 60 minutes before this time."
+                )
+
+            # Check if after end + grace
+            effective_end = end_utc + timedelta(minutes=grace_minutes)
+            if now > effective_end:
+                raise BookingOutsideWindowError(
+                    f"Your booking ended on {end_utc.strftime('%Y-%m-%d at %H:%M')} UTC."
+                )
+
+            # Check for duplicate active grant for this booking
+            grant_repo = AccessGrantRepository(session)
+            existing_grants = grant_repo.find_active_by_mac(mac_address)
+            for existing in existing_grants:
+                if (
+                    existing.booking_ref
+                    and existing.booking_ref.lower() == validation_result.normalized_code.lower()
+                ):
+                    raise DuplicateGrantError(
+                        "You already have an active access grant for this booking."
+                    )
+
+            # Create access grant with booking details
+            grant_start = floor_to_minute(max(now, start_utc))
+            grant_end = ceil_to_minute(effective_end)
+
+            # Store original booking identifier with case preserved
+            booking_identifier = getattr(event, integration.identifier_attr.value)
+
+            grant = AccessGrant(
+                mac=mac_address,
+                booking_ref=booking_identifier,  # Store case-sensitive booking identifier
+                start_utc=grant_start,
+                end_utc=grant_end,
+                status=GrantStatus.PENDING,
+            )
+
+            grant_repo.add(grant)
+            session.commit()
+            session.refresh(grant)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid code type",
+            )
+
+    except VoucherRedemptionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail=str(e),
+        ) from e
+    except BookingNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except BookingOutsideWindowError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        ) from e
+    except DuplicateGrantError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        ) from e
+    except IntegrationUnavailableError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e),
+        ) from e
 
     # Clear rate limit on successful authorization
     rate_limiter.clear(client_ip)
@@ -97,9 +265,15 @@ async def handle_authorization(
     else:
         redirect_url = "/guest/welcome"
 
-    # Success - redirect
+    # Success - redirect with grant ID in session/cookie for controller integration
     response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
-    # TODO: Set authorization cookie/header for controller integration
+    response.set_cookie(
+        key="grant_id",
+        value=str(grant.id),
+        httponly=True,
+        samesite="strict",
+        max_age=3600,  # 1 hour cookie lifetime
+    )
     return response
 
 
