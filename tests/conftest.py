@@ -89,6 +89,7 @@ def app(db_engine: Engine) -> FastAPI:
         admin_accounts,
         admin_auth,
         grants,
+        guest_portal,
         health,
         integrations_ui,
         vouchers,
@@ -97,6 +98,7 @@ def app(db_engine: Engine) -> FastAPI:
     test_app.include_router(admin_accounts.router)
     test_app.include_router(admin_auth.router)
     test_app.include_router(grants.router)
+    test_app.include_router(guest_portal.router)
     test_app.include_router(health.router)
     test_app.include_router(vouchers.router)
     test_app.include_router(integrations_ui.router)

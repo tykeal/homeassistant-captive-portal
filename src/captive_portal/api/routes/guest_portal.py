@@ -31,6 +31,7 @@ from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
 router = APIRouter(prefix="/guest", tags=["guest"])
 templates = Jinja2Templates(directory="src/captive_portal/web/templates")
+templates.env.autoescape = True  # Explicitly enable auto-escaping for XSS protection
 
 # Guest-specific CSRF configuration (lighter-weight since no session state)
 _guest_csrf_config = CSRFConfig(
@@ -40,6 +41,67 @@ _guest_csrf_config = CSRFConfig(
     cookie_samesite="lax",  # Lax mode for redirect scenarios
 )
 _guest_csrf = CSRFProtection(_guest_csrf_config)
+
+
+def _add_security_headers(response: HTMLResponse) -> HTMLResponse:
+    """Add security headers to guest responses.
+
+    Implements defense-in-depth security controls:
+    - Content-Security-Policy: Prevents XSS and injection attacks
+    - X-Frame-Options: Prevents clickjacking
+    - X-Content-Type-Options: Prevents MIME-sniffing
+    - Referrer-Policy: Limits referrer information leakage
+
+    Args:
+        response: HTMLResponse to add headers to
+
+    Returns:
+        Same response with security headers added
+    """
+    # CSP allows inline styles (needed for our templates) but blocks inline scripts
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
+def _sanitize_error_message(message: str | None) -> str:
+    """Sanitize error message for safe display.
+
+    Removes or escapes potentially dangerous characters while preserving
+    readability. This provides defense-in-depth alongside Jinja2 auto-escaping.
+
+    Args:
+        message: Raw error message (may be user-controlled via query params)
+
+    Returns:
+        Sanitized message safe for template rendering
+    """
+    if not message:
+        return "An error occurred. Please try again."
+
+    # Limit length to prevent UI breaking
+    if len(message) > 500:
+        message = message[:500] + "..."
+
+    # Strip any HTML tags (basic sanitization)
+    # Jinja2 auto-escape will handle the rest
+    import re
+
+    message = re.sub(r"<[^>]*>", "", message)
+
+    # If message becomes empty after sanitization, use default
+    return message.strip() or "An error occurred. Please try again."
 
 
 @router.get("/authorize", response_class=HTMLResponse)
@@ -71,7 +133,8 @@ async def show_authorize_form(
     # Set CSRF token in cookie
     _guest_csrf.set_csrf_cookie(response, csrf_token)
 
-    return response
+    # Add security headers
+    return _add_security_headers(response)
 
 
 def _extract_mac_address(request: Request) -> str:
@@ -319,12 +382,13 @@ async def show_welcome(request: Request) -> HTMLResponse:
         request: FastAPI request object
 
     Returns:
-        HTMLResponse: Rendered welcome page
+        HTMLResponse: Rendered welcome page with security headers
     """
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="guest/welcome.html",
     )
+    return _add_security_headers(response)
 
 
 @router.get("/error", response_class=HTMLResponse)
@@ -336,15 +400,19 @@ async def show_error(
 
     Args:
         request: FastAPI request object
-        message: Optional error message to display
+        message: Optional error message to display (sanitized for security)
 
     Returns:
-        HTMLResponse: Rendered error page
+        HTMLResponse: Rendered error page with security headers
     """
-    return templates.TemplateResponse(
+    # Sanitize user-controlled error message to prevent XSS
+    sanitized_message = _sanitize_error_message(message)
+
+    response = templates.TemplateResponse(
         request=request,
         name="guest/error.html",
         context={
-            "error_message": message or "An error occurred. Please try again.",
+            "error_message": sanitized_message,
         },
     )
+    return _add_security_headers(response)
