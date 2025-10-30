@@ -70,6 +70,17 @@ The authorization form presents a single input field for all code types:
 
 ---
 
+## Device and Bandwidth Policy
+
+**Unlimited Access**: Guest authorizations have no device limits or bandwidth restrictions:
+- **No device limit**: Guests can authorize unlimited devices during their stay (family/group sharing)
+- **No bandwidth limit**: No QoS or traffic shaping applied to authorized clients
+- **Duration-based**: Access is time-limited to the booking window (with grace period) or voucher lifetime
+
+This policy prioritizes guest convenience over resource control. Future phases may add optional admin-configurable bandwidth limits.
+
+---
+
 ## Validation Flow
 
 ### 1. Rate Limiting (D20)

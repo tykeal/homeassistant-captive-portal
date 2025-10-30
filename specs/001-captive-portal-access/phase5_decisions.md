@@ -136,6 +136,18 @@ Phase 5 implements the guest-facing captive portal with authentication via vouch
 
 ---
 
+## Device and Bandwidth Policy Clarification
+
+**Unlimited Access Definition**: Guest authorizations have no device limits or bandwidth restrictions:
+- **No device limit**: Each booking/voucher can authorize unlimited devices during its validity period
+- **No bandwidth limit**: No QoS throttling or traffic shaping applied to authorized clients
+- **Justification**: Family/group sharing (multiple devices per booking), guest convenience priority
+- **Implementation**: No duplicate grant checking, no device count limits, no bandwidth enforcement
+
+This policy means the `check_duplicate_grant()` method in `BookingCodeValidator` is intentionally unused. Future phases may add optional admin-configurable limits.
+
+---
+
 ## Database Schema Changes Required
 
 ### Phase 5 Additions

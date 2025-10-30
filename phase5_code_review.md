@@ -442,10 +442,11 @@ if not parsed.scheme and not parsed.netloc:
 
 ---
 
-### M5: Duplicate Grant Detection Not Integrated
+### M5: Duplicate Grant Detection Not Integrated ✅ RESOLVED
 **Severity**: 🟡 MEDIUM
 **File**: `src/captive_portal/services/booking_code_validator.py`
 **Lines**: 150-169
+**Status**: ✅ RESOLVED via documentation clarification
 
 **Issue**: `check_duplicate_grant()` method exists but isn't called from authorization flow.
 
@@ -456,24 +457,20 @@ if not parsed.scheme and not parsed.netloc:
 
 **Specification**: "Authorization will be for an unlimited number of devices for the duration of the stay"
 
-**Clarification Needed**: Does "unlimited devices" mean:
-- A) Each booking can have multiple concurrent grants (family sharing)
-- B) Each device can re-authorize multiple times (reconnections)
-- C) No limit whatsoever
+**Clarification Received**: "unlimited" means:
+- **A) No bandwidth limits**: No QoS or traffic shaping applied
+- **B) No device limits**: Unlimited devices can authorize per booking (family/group sharing)
 
-**Impact**:
-- Potential business logic violation
-- Unclear specification interpretation
-- Resource exhaustion if one code creates thousands of grants
+**Resolution**:
+- ✅ Specification clarified: truly unlimited devices per booking
+- ✅ `check_duplicate_grant()` method retained for potential future use
+- ✅ Documentation updated in `docs/guest_authorization.md` with "Device and Bandwidth Policy"
+- ✅ Phase 5 decisions updated with explicit unlimited policy clarification
+- ✅ Implementation is correct as-is (no duplicate checking needed)
 
-**Recommendation**:
-- Clarify specification intent with stakeholder
-- If limiting: integrate `check_duplicate_grant()` into authorization
-- If unlimited: remove unused method to avoid confusion
-- Document the decision clearly
-- Add configuration option for grant limits per booking
+**Impact**: Removed - this is working as intended
 
-**Required for**: Business logic clarity
+**Required for**: Documentation clarity (completed)
 
 ---
 
