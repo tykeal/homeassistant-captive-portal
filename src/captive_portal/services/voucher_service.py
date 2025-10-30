@@ -177,6 +177,7 @@ class VoucherService:
             voucher_code=code,
             booking_ref=voucher.booking_ref,
             mac=mac,
+            device_id=mac,  # Use MAC as device_id for now
             start_utc=grant_start,
             end_utc=grant_end,
             status=GrantStatus.PENDING,  # Will transition to ACTIVE after controller
