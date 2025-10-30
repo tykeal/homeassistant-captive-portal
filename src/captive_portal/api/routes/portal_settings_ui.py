@@ -73,7 +73,8 @@ async def get_portal_settings(
     csrf_token = csrf.generate_token()
 
     # Get singleton config (id=1)
-    config = session.exec(select(PortalConfig).where(PortalConfig.id == 1)).first()
+    stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
+    config: Optional[PortalConfig] = session.exec(stmt).first()
 
     if not config:
         # Create default config if it doesn't exist
@@ -162,7 +163,8 @@ async def update_portal_settings(
         )
 
     # Get singleton config
-    config = session.exec(select(PortalConfig).where(PortalConfig.id == 1)).first()
+    stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
+    config: Optional[PortalConfig] = session.exec(stmt).first()
 
     if not config:
         # Create config with provided values

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Pytest configuration and shared fixtures."""
 
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import pytest
@@ -94,6 +94,7 @@ def app(db_engine: Engine) -> FastAPI:
         guest_portal,
         health,
         integrations_ui,
+        portal_config,
         vouchers,
     )
 
@@ -102,6 +103,7 @@ def app(db_engine: Engine) -> FastAPI:
     test_app.include_router(grants.router)
     test_app.include_router(guest_portal.router)
     test_app.include_router(health.router)
+    test_app.include_router(portal_config.router)
     test_app.include_router(vouchers.router)
     test_app.include_router(integrations_ui.router)
 
@@ -124,8 +126,8 @@ def client(app: FastAPI) -> TestClient:
     return TestClient(app)
 
 
-@pytest_asyncio.fixture  # type: ignore[misc]
-async def async_client(app: FastAPI) -> Any:
+@pytest_asyncio.fixture
+async def async_client(app: FastAPI) -> AsyncGenerator[Any, None]:
     """Create async test client for performance testing."""
     from httpx import ASGITransport, AsyncClient
 

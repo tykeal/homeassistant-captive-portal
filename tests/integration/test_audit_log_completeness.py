@@ -2,8 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Integration tests for audit log completeness across all operations."""
 
-from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from sqlmodel import select
@@ -39,21 +39,22 @@ async def test_audit_log_admin_login(async_client: "AsyncClient") -> None:
     # WHEN: Admin logs in
     client = async_client
     response = await client.post(
-        "/admin/login",
-        data={"username": "audit_login_test", "password": "test_password"},
+        "/api/admin/auth/login",
+        json={"username": "audit_login_test", "password": "test_password"},
     )
     assert response.status_code == 200
 
     # THEN: Audit log contains login event
     session = next(get_session())
     try:
-        audit_entries = session.exec(
+        stmt: Any = (
             select(AuditLog)
             .where(AuditLog.actor == "audit_login_test")
             .where(
                 AuditLog.action.like("%login%")  # type: ignore[attr-defined]
             )
-        ).all()
+        )
+        audit_entries: list[Any] = list(session.exec(stmt).all())
         assert len(audit_entries) >= 1
         entry = audit_entries[-1]
         assert entry.outcome == "success"
@@ -83,31 +84,31 @@ async def test_audit_log_voucher_creation(async_client: "AsyncClient") -> None:
     # WHEN: Admin creates a voucher
     client = async_client
     # Login
-    await client.post(
-        "/admin/login",
-        data={"username": "audit_voucher_admin", "password": "test_password"},
+    login_response = await client.post(
+        "/api/admin/auth/login",
+        json={"username": "audit_voucher_admin", "password": "test_password"},
     )
+    assert login_response.status_code == 200
+    csrf_token = login_response.json()["csrf_token"]
 
     # Create voucher
-    expires = (datetime.now(UTC) + timedelta(days=7)).isoformat()
     response = await client.post(
-        "/admin/vouchers",
+        "/api/vouchers",
         json={
-            "code": "AUDITVCH01",
-            "device_limit": 5,
-            "expires_utc": expires,
+            "duration_minutes": 10080,  # 7 days
         },
+        headers={"X-CSRF-Token": csrf_token},
+        follow_redirects=True,
     )
     assert response.status_code == 201
 
     # THEN: Audit log contains voucher creation
     session = next(get_session())
     try:
-        audit_entries = session.exec(
-            select(AuditLog).where(
-                AuditLog.action.like("%voucher%")  # type: ignore[attr-defined]
-            )
-        ).all()
+        stmt: Any = select(AuditLog).where(
+            AuditLog.action.like("%voucher%")  # type: ignore[attr-defined]
+        )
+        audit_entries: list[Any] = list(session.exec(stmt).all())
         assert len(audit_entries) >= 1
         entry = audit_entries[-1]
         assert entry.target_type in ["voucher", "Voucher"]
@@ -138,16 +139,15 @@ async def test_audit_log_required_fields(async_client: "AsyncClient") -> None:
     # WHEN: Performing audited action
     client = async_client
     await client.post(
-        "/admin/login",
-        data={"username": "audit_fields_test", "password": "test_password"},
+        "/api/admin/auth/login",
+        json={"username": "audit_fields_test", "password": "test_password"},
     )
 
     # THEN: All required fields are populated
     session = next(get_session())
     try:
-        recent_entries = session.exec(
-            select(AuditLog).where(AuditLog.actor == "audit_fields_test").limit(1)
-        ).all()
+        stmt: Any = select(AuditLog).where(AuditLog.actor == "audit_fields_test").limit(1)
+        recent_entries: list[Any] = list(session.exec(stmt).all())
         assert len(recent_entries) >= 1
 
         entry = recent_entries[0]

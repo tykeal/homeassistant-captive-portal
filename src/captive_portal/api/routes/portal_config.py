@@ -14,7 +14,7 @@ from captive_portal.models.portal_config import PortalConfig
 from captive_portal.persistence.database import get_session
 from captive_portal.security.session_middleware import require_admin
 
-router = APIRouter(prefix="/admin/portal-config", tags=["portal_config"])
+router = APIRouter(prefix="/api/admin/portal-config", tags=["portal_config"])
 
 
 def get_current_admin(request: Request, db: Session = Depends(get_session)) -> AdminUser:
@@ -71,7 +71,8 @@ async def get_portal_config(
     Requires authentication. Any role can view configuration.
     """
     # Get singleton config (id=1)
-    config = session.exec(select(PortalConfig).where(PortalConfig.id == 1)).first()
+    stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
+    config: Optional[PortalConfig] = session.exec(stmt).first()
 
     if not config:
         # Create default config if it doesn't exist
@@ -109,7 +110,8 @@ async def update_portal_config(
         )
 
     # Get singleton config
-    config = session.exec(select(PortalConfig).where(PortalConfig.id == 1)).first()
+    stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
+    config: Optional[PortalConfig] = session.exec(stmt).first()
 
     if not config:
         # Create config with provided updates

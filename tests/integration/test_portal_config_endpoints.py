@@ -37,10 +37,10 @@ async def test_get_portal_config_default(async_client: "AsyncClient") -> None:
     # WHEN: Fetching portal config
     client = async_client
     await client.post(
-        "/admin/login",
-        data={"username": "config_test_admin", "password": "test_password"},
+        "/api/admin/auth/login",
+        json={"username": "config_test_admin", "password": "test_password"},
     )
-    response = await client.get("/admin/portal-config")
+    response = await client.get("/api/admin/portal-config")
 
     # THEN: Returns default configuration
     assert response.status_code == 200
@@ -72,12 +72,12 @@ async def test_update_portal_config(async_client: "AsyncClient") -> None:
     # WHEN: Updating portal config
     client = async_client
     await client.post(
-        "/admin/login",
-        data={"username": "config_update_admin", "password": "test_password"},
+        "/api/admin/auth/login",
+        json={"username": "config_update_admin", "password": "test_password"},
     )
 
     update_response = await client.put(
-        "/admin/portal-config",
+        "/api/admin/portal-config",
         json={
             "rate_limit_attempts": 10,
             "rate_limit_window_seconds": 120,
@@ -95,10 +95,10 @@ async def test_update_portal_config(async_client: "AsyncClient") -> None:
     # AND: Verify persistence
     client = async_client
     await client.post(
-        "/admin/login",
-        data={"username": "config_update_admin", "password": "test_password"},
+        "/api/admin/auth/login",
+        json={"username": "config_update_admin", "password": "test_password"},
     )
-    get_response = await client.get("/admin/portal-config")
+    get_response = await client.get("/api/admin/portal-config")
     assert get_response.status_code == 200
     persisted = get_response.json()
     assert persisted["rate_limit_attempts"] == 10
@@ -126,13 +126,13 @@ async def test_update_portal_config_partial(async_client: "AsyncClient") -> None
     # WHEN: Updating only some fields
     client = async_client
     await client.post(
-        "/admin/login",
-        data={"username": "config_partial_admin", "password": "test_password"},
+        "/api/admin/auth/login",
+        json={"username": "config_partial_admin", "password": "test_password"},
     )
 
     # Update only grace period
     update_response = await client.put(
-        "/admin/portal-config",
+        "/api/admin/portal-config",
         json={"redirect_to_original_url": False},
     )
 
@@ -150,9 +150,9 @@ async def test_portal_config_requires_auth(async_client: "AsyncClient") -> None:
     """Verify portal config endpoints require authentication."""
     # WHEN: Accessing without auth
     client = async_client
-    get_response = await client.get("/admin/portal-config")
+    get_response = await client.get("/api/admin/portal-config")
     put_response = await client.put(
-        "/admin/portal-config",
+        "/api/admin/portal-config",
         json={"rate_limit_attempts": 10},
     )
 
@@ -183,11 +183,11 @@ async def test_portal_config_viewer_cannot_update(async_client: "AsyncClient") -
     # WHEN: Attempting to update config as viewer
     client = async_client
     await client.post(
-        "/admin/login",
-        data={"username": "config_viewer", "password": "test_password"},
+        "/api/admin/auth/login",
+        json={"username": "config_viewer", "password": "test_password"},
     )
     response = await client.put(
-        "/admin/portal-config",
+        "/api/admin/portal-config",
         json={"rate_limit_attempts": 10},
     )
 
@@ -217,13 +217,13 @@ async def test_portal_config_operator_can_view_not_update(async_client: "AsyncCl
     # WHEN: Viewing and attempting to update
     client = async_client
     await client.post(
-        "/admin/login",
-        data={"username": "config_operator", "password": "test_password"},
+        "/api/admin/auth/login",
+        json={"username": "config_operator", "password": "test_password"},
     )
 
-    get_response = await client.get("/admin/portal-config")
+    get_response = await client.get("/api/admin/portal-config")
     put_response = await client.put(
-        "/admin/portal-config",
+        "/api/admin/portal-config",
         json={"rate_limit_attempts": 10},
     )
 

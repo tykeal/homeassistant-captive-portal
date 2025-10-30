@@ -21,6 +21,7 @@ from captive_portal.models.admin_user import AdminUser
 from captive_portal.persistence.database import get_session
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
 from captive_portal.security.password_hashing import hash_password, verify_password
+from captive_portal.services.audit_service import AuditService
 
 router = APIRouter(prefix="/api/admin/auth", tags=["admin-auth"])
 
@@ -73,10 +74,19 @@ async def login(
 
     Validates credentials and creates session cookie.
     """
+    audit_service = AuditService(db)
     stmt: Any = select(AdminUser).where(AdminUser.username == login_data.username)
     admin = cast(Optional[AdminUser], db.exec(stmt).first())
 
     if not admin or not verify_password(login_data.password, admin.password_hash):
+        await audit_service.log(
+            actor=login_data.username,
+            action="admin.login",
+            target_type="session",
+            target_id=None,
+            outcome="failure",
+            meta={"reason": "invalid_credentials"},
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
@@ -101,6 +111,15 @@ async def login(
 
     csrf_token = csrf.generate_token()
     csrf.set_csrf_cookie(response, csrf_token)
+
+    await audit_service.log(
+        actor=admin.username,
+        action="admin.login",
+        target_type="session",
+        target_id=session_id,
+        outcome="success",
+        meta={"ip_address": ip_address},
+    )
 
     return LoginResponse(
         success=True,

@@ -126,4 +126,4 @@ def test_portal_config_invalid_types() -> None:
         PortalConfig(rate_limit_attempts="ten")
 
     with pytest.raises(ValidationError):
-        PortalConfig(redirect_to_original_url="yes")
+        PortalConfig(redirect_to_original_url=[])
