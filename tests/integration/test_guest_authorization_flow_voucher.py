@@ -41,6 +41,7 @@ class TestGuestAuthorizationFlowVoucher:
         response = client.post(
             "/guest/authorize",
             data={"code": "ABCD1234", "device_id": "device123"},
+            headers={"X-MAC-Address": "AA:BB:CC:DD:EE:FF"},
         )
 
         assert response.status_code == 200

@@ -25,6 +25,7 @@ from captive_portal.services.booking_code_validator import (
 from captive_portal.services.redirect_validator import RedirectValidator
 from captive_portal.services.unified_code_service import CodeType, UnifiedCodeService
 from captive_portal.services.voucher_service import VoucherRedemptionError, VoucherService
+from captive_portal.utils.network_utils import get_client_ip
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
 router = APIRouter(prefix="/guest", tags=["guest"])
@@ -113,7 +114,10 @@ async def handle_authorization(
     Raises:
         HTTPException: 429 if rate limit exceeded, 400/404/409/410 for validation errors
     """
-    client_ip = request.client.host if request.client else "unknown"
+    # TODO: Make proxy trust configurable via settings
+    # For now, trust proxies from private networks (10.x, 172.16-31.x, 192.168.x)
+    trusted_networks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+    client_ip = get_client_ip(request, trust_proxies=True, trusted_networks=trusted_networks)
 
     # Check rate limit
     if not rate_limiter.is_allowed(client_ip):

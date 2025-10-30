@@ -54,6 +54,7 @@ class TestGuestAuthorizationFlowBooking:
         response = client.post(
             "/guest/authorize",
             data={"code": "1234", "device_id": "device456"},
+            headers={"X-MAC-Address": "AA:BB:CC:DD:EE:FF"},
         )
 
         assert response.status_code == 200
