@@ -96,3 +96,37 @@ class TestRateLimiter:
         retry_after = limiter.get_retry_after_seconds(ip)
         assert retry_after is not None
         assert 0 < retry_after <= 60
+
+    def test_automatic_cleanup(self) -> None:
+        """Automatic cleanup prevents memory leak."""
+        from datetime import timedelta
+
+        # Create limiter with short cleanup interval for testing
+        limiter = RateLimiter(max_attempts=2, window_seconds=1)
+        limiter._cleanup_interval_seconds = 2  # Override for testing
+
+        # Simulate multiple IPs hitting rate limit
+        for i in range(10):
+            ip = f"192.168.1.{i}"
+            limiter.is_allowed(ip)
+            limiter.is_allowed(ip)
+
+        # Verify entries exist
+        assert len(limiter._attempts) == 10
+
+        # Wait for entries to expire
+        import time
+
+        time.sleep(1.5)
+
+        # Trigger automatic cleanup by making a new request
+        # (after cleanup interval has passed)
+        limiter._last_cleanup = limiter._last_cleanup - timedelta(
+            seconds=limiter._cleanup_interval_seconds + 1
+        )
+        limiter.is_allowed("192.168.1.100")
+
+        # All expired entries should be removed
+        # Only the new IP should remain
+        assert len(limiter._attempts) == 1
+        assert "192.168.1.100" in limiter._attempts

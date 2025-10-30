@@ -13,7 +13,8 @@ class RateLimiter:
     Per-IP rate limiter with rolling window.
 
     Tracks authorization attempts per IP address and enforces configurable
-    rate limits to prevent brute-force attacks.
+    rate limits to prevent brute-force attacks. Automatically cleans up
+    expired entries every 5 minutes to prevent memory leaks.
 
     Attributes:
         max_attempts: Maximum attempts allowed within window
@@ -31,6 +32,8 @@ class RateLimiter:
         self.max_attempts = max_attempts
         self.window_seconds = window_seconds
         self._attempts: dict[str, list[datetime]] = defaultdict(list)
+        self._last_cleanup = datetime.now(timezone.utc)
+        self._cleanup_interval_seconds = 300  # Cleanup every 5 minutes
 
     def is_allowed(self, ip_address: str) -> bool:
         """
@@ -45,7 +48,12 @@ class RateLimiter:
         now = datetime.now(timezone.utc)
         window_start = now - timedelta(seconds=self.window_seconds)
 
-        # Clean old attempts
+        # Lazy cleanup: if cleanup interval has passed, clean all IPs
+        if (now - self._last_cleanup).total_seconds() >= self._cleanup_interval_seconds:
+            self.cleanup()
+            self._last_cleanup = now
+
+        # Clean old attempts for this IP
         self._attempts[ip_address] = [ts for ts in self._attempts[ip_address] if ts > window_start]
 
         # Check if under limit
@@ -78,7 +86,13 @@ class RateLimiter:
         return int((retry_at - now).total_seconds()) + 1
 
     def cleanup(self) -> None:
-        """Remove expired entries to free memory."""
+        """
+        Remove expired entries to free memory.
+
+        Automatically called every 5 minutes during is_allowed() checks
+        to prevent unbounded memory growth. Can also be called manually
+        for immediate cleanup.
+        """
         now = datetime.now(timezone.utc)
         window_start = now - timedelta(seconds=self.window_seconds)
 
