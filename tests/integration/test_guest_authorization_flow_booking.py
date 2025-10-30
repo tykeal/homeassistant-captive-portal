@@ -50,10 +50,14 @@ class TestGuestAuthorizationFlowBooking:
         response = client.get("/guest/authorize")
         assert response.status_code == 200
 
-        # POST booking code
+        # Extract CSRF token from cookie
+        csrf_token = response.cookies.get("guest_csrftoken")
+        assert csrf_token is not None
+
+        # POST booking code with CSRF token
         response = client.post(
             "/guest/authorize",
-            data={"code": "1234", "device_id": "device456"},
+            data={"code": "1234", "device_id": "device456", "csrf_token": csrf_token},
             headers={"X-MAC-Address": "AA:BB:CC:DD:EE:FF"},
         )
 

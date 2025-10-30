@@ -126,6 +126,7 @@ SPDX-License-Identifier: Apache-2.0
 
         <form method="post" action="/guest/authorize">
             <input type="hidden" name="continue" value="{{ continue_url }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
             <div class="form-group">
                 <label for="code">Authorization Code</label>

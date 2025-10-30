@@ -14,6 +14,7 @@ from captive_portal.persistence.database import get_session
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.persistence.repositories import AccessGrantRepository
+from captive_portal.security.csrf import CSRFConfig, CSRFProtection
 from captive_portal.security.rate_limiter import RateLimiter
 from captive_portal.services.booking_code_validator import (
     BookingCodeValidator,
@@ -31,6 +32,15 @@ from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 router = APIRouter(prefix="/guest", tags=["guest"])
 templates = Jinja2Templates(directory="src/captive_portal/web/templates")
 
+# Guest-specific CSRF configuration (lighter-weight since no session state)
+_guest_csrf_config = CSRFConfig(
+    cookie_name="guest_csrftoken",
+    form_field_name="csrf_token",
+    cookie_secure=False,  # Allow HTTP for captive portal use
+    cookie_samesite="lax",  # Lax mode for redirect scenarios
+)
+_guest_csrf = CSRFProtection(_guest_csrf_config)
+
 
 @router.get("/authorize", response_class=HTMLResponse)
 async def show_authorize_form(
@@ -44,15 +54,24 @@ async def show_authorize_form(
         continue_url: Optional redirect destination after successful authorization
 
     Returns:
-        HTMLResponse: Rendered authorization form
+        HTMLResponse: Rendered authorization form with CSRF token
     """
-    return templates.TemplateResponse(
+    # Generate CSRF token
+    csrf_token = _guest_csrf.generate_token()
+
+    response = templates.TemplateResponse(
         request=request,
         name="guest/authorize.html",
         context={
             "continue_url": continue_url or "/guest/welcome",
+            "csrf_token": csrf_token,
         },
     )
+
+    # Set CSRF token in cookie
+    _guest_csrf.set_csrf_cookie(response, csrf_token)
+
+    return response
 
 
 def _extract_mac_address(request: Request) -> str:
@@ -112,8 +131,11 @@ async def handle_authorization(
         RedirectResponse: Redirect to success page or original destination
 
     Raises:
-        HTTPException: 429 if rate limit exceeded, 400/404/409/410 for validation errors
+        HTTPException: 403 for CSRF validation, 429 if rate limit exceeded, 400/404/409/410 for validation errors
     """
+    # Validate CSRF token
+    await _guest_csrf.validate_token(request)
+
     # TODO: Make proxy trust configurable via settings
     # For now, trust proxies from private networks (10.x, 172.16-31.x, 192.168.x)
     trusted_networks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
@@ -219,6 +241,7 @@ async def handle_authorization(
 
             grant = AccessGrant(
                 mac=mac_address,
+                device_id=mac_address,  # Use MAC as device_id for now
                 booking_ref=booking_identifier,  # Store case-sensitive booking identifier
                 start_utc=grant_start,
                 end_utc=grant_end,
