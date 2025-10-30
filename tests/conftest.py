@@ -123,6 +123,15 @@ def client(app: FastAPI) -> TestClient:
 
 
 @pytest.fixture
+async def async_client(app: FastAPI) -> Any:
+    """Create async test client for performance testing."""
+    from httpx import ASGITransport, AsyncClient
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+
+
+@pytest.fixture
 def admin_user(db_session: Session) -> Generator[Any, None, None]:
     """Create a test admin user (available for all tests)."""
     from captive_portal.models.admin_user import AdminUser
