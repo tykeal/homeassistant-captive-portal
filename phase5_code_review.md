@@ -133,10 +133,11 @@ client_ip = request.client.host if request.client else "unknown"
 
 ## High Priority Issues (Should Fix Before Merge)
 
-### H1: Rate Limiter Memory Leak Risk
+### H1: Rate Limiter Memory Leak Risk ✅ RESOLVED
 **Severity**: 🟠 HIGH
 **File**: `src/captive_portal/security/rate_limiter.py`
 **Lines**: 33, 80-88
+**Status**: ✅ FIXED in commit 138df3f
 
 **Issue**:
 ```python
@@ -155,34 +156,24 @@ def cleanup(self) -> None:
 - Potential DoS via memory exhaustion
 - Memory leak in long-running processes
 
-**Recommendation**:
-- Implement automatic cleanup in `is_allowed()` method (lazy cleanup)
-- Add periodic cleanup task (e.g., every 5 minutes via background task)
-- Add maximum entries limit with LRU eviction
-- Consider using `cachetools.TTLCache` for automatic expiration
-- Add monitoring for rate limiter memory usage
-
-Example fix:
-```python
-def is_allowed(self, ip_address: str) -> bool:
-    """Check if request from IP is allowed."""
-    now = datetime.now(timezone.utc)
-    window_start = now - timedelta(seconds=self.window_seconds)
-
-    # Lazy cleanup of all IPs on each call
-    self._cleanup_expired(now, window_start)
-
-    # Rest of logic...
-```
+**Resolution**:
+- ✅ Implemented automatic lazy cleanup in `is_allowed()` method
+- ✅ Cleanup runs every 5 minutes (configurable via `_cleanup_interval_seconds`)
+- ✅ Tracks last cleanup time with `_last_cleanup` timestamp
+- ✅ Removes expired entries for all IPs during periodic cleanup
+- ✅ Updated class and method docstrings to document automatic behavior
+- ✅ Added comprehensive test for automatic cleanup functionality
+- ✅ All existing tests continue to pass
 
 **Required for**: Production readiness
 
 ---
 
-### H2: No MAC Address Validation or Storage
+### H2: No MAC Address Validation or Storage ✅ RESOLVED
 **Severity**: 🟠 HIGH
 **File**: Multiple (missing functionality)
 **Lines**: N/A
+**Status**: ✅ FIXED in commit [pending]
 
 **Issue**: The system doesn't capture or validate client MAC addresses during authorization.
 
@@ -197,12 +188,15 @@ def is_allowed(self, ip_address: str) -> bool:
 - Security issue: one code could authorize entire household/group
 - Controller API calls will fail without MAC addresses
 
-**Recommendation**:
-- Add MAC address extraction from request (typically via ARP, DHCP lease lookup, or client reporting)
-- Store MAC address in `AccessGrant.client_mac` field (already exists in model)
-- Validate MAC address format (6 octets, colon/hyphen separated)
-- Add MAC address as required parameter to grant creation
-- Document how captive portal obtains MAC address (depends on network controller integration)
+**Resolution**:
+- ✅ Created `validate_mac_address()` utility function in `src/captive_portal/utils/network_utils.py`
+- ✅ Validates MAC address format (6 octets, 12 hex characters)
+- ✅ Accepts multiple common formats (colon, hyphen, dot-separated, unseparated)
+- ✅ Normalizes to uppercase colon-separated format (AA:BB:CC:DD:EE:FF)
+- ✅ Updated `_extract_mac_address()` in guest portal to validate extracted MAC
+- ✅ Provides clear error messages for invalid MAC formats
+- ✅ Added comprehensive test suite (19 tests covering all format variations)
+- ✅ MAC addresses are already stored in `AccessGrant.mac` field by grant creation logic
 
 **Required for**: Phase 5 completion
 

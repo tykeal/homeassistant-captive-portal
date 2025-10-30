@@ -5,6 +5,7 @@
 """Network utility functions for client IP detection and validation."""
 
 import ipaddress
+import re
 from typing import Optional
 
 from fastapi import Request
@@ -77,3 +78,51 @@ def get_client_ip(
 
     # No valid proxy headers found, use direct connection IP
     return direct_ip
+
+
+def validate_mac_address(mac: str) -> str:
+    """
+    Validate and normalize MAC address format.
+
+    Accepts MAC addresses in various common formats:
+    - Colon-separated: AA:BB:CC:DD:EE:FF or aa:bb:cc:dd:ee:ff
+    - Hyphen-separated: AA-BB-CC-DD-EE-FF or aa-bb-cc-dd-ee-ff
+    - Dot-separated (Cisco): AABB.CCDD.EEFF or aabb.ccdd.eeff
+    - Unseparated: AABBCCDDEEFF or aabbccddeeff
+
+    Returns normalized MAC address in uppercase colon-separated format.
+
+    Args:
+        mac: MAC address string in any common format
+
+    Returns:
+        Normalized MAC address (uppercase, colon-separated)
+
+    Raises:
+        ValueError: If MAC address format is invalid
+
+    Examples:
+        >>> validate_mac_address("aa:bb:cc:dd:ee:ff")
+        'AA:BB:CC:DD:EE:FF'
+        >>> validate_mac_address("AA-BB-CC-DD-EE-FF")
+        'AA:BB:CC:DD:EE:FF'
+        >>> validate_mac_address("aabb.ccdd.eeff")
+        'AA:BB:CC:DD:EE:FF'
+    """
+    if not mac:
+        raise ValueError("MAC address cannot be empty")
+
+    # Remove common separators to get raw hex string
+    cleaned = mac.replace(":", "").replace("-", "").replace(".", "").upper()
+
+    # Validate: must be exactly 12 hex characters
+    if not re.match(r"^[0-9A-F]{12}$", cleaned):
+        raise ValueError(
+            f"Invalid MAC address format: '{mac}'. "
+            "Expected 6 octets (12 hex characters) with optional separators."
+        )
+
+    # Format as colon-separated uppercase
+    # Split into pairs: AABBCCDDEEFF -> [AA, BB, CC, DD, EE, FF]
+    octets = [cleaned[i : i + 2] for i in range(0, 12, 2)]
+    return ":".join(octets)

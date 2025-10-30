@@ -26,7 +26,7 @@ from captive_portal.services.booking_code_validator import (
 from captive_portal.services.redirect_validator import RedirectValidator
 from captive_portal.services.unified_code_service import CodeType, UnifiedCodeService
 from captive_portal.services.voucher_service import VoucherRedemptionError, VoucherService
-from captive_portal.utils.network_utils import get_client_ip
+from captive_portal.utils.network_utils import get_client_ip, validate_mac_address
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
 router = APIRouter(prefix="/guest", tags=["guest"])
@@ -75,19 +75,19 @@ async def show_authorize_form(
 
 
 def _extract_mac_address(request: Request) -> str:
-    """Extract MAC address from request.
+    """Extract and validate MAC address from request.
 
-    For now, this extracts from X-MAC-Address header (commonly set by captive portal controllers).
-    Future enhancement: integrate with ARP/DHCP lookup for IP-to-MAC resolution.
+    Checks common MAC address headers set by captive portal controllers,
+    validates the format, and normalizes to uppercase colon-separated format.
 
     Args:
         request: FastAPI request object
 
     Returns:
-        MAC address string (format: AA:BB:CC:DD:EE:FF)
+        Validated and normalized MAC address (format: AA:BB:CC:DD:EE:FF)
 
     Raises:
-        HTTPException: If MAC address cannot be determined
+        HTTPException: If MAC address cannot be determined or is invalid
     """
     mac = request.headers.get("X-MAC-Address")
     if not mac:
@@ -100,7 +100,14 @@ def _extract_mac_address(request: Request) -> str:
             detail="Unable to determine device MAC address. Please ensure you're connecting through the captive portal.",
         )
 
-    return mac.upper()
+    # Validate and normalize MAC address format
+    try:
+        return validate_mac_address(mac)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid MAC address format: {e}",
+        ) from e
 
 
 @router.post("/authorize")
