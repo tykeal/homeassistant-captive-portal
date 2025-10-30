@@ -11,7 +11,7 @@ class TestBookingCodeFormatValidation:
     """Test booking code format validation per FR-018."""
 
     def test_slot_code_valid_formats(self) -> None:
-        """Slot codes must match ^\d{4,}$."""
+        r"""Slot codes must match ^\d{4,}$."""
         assert BookingCodeValidator.is_valid_slot_code("1234")
         assert BookingCodeValidator.is_valid_slot_code("123456")
         assert BookingCodeValidator.is_valid_slot_code("999999999")
@@ -24,7 +24,7 @@ class TestBookingCodeFormatValidation:
         assert not BookingCodeValidator.is_valid_slot_code("")  # empty
 
     def test_last_four_valid_formats(self) -> None:
-        """Last four must match ^\d{4}$."""
+        r"""Last four must match ^\d{4}$."""
         assert BookingCodeValidator.is_valid_last_four("1234")
         assert BookingCodeValidator.is_valid_last_four("0000")
         assert BookingCodeValidator.is_valid_last_four("9999")

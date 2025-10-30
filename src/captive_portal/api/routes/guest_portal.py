@@ -31,9 +31,9 @@ async def show_authorize_form(
         HTMLResponse: Rendered authorization form
     """
     return templates.TemplateResponse(
-        "guest/authorize.html",
-        {
-            "request": request,
+        request=request,
+        name="guest/authorize.html",
+        context={
             "continue_url": continue_url or "/guest/welcome",
         },
     )
@@ -111,8 +111,8 @@ async def show_welcome(request: Request) -> HTMLResponse:
         HTMLResponse: Rendered welcome page
     """
     return templates.TemplateResponse(
-        "guest/welcome.html",
-        {"request": request},
+        request=request,
+        name="guest/welcome.html",
     )
 
 
@@ -131,9 +131,9 @@ async def show_error(
         HTMLResponse: Rendered error page
     """
     return templates.TemplateResponse(
-        "guest/error.html",
-        {
-            "request": request,
+        request=request,
+        name="guest/error.html",
+        context={
             "error_message": message or "An error occurred. Please try again.",
         },
     )
