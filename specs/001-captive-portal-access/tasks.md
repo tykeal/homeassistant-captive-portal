@@ -149,25 +149,55 @@ SPDX-License-Identifier: Apache-2.0
 ### Review
 - [x] T0421 NF Phase 4 review: re-evaluate spec analysis & list decisions required for Phase 5 (2025-10-27T20:20:00.000Z)
 
-## Phase 5: Guest Authorization & Booking Code Validation
-### Tests First
-- [ ] T0500 NF tests/unit/services/test_booking_code_format_validation.py (slot_code, slot_name edge cases + voucher length/charset per FR-018)
-- [ ] T0501 NF tests/integration/test_booking_code_lookup_happy_path.py (event 0 & 1, time window validation)
-- [ ] T0502 NF tests/integration/test_booking_code_not_found.py (404 responses)
-- [ ] T0503 NF tests/integration/test_booking_code_outside_window.py (410 responses, before start/after end)
-- [ ] T0504 NF tests/integration/test_booking_code_duplicate_grant.py (409 responses, idempotency)
-- [ ] T0505 NF tests/integration/test_booking_code_integration_unavailable.py (deny-by-default when HA unavailable)
-- [ ] T0506 [P] US3 tests/integration/test_entity_mapping_applied_in_voucher_validation.py (integration with voucher service)
+## Phase 5: Guest Portal & Authentication (See phase5_decisions.md for D18-D22)
+### Tests First (Authorization & Code Validation)
+- [x] T0500 [P] NF tests/unit/services/test_unified_code_detection.py (auto-detect voucher vs booking code format) (2025-10-29T19:03:10.000Z)
+- [x] T0501 [P] NF tests/unit/services/test_booking_code_format_validation.py (slot_code, slot_name edge cases per FR-018) (2025-10-29T19:03:10.000Z)
+- [x] T0502 [P] NF tests/integration/test_booking_code_lookup_happy_path.py (event 0 & 1, time window validation) (2025-10-29T19:03:10.000Z)
+- [x] T0503 [P] NF tests/integration/test_booking_code_not_found.py (404 responses) (2025-10-29T19:03:10.000Z)
+- [x] T0504 [P] NF tests/integration/test_booking_code_outside_window.py (410 responses, before start/after end + grace period) (2025-10-29T19:03:10.000Z)
+- [x] T0505 [P] NF tests/integration/test_booking_code_duplicate_grant.py (409 responses, idempotency) (2025-10-29T19:03:10.000Z)
+- [x] T0506 [P] NF tests/integration/test_booking_code_integration_unavailable.py (deny-by-default when HA unavailable) (2025-10-29T19:03:10.000Z)
 
+### Tests First (Rate Limiting per D20)
+- [x] T0507 [P] NF tests/unit/security/test_rate_limiter.py (per-IP tracking, rolling window, cleanup) (2025-10-29T19:03:10.000Z)
+- [x] T0508 [P] NF tests/integration/test_rate_limit_enforcement.py (429 responses, Retry-After header) (2025-10-29T19:03:10.000Z)
+- [x] T0509 [P] NF tests/integration/test_rate_limit_configurable.py (admin config: attempts, window) (2025-10-29T19:03:10.000Z)
 
+### Tests First (Redirect & Grace Period per D21, D22)
+- [x] T0510 [P] NF tests/integration/test_post_auth_redirect_original_destination.py (continue URL preserved) (2025-10-29T19:03:10.000Z)
+- [x] T0511 [P] NF tests/integration/test_post_auth_redirect_whitelist.py (prevent open redirect) (2025-10-29T19:03:10.000Z)
+- [x] T0512 [P] NF tests/integration/test_post_auth_redirect_fallback.py (admin success URL) (2025-10-29T19:03:10.000Z)
+- [x] T0513 [P] NF tests/unit/services/test_checkout_grace_period.py (0-30 min extension, grant expiry) (2025-10-29T19:03:10.000Z)
+- [x] T0514 [P] NF tests/integration/test_captive_portal_detection_redirects.py (D18: /generate_204, /connecttest.txt, etc.) (2025-10-29T19:03:10.000Z)
 
-### Implementation
-- [ ] T0510 NF services/booking_code_validator.py (format+window+lookup logic, metrics, audit emission)
-- [ ] T0511 NF api/routes/booking_authorize.py (guest POST code → grant, error responses per FR-018)
-- [ ] T0512 NF services/mapping_application.py (inject cached HA data into validation flow)
-- [ ] T0513 NF docs/booking_code_validation.md (FR-018 details, flows, error matrix)
+### Tests First (End-to-End Guest Flow)
+- [x] T0515 [P] NF tests/integration/test_guest_authorization_flow_voucher.py (direct + redirect access) (2025-10-29T19:03:10.000Z)
+- [x] T0516 [P] NF tests/integration/test_guest_authorization_flow_booking.py (direct + redirect access) (2025-10-29T19:03:10.000Z)
 
-- [ ] T0514 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6
+### Implementation (Portal Routes & Templates per D18, D19)
+- [x] T0520 US1 web/routes/guest_portal.py (D18: /guest/authorize direct access) (2025-10-29T20:26:19.000Z)
+- [x] T0521 US1 web/routes/captive_detect.py (D18: detection URL redirects) (2025-10-29T20:26:19.000Z)
+- [x] T0522 US1 web/templates/guest/authorize.html (D19: unified input field) (2025-10-29T20:26:19.000Z)
+- [x] T0523 US1 web/templates/guest/welcome.html (D21: success page) (2025-10-29T20:26:19.000Z)
+- [x] T0524 NF web/templates/guest/error.html (themed error messages) (2025-10-29T20:26:19.000Z)
+
+### Implementation (Security & Rate Limiting per D20)
+- [x] T0525 NF security/rate_limiter.py (D20: per-IP, configurable limits, rolling window) (2025-10-29T19:03:10.000Z)
+- [x] T0526 NF web/middleware/rate_limit_middleware.py (D20: enforcement, 429 responses) (2025-10-29T19:03:10.000Z)
+
+### Implementation (Authorization Logic)
+- [x] T0527 US1 services/unified_code_service.py (D19: auto-detect voucher/booking, case handling) (2025-10-29T19:03:10.000Z)
+- [x] T0528 US3 services/booking_code_validator.py (format+window+lookup+grace period, metrics, audit) (2025-10-29T19:03:10.000Z)
+- [x] T0529 NF services/redirect_validator.py (D21: whitelist external domains, prevent open redirect) (2025-10-29T19:03:10.000Z)
+
+### Implementation (Models & Config per D21, D22)
+- [x] T0530 NF models/portal_config.py (add success_redirect_url, rate_limit_attempts, rate_limit_window_seconds) (2025-10-29T20:26:19.000Z)
+- [x] T0531 NF models/ha_integration_config.py (checkout_grace_minutes already added in Phase 3) (2025-10-28T09:28:00.000Z)
+
+### Implementation (Documentation & Review)
+- [x] T0532 NF docs/guest_authorization.md (FR-018 details, flows, error matrix, D18-D22 decisions) (2025-10-29T20:26:19.000Z)
+- [x] T0533 NF Phase 5 review: re-evaluate spec analysis & list decisions required for Phase 6 (2025-10-30T17:24:00.000Z)
 
 ## Phase 6: Performance & Hardening
 ### Tests First
@@ -176,10 +206,14 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0602 NF tests/integration/test_audit_log_completeness.py
 
 ### Implementation / Optimization
+- [ ] T0603 NF tests/integration/test_portal_config_endpoints.py (CRUD tests for portal configuration)
+- [ ] T0604 NF tests/unit/test_portal_config_validation.py (rate limit bounds, grace period validation)
 - [ ] T0610 NF optimize DB indices (voucher.code, access_grant.expiration)
 - [ ] T0611 NF add caching layer for frequently read vouchers (optional)
-- [ ] T0612 NF finalize performance thresholds documentation
-- [ ] T0613 NF Phase 6 review: re-evaluate spec analysis & list decisions required for Phase 7
+- [ ] T0612 NF api/routes/portal_config.py (GET/PUT endpoints for PortalConfig)
+- [ ] T0613 NF web/templates/admin/portal_settings.html (UI for rate limits, grace periods, redirect behavior)
+- [ ] T0614 NF finalize performance thresholds documentation
+- [ ] T0615 NF Phase 6 review: re-evaluate spec analysis & list decisions required for Phase 7
 
 ## Phase 7: Polish & Documentation
 - [ ] T0700 NF quickstart.md (addon + standalone run)

@@ -61,7 +61,15 @@ class Voucher(SQLModel, table=True):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def expires_utc(self) -> datetime:
-        """Computed expiration timestamp (created + duration, floored to minute)."""
-        expiry = self.created_utc + timedelta(minutes=self.duration_minutes)
+        """Computed expiration timestamp (created + duration, floored to minute).
+
+        Note: Ensures timezone awareness even if created_utc is naive (from DB).
+        """
+        # Ensure created_utc is timezone-aware (SQLite may deserialize as naive)
+        created = self.created_utc
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+
+        expiry = created + timedelta(minutes=self.duration_minutes)
         # Floor to minute precision
         return expiry.replace(second=0, microsecond=0)

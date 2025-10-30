@@ -4,7 +4,6 @@
 
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID
 
 from sqlmodel import Field, SQLModel
 
@@ -29,7 +28,7 @@ class RentalControlEvent(SQLModel, table=True):
     __tablename__ = "rental_control_event"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    integration_id: UUID = Field(foreign_key="ha_integration_config.id", index=True)
+    integration_id: str = Field(max_length=128, index=True)
     event_index: int = Field(ge=0)
     slot_name: Optional[str] = Field(default=None, max_length=255)
     slot_code: Optional[str] = Field(default=None, max_length=255)  # regex ^\\d{4,}$

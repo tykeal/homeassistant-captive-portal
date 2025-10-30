@@ -107,10 +107,16 @@ Includes deferred Phase 3 UI (Decision D11): HA integration configuration forms,
 Tests first: integration tests for admin routes (auth success/failure), CSRF enforcement tests, session timeout tests (idle + absolute), template rendering checks (no sensitive data leakage), UI tests for booking code forms and integration management.
 Decisions reference: See phase4_decisions.md for full rationale on D12-D17 (all approved 2025-10-27T00:45:00Z).
 
-### Phase 5: Guest Authorization & Booking Code Validation
-Constitution Gate Re-check: Confirm booking code validation tests cover all FR-018 error scenarios (invalid_format, not_found, outside_window, duplicate, integration_unavailable), metrics tests present, audit logging tests present.
-Guest-facing booking code authorization flow with Rental Control event lookup. Validate codes against cached events (from Phase 3 poller), enforce time windows (start/end with grace period), return appropriate error responses (400/404/409/410).
-Tests first: booking code format validation (regex, length), lookup tests (happy path, not found, outside window, duplicate), integration unavailability (deny-by-default), end-to-end guest authorization flow.
+### Phase 5: Guest Portal & Authentication
+Constitution Gate Re-check: Confirm booking code validation tests cover all FR-018 error scenarios (invalid_format, not_found, outside_window, duplicate, integration_unavailable), metrics tests present, audit logging tests present, rate limiting tests present, redirect validation tests present.
+Guest-facing captive portal with unified authorization form (voucher + booking code), rate limiting, post-authentication redirect handling, and checkout grace period support.
+Authorization Form Access (D18): Both direct URL (`/guest/authorize`) and captive portal detection redirects (covers all guest arrival paths).
+Unified Input Field (D19): Single code input field, backend auto-detects voucher vs booking code; booking codes case-insensitive match, case-sensitive storage.
+Rate Limiting (D20): Admin-configurable per-IP rate limiting (default 5 attempts/minute) to prevent brute-force attacks.
+Post-Auth Redirect (D21): Admin-configurable redirect behavior, default to original destination URL with fallback to success page.
+Grace Period (D22): Admin-configurable checkout grace period (default 15 min, max 30 min) extends booking access post-checkout.
+Tests first: unified authorization form tests (voucher/booking detection), rate limiting enforcement tests, redirect validation tests (whitelist, open redirect prevention), grace period calculation tests, captive portal detection redirect tests, end-to-end guest flow tests.
+Decisions reference: See phase5_decisions.md for full rationale on D18-D22 (all approved 2025-10-29T18:42:00Z).
 
 ### Phase 6: Performance & Hardening
 Constitution Gate Re-check: Finalize performance baselines before removing test skips; enforce audit/log completeness tests present.

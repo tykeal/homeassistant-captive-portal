@@ -44,9 +44,9 @@ async def list_integrations(
     integrations = list(cast(list[HAIntegrationConfig], session.exec(statement).all()))
 
     return templates.TemplateResponse(
-        "admin/integrations.html",
-        {
-            "request": request,
+        request=request,
+        name="admin/integrations.html",
+        context={
             "integrations": integrations,
             "integration": None,
             "csrf_token": csrf_token,
@@ -87,9 +87,9 @@ async def edit_integration(
     integrations = list(cast(list[HAIntegrationConfig], session.exec(statement).all()))
 
     return templates.TemplateResponse(
-        "admin/integrations.html",
-        {
-            "request": request,
+        request=request,
+        name="admin/integrations.html",
+        context={
             "integrations": integrations,
             "integration": integration,
             "csrf_token": csrf_token,

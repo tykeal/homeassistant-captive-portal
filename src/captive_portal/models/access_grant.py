@@ -28,7 +28,11 @@ class AccessGrant(SQLModel, table=True):
         id: Primary key (UUID)
         voucher_code: Optional FK to voucher (nullable)
         booking_ref: Optional case-sensitive booking identifier (nullable)
+        user_input_code: Original user input code for audit trail (nullable)
+        booking_identifier: Alias for booking_ref for Phase 5 compatibility
+        device_id: Device identifier (required)
         mac: Device MAC address (required)
+        integration_id: HA integration identifier for booking-based grants
         session_token: Temporary session token fallback (nullable)
         start_utc: Grant start timestamp (UTC, minute precision)
         end_utc: Grant expiration timestamp (UTC, minute precision)
@@ -41,7 +45,10 @@ class AccessGrant(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     voucher_code: Optional[str] = Field(default=None, max_length=24, foreign_key="voucher.code")
     booking_ref: Optional[str] = Field(default=None, max_length=128)
+    user_input_code: Optional[str] = Field(default=None, max_length=128)
+    device_id: str = Field(max_length=128, index=True)  # Phase 5: device identifier
     mac: str = Field(max_length=17, index=True)  # AA:BB:CC:DD:EE:FF format
+    integration_id: Optional[str] = Field(default=None, max_length=128)  # Phase 5: HA integration
     session_token: Optional[str] = Field(default=None, max_length=64)
     start_utc: datetime = Field(index=True)
     end_utc: datetime = Field(index=True)
@@ -49,6 +56,11 @@ class AccessGrant(SQLModel, table=True):
     status: GrantStatus = Field(default=GrantStatus.PENDING)
     created_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @property
+    def booking_identifier(self) -> Optional[str]:
+        """Alias for booking_ref for Phase 5 compatibility."""
+        return self.booking_ref
 
     def __init__(self, **data: Any) -> None:
         """Initialize AccessGrant with minute-precision timestamp rounding.
