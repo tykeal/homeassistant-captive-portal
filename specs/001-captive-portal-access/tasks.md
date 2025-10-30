@@ -206,10 +206,14 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0602 NF tests/integration/test_audit_log_completeness.py
 
 ### Implementation / Optimization
+- [ ] T0603 NF tests/integration/test_portal_config_endpoints.py (CRUD tests for portal configuration)
+- [ ] T0604 NF tests/unit/test_portal_config_validation.py (rate limit bounds, grace period validation)
 - [ ] T0610 NF optimize DB indices (voucher.code, access_grant.expiration)
 - [ ] T0611 NF add caching layer for frequently read vouchers (optional)
-- [ ] T0612 NF finalize performance thresholds documentation
-- [ ] T0613 NF Phase 6 review: re-evaluate spec analysis & list decisions required for Phase 7
+- [ ] T0612 NF api/routes/portal_config.py (GET/PUT endpoints for PortalConfig)
+- [ ] T0613 NF web/templates/admin/portal_settings.html (UI for rate limits, grace periods, redirect behavior)
+- [ ] T0614 NF finalize performance thresholds documentation
+- [ ] T0615 NF Phase 6 review: re-evaluate spec analysis & list decisions required for Phase 7
 
 ## Phase 7: Polish & Documentation
 - [ ] T0700 NF quickstart.md (addon + standalone run)

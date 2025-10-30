@@ -408,10 +408,11 @@ if not parsed.scheme and not parsed.netloc:
 
 ---
 
-### M4: Rate Limit Configuration Not Exposed in UI
+### M4: Rate Limit Configuration Not Exposed in UI ✅ RESOLVED
 **Severity**: 🟡 MEDIUM
 **File**: `src/captive_portal/models/portal_config.py`
 **Lines**: 10-28
+**Status**: ✅ TRACKED FOR PHASE 6 - Tasks added to implement portal configuration UI
 
 **Issue**: `PortalConfig` model has rate limit settings but no UI/API to configure them.
 
@@ -425,14 +426,19 @@ if not parsed.scheme and not parsed.netloc:
 - Potential lockout of legitimate guests
 - Cannot adapt to attack patterns
 
-**Recommendation**:
-- Add admin UI endpoint to configure portal settings
-- Add validation for reasonable limits (1-100 attempts, 10-3600 seconds)
-- Add API endpoint: `PUT /admin/portal/config`
-- Include rate limit settings in admin configuration page
-- Document recommended values for different deployment scenarios
+**Resolution**:
+- ✅ Added Phase 6 tasks (T0603, T0604, T0612, T0613) to tasks.md:
+  - T0603: Integration tests for portal config CRUD endpoints
+  - T0604: Unit tests for portal config validation (rate limits, grace periods)
+  - T0612: API endpoints (GET/PUT /admin/portal/config) for PortalConfig
+  - T0613: Admin UI template for portal settings (rate limits, grace periods, redirect behavior)
+- ✅ Validation constraints already defined in PortalConfig model (attempts: 1-100, window: 10-3600s)
+- ✅ Default values appropriate for initial deployment (5 attempts/minute)
+- ✅ Documented in plan.md Phase 6 as admin configuration refinement
 
-**Required for**: Production operability
+**Note**: Phase 5 focuses on guest-facing portal functionality. Admin configuration UI refinements (including portal settings) are appropriately scoped for Phase 6 (Performance & Hardening) where operational capabilities are enhanced.
+
+**Required for**: Production operability (Phase 6)
 
 ---
 
