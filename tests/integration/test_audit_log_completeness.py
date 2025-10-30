@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from httpx import AsyncClient
 
 
+@pytest.mark.asyncio
 @pytest.mark.integration
 async def test_audit_log_admin_login(async_client: "AsyncClient") -> None:
     """Verify admin login operations are audited."""
@@ -26,6 +27,7 @@ async def test_audit_log_admin_login(async_client: "AsyncClient") -> None:
         admin = AdminUser(
             username="audit_login_test",
             password_hash=hash_password("test_password"),
+            email="audit_login_test@test.local",
             role="admin",
             created_utc=datetime.now(UTC),
         )
@@ -35,12 +37,12 @@ async def test_audit_log_admin_login(async_client: "AsyncClient") -> None:
         session.close()
 
     # WHEN: Admin logs in
-    async with async_client as client:
-        response = await client.post(
-            "/admin/login",
-            data={"username": "audit_login_test", "password": "test_password"},
-        )
-        assert response.status_code == 200
+    client = async_client
+    response = await client.post(
+        "/admin/login",
+        data={"username": "audit_login_test", "password": "test_password"},
+    )
+    assert response.status_code == 200
 
     # THEN: Audit log contains login event
     session = next(get_session())
@@ -59,6 +61,7 @@ async def test_audit_log_admin_login(async_client: "AsyncClient") -> None:
         session.close()
 
 
+@pytest.mark.asyncio
 @pytest.mark.integration
 async def test_audit_log_voucher_creation(async_client: "AsyncClient") -> None:
     """Verify voucher creation is audited."""
@@ -68,6 +71,7 @@ async def test_audit_log_voucher_creation(async_client: "AsyncClient") -> None:
         admin = AdminUser(
             username="audit_voucher_admin",
             password_hash=hash_password("test_password"),
+            email="audit_voucher_admin@test.local",
             role="admin",
             created_utc=datetime.now(UTC),
         )
@@ -77,24 +81,24 @@ async def test_audit_log_voucher_creation(async_client: "AsyncClient") -> None:
         session.close()
 
     # WHEN: Admin creates a voucher
-    async with async_client as client:
-        # Login
-        await client.post(
-            "/admin/login",
-            data={"username": "audit_voucher_admin", "password": "test_password"},
-        )
+    client = async_client
+    # Login
+    await client.post(
+        "/admin/login",
+        data={"username": "audit_voucher_admin", "password": "test_password"},
+    )
 
-        # Create voucher
-        expires = (datetime.now(UTC) + timedelta(days=7)).isoformat()
-        response = await client.post(
-            "/admin/vouchers",
-            json={
-                "code": "AUDITVCH01",
-                "device_limit": 5,
-                "expires_utc": expires,
-            },
-        )
-        assert response.status_code == 201
+    # Create voucher
+    expires = (datetime.now(UTC) + timedelta(days=7)).isoformat()
+    response = await client.post(
+        "/admin/vouchers",
+        json={
+            "code": "AUDITVCH01",
+            "device_limit": 5,
+            "expires_utc": expires,
+        },
+    )
+    assert response.status_code == 201
 
     # THEN: Audit log contains voucher creation
     session = next(get_session())
@@ -112,6 +116,7 @@ async def test_audit_log_voucher_creation(async_client: "AsyncClient") -> None:
         session.close()
 
 
+@pytest.mark.asyncio
 @pytest.mark.integration
 async def test_audit_log_required_fields(async_client: "AsyncClient") -> None:
     """Verify all audit log entries have required fields populated."""
@@ -121,6 +126,7 @@ async def test_audit_log_required_fields(async_client: "AsyncClient") -> None:
         admin = AdminUser(
             username="audit_fields_test",
             password_hash=hash_password("test_password"),
+            email="audit_fields_test@test.local",
             role="admin",
             created_utc=datetime.now(UTC),
         )
@@ -130,11 +136,11 @@ async def test_audit_log_required_fields(async_client: "AsyncClient") -> None:
         session.close()
 
     # WHEN: Performing audited action
-    async with async_client as client:
-        await client.post(
-            "/admin/login",
-            data={"username": "audit_fields_test", "password": "test_password"},
-        )
+    client = async_client
+    await client.post(
+        "/admin/login",
+        data={"username": "audit_fields_test", "password": "test_password"},
+    )
 
     # THEN: All required fields are populated
     session = next(get_session())

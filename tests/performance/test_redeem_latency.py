@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from httpx import AsyncClient
 
 
+@pytest.mark.asyncio
 @pytest.mark.performance
 async def test_voucher_redemption_latency_l1_50_concurrent(
     async_client: "AsyncClient",
@@ -51,16 +52,16 @@ async def test_voucher_redemption_latency_l1_50_concurrent(
     async def redeem_voucher(code: str, mac: str) -> float:
         """Redeem a voucher and return latency in milliseconds."""
         start = time.perf_counter()
-        async with async_client as client:
-            response = await client.post(
-                "/guest/redeem",
-                json={"code": code, "mac_address": mac},
-            )
-            # Check that request succeeded for valid benchmarking
-            assert response.status_code in (
-                200,
-                201,
-            ), f"Redemption failed: {response.text}"
+        client = async_client
+        response = await client.post(
+            "/guest/redeem",
+            json={"code": code, "mac_address": mac},
+        )
+        # Check that request succeeded for valid benchmarking
+        assert response.status_code in (
+            200,
+            201,
+        ), f"Redemption failed: {response.text}"
         elapsed = time.perf_counter() - start
         return elapsed * 1000  # Convert to milliseconds
 
@@ -95,6 +96,7 @@ async def test_voucher_redemption_latency_l1_50_concurrent(
     assert p95 <= 800.0, f"L1 p95 latency {p95:.2f}ms exceeds 800ms target"
 
 
+@pytest.mark.asyncio
 @pytest.mark.performance
 async def test_voucher_redemption_latency_l2_200_concurrent(
     async_client: "AsyncClient",
@@ -129,15 +131,15 @@ async def test_voucher_redemption_latency_l2_200_concurrent(
     async def redeem_voucher(code: str, mac: str) -> float:
         """Redeem a voucher and return latency in milliseconds."""
         start = time.perf_counter()
-        async with async_client as client:
-            response = await client.post(
-                "/guest/redeem",
-                json={"code": code, "mac_address": mac},
-            )
-            assert response.status_code in (
-                200,
-                201,
-            ), f"Redemption failed: {response.text}"
+        client = async_client
+        response = await client.post(
+            "/guest/redeem",
+            json={"code": code, "mac_address": mac},
+        )
+        assert response.status_code in (
+            200,
+            201,
+        ), f"Redemption failed: {response.text}"
         elapsed = time.perf_counter() - start
         return elapsed * 1000
 
@@ -172,6 +174,7 @@ async def test_voucher_redemption_latency_l2_200_concurrent(
     assert p95 <= 900.0, f"L2 p95 latency {p95:.2f}ms exceeds 900ms target"
 
 
+@pytest.mark.asyncio
 @pytest.mark.performance
 async def test_admin_login_latency_p95(async_client: "AsyncClient") -> None:
     """
@@ -189,6 +192,7 @@ async def test_admin_login_latency_p95(async_client: "AsyncClient") -> None:
         admin = AdminUser(
             username="benchmark_admin",
             password_hash=hash_password("benchmark_password"),
+            email="benchmark_admin@test.local",
             role="admin",
             created_utc=datetime.now(UTC),
         )
@@ -201,12 +205,12 @@ async def test_admin_login_latency_p95(async_client: "AsyncClient") -> None:
     async def perform_login() -> float:
         """Perform login and return latency in milliseconds."""
         start = time.perf_counter()
-        async with async_client as client:
-            response = await client.post(
-                "/admin/login",
-                data={"username": "benchmark_admin", "password": "benchmark_password"},
-            )
-            assert response.status_code == 200, f"Login failed: {response.text}"
+        client = async_client
+        response = await client.post(
+            "/admin/login",
+            data={"username": "benchmark_admin", "password": "benchmark_password"},
+        )
+        assert response.status_code == 200, f"Login failed: {response.text}"
         elapsed = time.perf_counter() - start
         return elapsed * 1000
 

@@ -6,10 +6,11 @@ from collections.abc import Generator
 from typing import Any
 
 import pytest
+import pytest_asyncio
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlmodel import Session, create_engine
 from sqlalchemy.engine import Engine
+from sqlmodel import Session, create_engine
 
 from captive_portal.persistence import database
 
@@ -30,6 +31,7 @@ def db_engine() -> Generator[Engine, None, None]:
     from captive_portal.models.admin_user import AdminUser  # noqa: F401
     from captive_portal.models.audit_log import AuditLog  # noqa: F401
     from captive_portal.models.ha_integration_config import HAIntegrationConfig  # noqa: F401
+    from captive_portal.models.portal_config import PortalConfig  # noqa: F401
     from captive_portal.models.rental_control_event import RentalControlEvent  # noqa: F401
     from captive_portal.models.voucher import Voucher  # noqa: F401
 
@@ -122,7 +124,7 @@ def client(app: FastAPI) -> TestClient:
     return TestClient(app)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture  # type: ignore[misc]
 async def async_client(app: FastAPI) -> Any:
     """Create async test client for performance testing."""
     from httpx import ASGITransport, AsyncClient

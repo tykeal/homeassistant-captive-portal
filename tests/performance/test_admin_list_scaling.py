@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from httpx import AsyncClient
 
 
+@pytest.mark.asyncio
 @pytest.mark.performance
 async def test_admin_grants_list_500_grants_p95(async_client: "AsyncClient") -> None:
     """
@@ -32,6 +33,7 @@ async def test_admin_grants_list_500_grants_p95(async_client: "AsyncClient") -> 
         admin = AdminUser(
             username="list_benchmark_admin",
             password_hash=hash_password("benchmark_password"),
+            email="list_benchmark_admin@test.local",
             role="admin",
             created_utc=datetime.now(UTC),
         )
@@ -58,21 +60,21 @@ async def test_admin_grants_list_500_grants_p95(async_client: "AsyncClient") -> 
     async def fetch_grants_list() -> float:
         """Fetch grants list and return latency in milliseconds."""
         # Login first
-        async with async_client as client:
-            login_response = await client.post(
-                "/admin/login",
-                data={
-                    "username": "list_benchmark_admin",
-                    "password": "benchmark_password",
-                },
-            )
-            assert login_response.status_code == 200
+        client = async_client
+        login_response = await client.post(
+            "/admin/login",
+            data={
+                "username": "list_benchmark_admin",
+                "password": "benchmark_password",
+            },
+        )
+        assert login_response.status_code == 200
 
-            # Measure list operation
-            start = time.perf_counter()
-            response = await client.get("/admin/grants")
-            assert response.status_code == 200
-            elapsed = time.perf_counter() - start
+        # Measure list operation
+        start = time.perf_counter()
+        response = await client.get("/admin/grants")
+        assert response.status_code == 200
+        elapsed = time.perf_counter() - start
 
         return elapsed * 1000  # Convert to milliseconds
 
@@ -97,6 +99,7 @@ async def test_admin_grants_list_500_grants_p95(async_client: "AsyncClient") -> 
     assert p95 <= 1500.0, f"Admin grants list p95 latency {p95:.2f}ms exceeds 1500ms target"
 
 
+@pytest.mark.asyncio
 @pytest.mark.performance
 async def test_admin_vouchers_list_100_vouchers_p95(
     async_client: "AsyncClient",
@@ -115,6 +118,7 @@ async def test_admin_vouchers_list_100_vouchers_p95(
         admin = AdminUser(
             username="voucher_list_admin",
             password_hash=hash_password("benchmark_password"),
+            email="voucher_list_admin@test.local",
             role="admin",
             created_utc=datetime.now(UTC),
         )
@@ -139,20 +143,20 @@ async def test_admin_vouchers_list_100_vouchers_p95(
     # WHEN: Measuring vouchers list latency
     async def fetch_vouchers_list() -> float:
         """Fetch vouchers list and return latency in milliseconds."""
-        async with async_client as client:
-            login_response = await client.post(
-                "/admin/login",
-                data={
-                    "username": "voucher_list_admin",
-                    "password": "benchmark_password",
-                },
-            )
-            assert login_response.status_code == 200
+        client = async_client
+        login_response = await client.post(
+            "/admin/login",
+            data={
+                "username": "voucher_list_admin",
+                "password": "benchmark_password",
+            },
+        )
+        assert login_response.status_code == 200
 
-            start = time.perf_counter()
-            response = await client.get("/admin/vouchers")
-            assert response.status_code == 200
-            elapsed = time.perf_counter() - start
+        start = time.perf_counter()
+        response = await client.get("/admin/vouchers")
+        assert response.status_code == 200
+        elapsed = time.perf_counter() - start
 
         return elapsed * 1000
 
