@@ -28,6 +28,7 @@ class AccessGrant(SQLModel, table=True):
         id: Primary key (UUID)
         voucher_code: Optional FK to voucher (nullable)
         booking_ref: Optional case-sensitive booking identifier (nullable)
+        user_input_code: Original user input code for audit trail (nullable)
         booking_identifier: Alias for booking_ref for Phase 5 compatibility
         device_id: Device identifier (required)
         mac: Device MAC address (required)
@@ -44,6 +45,7 @@ class AccessGrant(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     voucher_code: Optional[str] = Field(default=None, max_length=24, foreign_key="voucher.code")
     booking_ref: Optional[str] = Field(default=None, max_length=128)
+    user_input_code: Optional[str] = Field(default=None, max_length=128)
     device_id: str = Field(max_length=128, index=True)  # Phase 5: device identifier
     mac: str = Field(max_length=17, index=True)  # AA:BB:CC:DD:EE:FF format
     integration_id: Optional[str] = Field(default=None, max_length=128)  # Phase 5: HA integration

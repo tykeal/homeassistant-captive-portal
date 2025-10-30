@@ -313,6 +313,8 @@ async def handle_authorization(
                 mac=mac_address,
                 device_id=mac_address,  # Use MAC as device_id for now
                 booking_ref=booking_identifier,  # Store case-sensitive booking identifier
+                user_input_code=validation_result.original_code,  # Store user's original input
+                integration_id=integration.integration_id,  # Store which integration was used
                 start_utc=grant_start,
                 end_utc=grant_end,
                 status=GrantStatus.PENDING,
