@@ -165,7 +165,9 @@ class BookingCodeValidator:
             DuplicateGrantError: Active grant already exists
         """
         # Get first integration (for now, single integration support)
-        integration = self.session.exec(select(HAIntegrationConfig).limit(1)).first()
+        integration: HAIntegrationConfig | None = self.session.exec(
+            select(HAIntegrationConfig).limit(1)
+        ).first()
 
         if not integration:
             raise IntegrationUnavailableError("No integration configured")
@@ -202,7 +204,7 @@ class BookingCodeValidator:
             raise BookingOutsideWindowError("Booking expired")
 
         # Check for duplicate active grant
-        existing = self.session.exec(
+        existing: AccessGrant | None = self.session.exec(
             select(AccessGrant)
             .where(AccessGrant.booking_ref == code)
             .where(AccessGrant.end_utc > now)
