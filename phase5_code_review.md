@@ -476,43 +476,55 @@ if not parsed.scheme and not parsed.netloc:
 
 ## Low Priority Issues (Nice to Have)
 
-### L1: Missing Internationalization (i18n)
+### L1: Missing Internationalization (i18n) ✅ DOCUMENTED
 **Severity**: 🟢 LOW
 **Files**: All templates and user-facing messages
+**Status**: ✅ DOCUMENTED in docs/FUTURE_ENHANCEMENTS.md
 
 **Issue**: All text is hardcoded in English.
 
 **Recommendation**: Add i18n support for multi-language deployments (future enhancement).
 
+**Resolution**: Documented in FUTURE_ENHANCEMENTS.md for post-MVP development.
+
 ---
 
-### L2: No Metrics/Observability
+### L2: No Metrics/Observability ✅ DOCUMENTED
 **Severity**: 🟢 LOW
 **Files**: All Phase 5 routes
+**Status**: ✅ DOCUMENTED in docs/FUTURE_ENHANCEMENTS.md
 
 **Issue**: No Prometheus metrics for authorization success/failure rates, rate limit hits, etc.
 
 **Recommendation**: Add metrics instrumentation (future enhancement).
 
+**Resolution**: Documented in FUTURE_ENHANCEMENTS.md with comprehensive metrics plan.
+
 ---
 
-### L3: HTML Template Accessibility
+### L3: HTML Template Accessibility ✅ DOCUMENTED
 **Severity**: 🟢 LOW
 **Files**: All guest templates
+**Status**: ✅ DOCUMENTED in docs/FUTURE_ENHANCEMENTS.md
 
 **Issue**: Templates lack ARIA labels, semantic HTML, and accessibility testing.
 
 **Recommendation**: Add accessibility audit and improvements (future enhancement).
 
+**Resolution**: Documented in FUTURE_ENHANCEMENTS.md with WCAG 2.1 Level AA target.
+
 ---
 
-### L4: No Progressive Enhancement
+### L4: No Progressive Enhancement ✅ DOCUMENTED
 **Severity**: 🟢 LOW
 **Files**: Guest templates
+**Status**: ✅ DOCUMENTED in docs/FUTURE_ENHANCEMENTS.md
 
 **Issue**: Forms require JavaScript for optimal UX but degrade poorly.
 
 **Recommendation**: Ensure forms work without JavaScript (future enhancement).
+
+**Resolution**: Documented in FUTURE_ENHANCEMENTS.md for post-MVP improvement.
 
 ---
 
