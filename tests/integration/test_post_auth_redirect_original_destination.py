@@ -31,7 +31,7 @@ class TestPostAuthRedirectOriginalDestination:
         client = TestClient(app_with_redirect)
 
         original_url = "http://example.com/page"
-        response = client.get(f"/guest/authorize?continue={quote(original_url)}")
+        response = client.get(f"/guest/authorize?continue_url={quote(original_url)}")
 
         assert response.status_code == 200
         data = response.json()

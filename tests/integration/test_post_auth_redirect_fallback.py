@@ -15,7 +15,7 @@ def app_with_fallback() -> FastAPI:
     app = FastAPI()
 
     @app.post("/guest/authorize")
-    async def authorize(code: str) -> dict[str, str | bool]:
+    async def authorize(data: dict[str, str]) -> dict[str, str | bool]:
         """Authorization endpoint."""
         # Simplified - in reality would validate code
         return {
