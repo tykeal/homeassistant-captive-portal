@@ -217,8 +217,8 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 7: Polish & Documentation
 ### Documentation (D23: Comprehensive)
-- [ ] T0700 NF quickstart.md (addon + standalone run)
-- [ ] T0701 NF README updates (principles summary, architecture)
+- [x] T0700 NF quickstart.md (addon + standalone run)
+- [x] T0701 NF README updates (principles summary, architecture)
 - [ ] T0702 NF docs/addon/config.md (explain config.json options)
 - [ ] T0720 NF docs/architecture_overview.md (system design, components, data flow)
 - [ ] T0721 NF docs/ha_integration_guide.md (Rental Control setup, entity discovery, troubleshooting)
