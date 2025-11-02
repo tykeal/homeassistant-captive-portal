@@ -125,8 +125,24 @@ Refactor for any identified bottlenecks.
 
 ### Phase 7: Polish & Documentation
 Constitution Gate Re-check: Ensure documentation reflects final baselines, all SPDX headers verified, no skipped tests remain.
-quickstart.md, finalize README additions, audit logging review, ensure all SPDX headers, license compliance review, addon build artifacts (Dockerfile, config.json) aligned with addons-example.
-Tests: finalize performance threshold assertions (remove skips), documentation validation (lint).
+
+**Documentation Scope (D23)**: Comprehensive documentation including quickstart, architecture overview, HA integration guide, TP-Omada setup guide, troubleshooting guide, and admin UI walkthrough. Critical for adoption and support given complex multi-system integration.
+
+**Security Hardening (D24)**: Basic security response headers (X-Frame-Options: DENY, X-Content-Type-Options: nosniff) for defense in depth without over-engineering. Full CSP deferred as it may break theming or future extensions.
+
+**Audit Log Retention (D25)**: Configurable retention policy separate from grants/vouchers (default 30 days, max 90 days) to support compliance requirements and incident response windows.
+
+**API Documentation (D26)**: Embedded OpenAPI docs at `/docs` (Swagger UI) and `/redoc` endpoints (admin-only RBAC) to enable custom integrations and automation.
+
+**Metrics Export (D27)**: No metrics export for MVP - defer to Phase 8 if operational need emerges. Audit logs + performance tests provide sufficient visibility.
+
+**SPDX Compliance (D28)**: Automated `reuse lint` verification with spot-check of high-visibility files (LICENSE, README, addon config).
+
+**Tech Debt Items**: Cleanup TODO comments from Phase 6 (admin auth placeholders, proxy trust configuration).
+
+Tests: Security headers verification, API docs access control, audit retention configuration, SPDX compliance validation.
+
+Decisions reference: See phase6_review.md for full rationale on D23-D28 (approved 2025-10-30T20:00:00Z).
 
 ## Role-Based Access Control (FR-017)
 
