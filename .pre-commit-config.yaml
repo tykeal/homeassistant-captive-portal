@@ -72,6 +72,7 @@ repos:
           - types-pytz
           - types-PyYAML
           - pytest
+          - pytest-asyncio
           - fastapi
           - sqlmodel
           - pydantic

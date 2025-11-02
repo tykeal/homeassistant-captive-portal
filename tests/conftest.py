@@ -2,14 +2,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """Pytest configuration and shared fixtures."""
 
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import pytest
+import pytest_asyncio
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlmodel import Session, create_engine
 from sqlalchemy.engine import Engine
+from sqlmodel import Session, create_engine
 
 from captive_portal.persistence import database
 
@@ -30,6 +31,7 @@ def db_engine() -> Generator[Engine, None, None]:
     from captive_portal.models.admin_user import AdminUser  # noqa: F401
     from captive_portal.models.audit_log import AuditLog  # noqa: F401
     from captive_portal.models.ha_integration_config import HAIntegrationConfig  # noqa: F401
+    from captive_portal.models.portal_config import PortalConfig  # noqa: F401
     from captive_portal.models.rental_control_event import RentalControlEvent  # noqa: F401
     from captive_portal.models.voucher import Voucher  # noqa: F401
 
@@ -92,6 +94,7 @@ def app(db_engine: Engine) -> FastAPI:
         guest_portal,
         health,
         integrations_ui,
+        portal_config,
         vouchers,
     )
 
@@ -100,6 +103,7 @@ def app(db_engine: Engine) -> FastAPI:
     test_app.include_router(grants.router)
     test_app.include_router(guest_portal.router)
     test_app.include_router(health.router)
+    test_app.include_router(portal_config.router)
     test_app.include_router(vouchers.router)
     test_app.include_router(integrations_ui.router)
 
@@ -120,6 +124,15 @@ def app(db_engine: Engine) -> FastAPI:
 def client(app: FastAPI) -> TestClient:
     """Create test client for API testing."""
     return TestClient(app)
+
+
+@pytest_asyncio.fixture
+async def async_client(app: FastAPI) -> AsyncGenerator[Any, None]:
+    """Create async test client for performance testing."""
+    from httpx import ASGITransport, AsyncClient
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
 
 
 @pytest.fixture

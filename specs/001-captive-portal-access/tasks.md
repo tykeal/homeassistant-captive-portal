@@ -201,29 +201,57 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 6: Performance & Hardening
 ### Tests First
-- [ ] T0600 NF tests/performance/test_redeem_latency.py (benchmark scaffold)
-- [ ] T0601 NF tests/performance/test_admin_list_scaling.py
-- [ ] T0602 NF tests/integration/test_audit_log_completeness.py
+- [x] T0600 NF tests/performance/test_redeem_latency.py (benchmark scaffold) (2025-10-30T19:06:00.000Z)
+- [x] T0601 NF tests/performance/test_admin_list_scaling.py (2025-10-30T19:06:00.000Z)
+- [x] T0602 NF tests/integration/test_audit_log_completeness.py (2025-10-30T19:06:00.000Z)
 
 ### Implementation / Optimization
-- [ ] T0603 NF tests/integration/test_portal_config_endpoints.py (CRUD tests for portal configuration)
-- [ ] T0604 NF tests/unit/test_portal_config_validation.py (rate limit bounds, grace period validation)
-- [ ] T0610 NF optimize DB indices (voucher.code, access_grant.expiration)
-- [ ] T0611 NF add caching layer for frequently read vouchers (optional)
-- [ ] T0612 NF api/routes/portal_config.py (GET/PUT endpoints for PortalConfig)
-- [ ] T0613 NF web/templates/admin/portal_settings.html (UI for rate limits, grace periods, redirect behavior)
-- [ ] T0614 NF finalize performance thresholds documentation
-- [ ] T0615 NF Phase 6 review: re-evaluate spec analysis & list decisions required for Phase 7
+- [x] T0603 NF tests/integration/test_portal_config_endpoints.py (CRUD tests for portal configuration) (2025-10-30T19:06:00.000Z)
+- [x] T0604 NF tests/unit/test_portal_config_validation.py (rate limit bounds, grace period validation) (2025-10-30T19:06:00.000Z)
+- [x] T0610 NF optimize DB indices (voucher.code, access_grant.expiration) (2025-10-30T19:30:00.000Z)
+- [x] T0611 NF add caching layer for frequently read vouchers (optional) (2025-10-30T19:32:00.000Z)
+- [x] T0612 NF api/routes/portal_config.py (GET/PUT endpoints for PortalConfig) (2025-10-30T19:06:00.000Z)
+- [x] T0613 NF web/templates/admin/portal_settings.html (UI for rate limits, grace periods, redirect behavior) (2025-10-30T19:33:00.000Z)
+- [x] T0614 NF finalize performance thresholds documentation (2025-10-30T20:00:00.000Z)
+- [x] T0615 NF Phase 6 review: re-evaluate spec analysis & list decisions required for Phase 7 (2025-10-30T20:00:00.000Z)
 
 ## Phase 7: Polish & Documentation
+### Documentation (D23: Comprehensive)
 - [ ] T0700 NF quickstart.md (addon + standalone run)
 - [ ] T0701 NF README updates (principles summary, architecture)
 - [ ] T0702 NF docs/addon/config.md (explain config.json options)
-- [ ] T0703 NF finalize OpenAPI description & examples
-- [ ] T0704 NF verify SPDX headers across repository
+- [ ] T0720 NF docs/architecture_overview.md (system design, components, data flow)
+- [ ] T0721 NF docs/ha_integration_guide.md (Rental Control setup, entity discovery, troubleshooting)
+- [ ] T0722 NF docs/tp_omada_setup.md (controller configuration, external portal enablement, API access)
+- [ ] T0723 NF docs/troubleshooting.md (common issues, logs, diagnostics, FAQ)
+- [ ] T0724 NF docs/admin_ui_walkthrough.md (screenshots/descriptions of admin features)
+
+### Security Hardening (D24: Basic headers)
+- [ ] T0725 NF middleware/security_headers.py (X-Frame-Options: DENY, X-Content-Type-Options: nosniff)
+- [ ] T0726 NF tests/integration/test_security_headers.py (verify headers present on all responses)
 - [ ] T0705 NF security review checklist (session hardening, CSRF, headers)
+
+### Audit & Compliance (D25: Configurable retention, D28: Automated + spot-check)
+- [ ] T0727 NF models/audit_config.py (audit_retention_days field, default 30, max 90)
+- [ ] T0728 NF services/audit_cleanup_service.py (separate retention policy from grants/vouchers)
+- [ ] T0729 NF tests/unit/services/test_audit_retention.py (configurable cleanup tests)
+- [ ] T0730 NF api/routes/audit_config.py (admin endpoint for audit retention configuration)
+- [ ] T0704 NF verify SPDX headers across repository (reuse lint + spot-check)
+
+### API Documentation (D26: Embedded docs)
+- [ ] T0703 NF finalize OpenAPI description & examples
+- [ ] T0731 NF api/routes/docs.py (expose /docs and /redoc endpoints, admin-only RBAC)
+- [ ] T0732 NF tests/integration/test_api_docs_access.py (verify admin-only access to docs)
+
+### Polish & Release
 - [ ] T0706 NF release notes draft (MVP scope)
 - [ ] T0707 NF audit logging review & gap fixes
+- [ ] T0733 NF manual performance validation guide (docker stats for memory/CPU, controller propagation timing)
+
+### Tech Debt Cleanup (from Phase 6 review)
+- [ ] T0734 NF Remove TODO comments in src/captive_portal/api/routes/integrations.py (lines 71, 104) - admin auth placeholders already implemented elsewhere
+- [ ] T0735 NF Remove TODO comment in src/captive_portal/api/routes/guest_portal.py (line 85) - make proxy trust configurable (currently uses safe defaults; add to PortalConfig model)
+- [ ] T0736 NF Evaluate skipped contract tests (135 tests) - document docker-compose test stack plan for local validation; Phase 7 review: final acceptance criteria verification
 
 ## Dependencies & Execution Order
 - Completion of Phase 0 required before Phase 1.
