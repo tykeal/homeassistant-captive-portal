@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
     from captive_portal.api.routes import (
         admin_accounts,
         admin_auth,
+        audit_config,
         captive_detect,
         grants,
         guest_portal,
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
 
     app.include_router(admin_accounts.router)
     app.include_router(admin_auth.router)
+    app.include_router(audit_config.router)
     app.include_router(captive_detect.router)
     app.include_router(grants.router)
     app.include_router(guest_portal.router)
