@@ -227,8 +227,8 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0724 NF docs/admin_ui_walkthrough.md (screenshots/descriptions of admin features)
 
 ### Security Hardening (D24: Basic headers)
-- [ ] T0725 NF middleware/security_headers.py (X-Frame-Options: DENY, X-Content-Type-Options: nosniff)
-- [ ] T0726 NF tests/integration/test_security_headers.py (verify headers present on all responses)
+- [x] T0725 NF middleware/security_headers.py (X-Frame-Options: DENY, X-Content-Type-Options: nosniff)
+- [x] T0726 NF tests/integration/test_security_headers.py (verify headers present on all responses)
 - [ ] T0705 NF security review checklist (session hardening, CSRF, headers)
 
 ### Audit & Compliance (D25: Configurable retention, D28: Automated + spot-check)
