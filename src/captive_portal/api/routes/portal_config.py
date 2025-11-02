@@ -14,6 +14,11 @@ from captive_portal.models.portal_config import PortalConfig
 from captive_portal.persistence.database import get_session
 from captive_portal.security.session_middleware import require_admin
 
+# Validation constants from PortalConfig model
+MAX_REDIRECT_URL_LENGTH = 2048
+MAX_RATE_LIMIT_ATTEMPTS = 1000
+MAX_RATE_LIMIT_WINDOW_SECONDS = 3600
+
 router = APIRouter(prefix="/api/admin/portal-config", tags=["portal_config"])
 
 
@@ -53,9 +58,9 @@ class PortalConfigResponse(BaseModel):
 class PortalConfigUpdate(BaseModel):
     """Portal configuration update request model."""
 
-    success_redirect_url: str | None = Field(None, max_length=2048)
-    rate_limit_attempts: int | None = Field(None, ge=1, le=1000)
-    rate_limit_window_seconds: int | None = Field(None, ge=1, le=3600)
+    success_redirect_url: str | None = Field(None, max_length=MAX_REDIRECT_URL_LENGTH)
+    rate_limit_attempts: int | None = Field(None, ge=1, le=MAX_RATE_LIMIT_ATTEMPTS)
+    rate_limit_window_seconds: int | None = Field(None, ge=1, le=MAX_RATE_LIMIT_WINDOW_SECONDS)
     redirect_to_original_url: bool | None = None
 
 
