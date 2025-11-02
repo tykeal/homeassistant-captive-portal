@@ -219,7 +219,7 @@ SPDX-License-Identifier: Apache-2.0
 ### Documentation (D23: Comprehensive)
 - [x] T0700 NF quickstart.md (addon + standalone run)
 - [x] T0701 NF README updates (principles summary, architecture)
-- [ ] T0702 NF docs/addon/config.md (explain config.json options)
+- [x] T0702 NF docs/addon/config.md (explain config.json options)
 - [ ] T0720 NF docs/architecture_overview.md (system design, components, data flow)
 - [ ] T0721 NF docs/ha_integration_guide.md (Rental Control setup, entity discovery, troubleshooting)
 - [ ] T0722 NF docs/tp_omada_setup.md (controller configuration, external portal enablement, API access)
