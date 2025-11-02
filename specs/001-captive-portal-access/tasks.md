@@ -248,6 +248,11 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0707 NF audit logging review & gap fixes
 - [ ] T0733 NF manual performance validation guide (docker stats for memory/CPU, controller propagation timing)
 
+### Tech Debt Cleanup (from Phase 6 review)
+- [ ] T0734 NF Remove TODO comments in src/captive_portal/api/routes/integrations.py (lines 71, 104) - admin auth placeholders already implemented elsewhere
+- [ ] T0735 NF Remove TODO comment in src/captive_portal/api/routes/guest_portal.py (line 85) - make proxy trust configurable (currently uses safe defaults)
+- [ ] T0736 NF Evaluate skipped contract tests (135 tests) - document docker-compose test stack plan for local validation
+
 ### Tech Debt Cleanup from Phase 6
 - [ ] T0734 NF Remove TODO comments from integrations.py (lines 71, 104) - admin auth already implemented
 - [ ] T0735 NF Make proxy trust configurable in guest_portal.py (line 85) - add to PortalConfig model
