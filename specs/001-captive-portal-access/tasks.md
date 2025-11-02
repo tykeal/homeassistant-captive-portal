@@ -232,10 +232,10 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0705 NF security review checklist (session hardening, CSRF, headers)
 
 ### Audit & Compliance (D25: Configurable retention, D28: Automated + spot-check)
-- [ ] T0727 NF models/audit_config.py (audit_retention_days field, default 30, max 90)
-- [ ] T0728 NF services/audit_cleanup_service.py (separate retention policy from grants/vouchers)
-- [ ] T0729 NF tests/unit/services/test_audit_retention.py (configurable cleanup tests)
-- [ ] T0730 NF api/routes/audit_config.py (admin endpoint for audit retention configuration)
+- [x] T0727 NF models/audit_config.py (audit_retention_days field, default 30, max 90)
+- [x] T0728 NF services/audit_cleanup_service.py (separate retention policy from grants/vouchers)
+- [x] T0729 NF tests/unit/services/test_audit_retention.py (configurable cleanup tests)
+- [x] T0730 NF api/routes/audit_config.py (admin endpoint for audit retention configuration)
 - [ ] T0704 NF verify SPDX headers across repository (reuse lint + spot-check)
 
 ### API Documentation (D26: Embedded docs)
