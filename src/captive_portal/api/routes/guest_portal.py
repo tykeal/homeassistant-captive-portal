@@ -13,6 +13,7 @@ from sqlmodel import Session, select
 from captive_portal.persistence.database import get_session
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
+from captive_portal.models.portal_config import PortalConfig
 from captive_portal.persistence.repositories import AccessGrantRepository
 from captive_portal.security.csrf import CSRFConfig, CSRFProtection
 from captive_portal.security.rate_limiter import RateLimiter
@@ -54,6 +55,28 @@ def get_audit_service(session: Session = Depends(get_session)) -> AuditService:
         Configured AuditService instance
     """
     return AuditService(session)
+
+
+def get_portal_config_dep(session: Session = Depends(get_session)) -> PortalConfig:
+    """Dependency for fetching portal configuration.
+
+    Args:
+        session: Database session
+
+    Returns:
+        PortalConfig singleton instance
+    """
+    stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
+    config: Optional[PortalConfig] = session.exec(stmt).first()
+
+    if not config:
+        # Create default config if it doesn't exist
+        config = PortalConfig(id=1)
+        session.add(config)
+        session.commit()
+        session.refresh(config)
+
+    return config
 
 
 def _add_security_headers(response: HTMLResponse) -> HTMLResponse:
@@ -196,6 +219,7 @@ async def handle_authorization(
     redirect_validator: RedirectValidator = Depends(),
     session: Session = Depends(get_session),
     audit_service: AuditService = Depends(get_audit_service),
+    portal_config: PortalConfig = Depends(get_portal_config_dep),
 ) -> RedirectResponse:
     """Process guest authorization code submission.
 
@@ -210,6 +234,7 @@ async def handle_authorization(
         unified_code_service: Code validation and grant creation service
         redirect_validator: Redirect URL validation service
         session: Database session
+        portal_config: Portal configuration
 
     Returns:
         RedirectResponse: Redirect to success page or original destination
@@ -220,9 +245,8 @@ async def handle_authorization(
     # Validate CSRF token
     await _guest_csrf.validate_token(request)
 
-    # TODO: Make proxy trust configurable via settings
-    # For now, trust proxies from private networks (10.x, 172.16-31.x, 192.168.x)
-    trusted_networks = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+    # Get trusted proxy networks from configuration
+    trusted_networks = portal_config.get_trusted_networks()
     client_ip = get_client_ip(request, trust_proxies=True, trusted_networks=trusted_networks)
 
     # Check rate limit
