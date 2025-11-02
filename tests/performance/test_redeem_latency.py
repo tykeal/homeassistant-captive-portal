@@ -70,7 +70,7 @@ async def test_voucher_redemption_latency_l1_50_concurrent(
         tasks = [
             redeem_voucher(
                 vouchers[i],
-                f"00:11:22:33:{i:02x}:{(run * concurrent_requests + i) % 256:02x}",
+                f"00:11:22:33:{i % 256:02x}:{(run * concurrent_requests + i) % 256:02x}",
             )
             for i in range(concurrent_requests)
         ]
