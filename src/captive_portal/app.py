@@ -11,6 +11,7 @@ from captive_portal.security.session_middleware import (
     SessionConfig,
     SessionMiddleware,
 )
+from captive_portal.web.middleware.security_headers import SecurityHeadersMiddleware
 
 logger = logging.getLogger("captive_portal")
 
@@ -31,6 +32,9 @@ def create_app() -> FastAPI:
     # Store both in app state for access by routes
     app.state.session_config = session_config
     app.state.session_store = session_store
+
+    # Add security headers middleware (outermost)
+    app.add_middleware(SecurityHeadersMiddleware)
 
     # Add session middleware with shared store
     app.add_middleware(SessionMiddleware, config=session_config, store=session_store)
