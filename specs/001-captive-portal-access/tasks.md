@@ -239,9 +239,9 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0704 NF verify SPDX headers across repository (reuse lint + spot-check)
 
 ### API Documentation (D26: Embedded docs)
-- [ ] T0703 NF finalize OpenAPI description & examples
-- [ ] T0731 NF api/routes/docs.py (expose /docs and /redoc endpoints, admin-only RBAC)
-- [ ] T0732 NF tests/integration/test_api_docs_access.py (verify admin-only access to docs)
+- [x] T0703 NF finalize OpenAPI description & examples
+- [x] T0731 NF api/routes/docs.py (expose /docs and /redoc endpoints, admin-only RBAC)
+- [x] T0732 NF tests/integration/test_api_docs_access.py (verify admin-only access to docs)
 
 ### Polish & Release
 - [ ] T0706 NF release notes draft (MVP scope)
