@@ -223,7 +223,7 @@ def _extract_mac_address(request: Request) -> str:
 
 
 @router.post("/authorize")
-async def handle_authorization(
+async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complexity
     request: Request,
     code: Annotated[str, Form()],
     continue_url: Annotated[Optional[str], Form(alias="continue")] = None,

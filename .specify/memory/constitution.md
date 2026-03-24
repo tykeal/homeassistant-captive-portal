@@ -140,7 +140,7 @@
   Supervisor configuration. Passwords MUST use Argon2 hashing with
   OWASP-recommended parameters.
 - **Home Assistant Compatibility**: The add-on MUST follow Home
-  Assistant add-on conventions and build successfully as a local
+  Assistant add-on conventions and build successfully from the local
   Dockerfile within the HA Supervisor environment.
 - **Observability**: Structured logs MUST be emitted for all error
   paths. Audit logging MUST record all admin and guest authorization
