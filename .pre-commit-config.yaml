@@ -40,7 +40,7 @@ repos:
       - id: gitlint
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 3db93a2be6f214ed722bf7bce095ec1b1715422a  # frozen: v0.14.2
+    rev: e05c5c0818279e5ac248ac9e954431ba58865e61  # frozen: v0.15.7
     hooks:
       - id: ruff
         files: ^(scripts|tests|custom_components|addon|src)/.+\.py$
@@ -49,7 +49,7 @@ repos:
         files: ^(scripts|tests|custom_components|addon|src)/.+\.py$
 
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: 79a6b2b1392eaf49cdd32ac4f14be1a809bbd8f7  # frozen: v1.37.1
+    rev: cba56bcde1fdd01c1deb3f945e69764c291a6530  # frozen: v1.38.0
     hooks:
       - id: yamllint
 
@@ -63,7 +63,7 @@ repos:
           - setuptools
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 9f70dc58c23dfcca1b97af99eaeee3140a807c7e  # frozen: v1.18.2
+    rev: a66e98df7b4aeeb3724184b332785976d062b92e  # frozen: v1.19.1
     hooks:
       - id: mypy
         files: ^(scripts|tests|custom_components|addon|src)/.+\.py$
@@ -85,6 +85,6 @@ repos:
       - id: reuse
 
   - repo: https://github.com/rhysd/actionlint
-    rev: e7d448ef7507c20fc4c88a95d0c448b848cd6127  # frozen: v1.7.8
+    rev: 393031adb9afb225ee52ae2ccd7a5af5525e03e8  # frozen: v1.7.11
     hooks:
       - id: actionlint
