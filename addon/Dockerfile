@@ -3,13 +3,16 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM ${BUILD_FROM}
 
-# Install python 3.13 (placeholder, base image may already include python)
 RUN apk add --no-cache python3 py3-pip
 
 WORKDIR /app
 
-# Install deps via uv if available else pip
-RUN pip install --no-cache-dir fastapi uvicorn[standard]
+# Use a venv to avoid PEP 668 externally-managed-environment error
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv "$VIRTUAL_ENV"
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+RUN "$VIRTUAL_ENV/bin/python" -m pip install --no-cache-dir fastapi uvicorn[standard]
 
 EXPOSE 8080
 CMD ["python3","-c","import fastapi,uvicorn; from fastapi import FastAPI; app=FastAPI();\n@app.get('/health')\nasync def health(): return {'status':'ok'}; uvicorn.run(app,host='0.0.0.0',port=8080)"]
