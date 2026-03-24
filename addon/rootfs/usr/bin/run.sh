@@ -7,7 +7,16 @@ exec python3 -c "
 from fastapi import FastAPI
 import uvicorn
 
-app = FastAPI()
+app = FastAPI(title='Captive Portal Guest Access')
+
+@app.get('/')
+async def root():
+    return {
+        'name': 'Captive Portal Guest Access',
+        'status': 'placeholder',
+        'message': 'The full captive portal is not yet wired up.',
+        'endpoints': ['/health'],
+    }
 
 @app.get('/health')
 async def health():
