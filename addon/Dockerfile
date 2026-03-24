@@ -6,9 +6,7 @@ FROM ${BUILD_FROM}
 # Install python 3.13 (placeholder, base image may already include python)
 RUN apk add --no-cache python3 py3-pip
 
-# Copy app (placeholder minimal)
 WORKDIR /app
-COPY pyproject.toml README.md /app/
 
 # Install deps via uv if available else pip
 RUN pip install --no-cache-dir fastapi uvicorn[standard]
