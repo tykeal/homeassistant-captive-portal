@@ -278,13 +278,13 @@ SPDX-License-Identifier: Apache-2.0
 - Added after specification analysis to close coverage & alignment gaps.
 
 ### Remediation Tasks
-- [ ] T0709 NF tests/integration/test_portal_error_messages_theming.py (guest error clarity, theming, localization placeholders) (FR-012).
-- [ ] T0711 NF tests/unit/logging/test_audit_log_fields.py (validate user, action, resource, result, correlation_id) + ensure audit_service emits all fields.
-- [ ] T0712 NF tests/integration/test_session_cookie_security_headers.py (Secure, HttpOnly, SameSite=Lax, CSP, Referrer-Policy, Permissions-Policy) & middleware header additions.
-- [ ] T0713 NF tests/integration/test_theme_precedence.py (admin override > default > fallback) including error pages & vouchers.
-- [ ] T0714 NF tests/integration/test_health_readiness_liveness.py + implement readiness & liveness endpoints & document container probes.
+- [x] T0709 NF tests/integration/test_portal_error_messages_theming.py (guest error clarity, theming, localization placeholders) (FR-012).
+- [x] T0711 NF tests/unit/logging/test_audit_log_fields.py (validate user, action, resource, result, correlation_id) + ensure audit_service emits all fields.
+- [x] T0712 NF tests/integration/test_session_cookie_security_headers.py (Secure, HttpOnly, SameSite=Lax, CSP, Referrer-Policy, Permissions-Policy) & middleware header additions.
+- [x] T0713 NF tests/integration/test_theme_precedence.py (admin override > default > fallback) including error pages & vouchers.
+- [x] T0714 NF tests/integration/test_health_readiness_liveness.py + implement readiness & liveness endpoints & document container probes.
 - [x] T0715 NF cache_decision.md: decide keep (add NFR: reduce controller round-trips 60% + tests) or remove T0611; record rationale.
-- [ ] T0716 NF add NFR (disconnect enforcement p95 <30s after access expiry) + tests/integration/test_disconnect_enforcement.py.
-- [ ] T0717 NF extend metrics (active_sessions, controller_latency, auth_failures) + tests/unit/metrics/test_metrics_export.py & instrumentation updates.
-- [ ] T0718 NF tests/integration/test_addon_build_run.py: build HA addon image, start container, verify health & readiness endpoints, graceful shutdown.
+- [x] T0716 NF add NFR (disconnect enforcement p95 <30s after access expiry) + tests/integration/test_disconnect_enforcement.py.
+- [x] T0717 NF extend metrics (active_sessions, controller_latency, auth_failures) + tests/unit/metrics/test_metrics_export.py & instrumentation updates.
+- [x] T0718 NF tests/integration/test_addon_build_run.py: build HA addon image, start container, verify health & readiness endpoints, graceful shutdown.
 - Recommendation (2025-10-23T13:57:51.702Z): Adopt minimal in-memory TTL cache (30–60s controller status, 5–10m HA rental metadata) with explicit bust on grant create/update/delete; implement via optional layer (T0611) if T0715 outcome = keep, else remove T0611.
