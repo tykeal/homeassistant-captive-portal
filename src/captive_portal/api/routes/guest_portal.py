@@ -65,6 +65,9 @@ def get_portal_config_dep(session: Session = Depends(get_session)) -> PortalConf
 
     Returns:
         PortalConfig singleton instance
+
+    Raises:
+        HTTPException: If portal configuration cannot be loaded or created
     """
     stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
     config: Optional[PortalConfig] = session.exec(stmt).first()
@@ -79,6 +82,12 @@ def get_portal_config_dep(session: Session = Depends(get_session)) -> PortalConf
         except Exception:
             session.rollback()
             config = session.exec(stmt).first()
+
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to load portal configuration",
+        )
 
     return config
 

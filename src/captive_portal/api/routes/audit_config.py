@@ -48,6 +48,10 @@ async def update_audit_config(
 ) -> AuditConfig:
     """Update audit log retention configuration.
 
+    Note: Configuration is stored in-memory (app.state) for MVP.
+    Changes will reset to defaults on application restart.
+    Database persistence is planned for a future release.
+
     Args:
         config: New audit configuration
         admin_id: Authenticated admin user ID (from dependency)

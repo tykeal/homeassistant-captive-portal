@@ -12,6 +12,17 @@ from captive_portal.security.session_middleware import require_admin
 
 router = APIRouter(prefix="/admin", tags=["documentation"])
 
+# Relaxed CSP for docs pages that load JS/CSS from CDN and use inline scripts
+_DOCS_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "img-src 'self' data: https://cdn.jsdelivr.net; "
+    "font-src 'self' https://cdn.jsdelivr.net; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none'"
+)
+
 
 @router.get("/docs", response_class=HTMLResponse, include_in_schema=False)
 async def swagger_ui(
@@ -29,11 +40,13 @@ async def swagger_ui(
     Returns:
         Swagger UI HTML page
     """
-    return get_swagger_ui_html(
+    response = get_swagger_ui_html(
         openapi_url=str(request.app.openapi_url),
         title=f"{request.app.title} - Swagger UI",
         swagger_favicon_url="",
     )
+    response.headers["Content-Security-Policy"] = _DOCS_CSP
+    return response
 
 
 @router.get("/redoc", response_class=HTMLResponse, include_in_schema=False)
@@ -52,8 +65,10 @@ async def redoc(
     Returns:
         ReDoc HTML page
     """
-    return get_redoc_html(
+    response = get_redoc_html(
         openapi_url=str(request.app.openapi_url),
         title=f"{request.app.title} - ReDoc",
         redoc_favicon_url="",
     )
+    response.headers["Content-Security-Policy"] = _DOCS_CSP
+    return response
