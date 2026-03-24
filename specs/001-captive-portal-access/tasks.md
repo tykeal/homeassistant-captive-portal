@@ -217,9 +217,9 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 7: Polish & Documentation
 ### Documentation (D23: Comprehensive)
-- [ ] T0700 NF quickstart.md (addon + standalone run)
-- [ ] T0701 NF README updates (principles summary, architecture)
-- [ ] T0702 NF docs/addon/config.md (explain config.json options)
+- [x] T0700 NF quickstart.md (addon + standalone run)
+- [x] T0701 NF README updates (principles summary, architecture)
+- [x] T0702 NF docs/addon/config.md (explain config.json options)
 - [ ] T0720 NF docs/architecture_overview.md (system design, components, data flow)
 - [ ] T0721 NF docs/ha_integration_guide.md (Rental Control setup, entity discovery, troubleshooting)
 - [ ] T0722 NF docs/tp_omada_setup.md (controller configuration, external portal enablement, API access)
@@ -227,21 +227,21 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0724 NF docs/admin_ui_walkthrough.md (screenshots/descriptions of admin features)
 
 ### Security Hardening (D24: Basic headers)
-- [ ] T0725 NF middleware/security_headers.py (X-Frame-Options: DENY, X-Content-Type-Options: nosniff)
-- [ ] T0726 NF tests/integration/test_security_headers.py (verify headers present on all responses)
+- [x] T0725 NF middleware/security_headers.py (X-Frame-Options: DENY, X-Content-Type-Options: nosniff)
+- [x] T0726 NF tests/integration/test_security_headers.py (verify headers present on all responses)
 - [ ] T0705 NF security review checklist (session hardening, CSRF, headers)
 
 ### Audit & Compliance (D25: Configurable retention, D28: Automated + spot-check)
-- [ ] T0727 NF models/audit_config.py (audit_retention_days field, default 30, max 90)
-- [ ] T0728 NF services/audit_cleanup_service.py (separate retention policy from grants/vouchers)
-- [ ] T0729 NF tests/unit/services/test_audit_retention.py (configurable cleanup tests)
-- [ ] T0730 NF api/routes/audit_config.py (admin endpoint for audit retention configuration)
+- [x] T0727 NF models/audit_config.py (audit_retention_days field, default 30, max 90)
+- [x] T0728 NF services/audit_cleanup_service.py (separate retention policy from grants/vouchers)
+- [x] T0729 NF tests/unit/services/test_audit_retention.py (configurable cleanup tests)
+- [x] T0730 NF api/routes/audit_config.py (admin endpoint for audit retention configuration)
 - [ ] T0704 NF verify SPDX headers across repository (reuse lint + spot-check)
 
 ### API Documentation (D26: Embedded docs)
-- [ ] T0703 NF finalize OpenAPI description & examples
-- [ ] T0731 NF api/routes/docs.py (expose /docs and /redoc endpoints, admin-only RBAC)
-- [ ] T0732 NF tests/integration/test_api_docs_access.py (verify admin-only access to docs)
+- [x] T0703 NF finalize OpenAPI description & examples
+- [x] T0731 NF api/routes/docs.py (expose /docs and /redoc endpoints, admin-only RBAC)
+- [x] T0732 NF tests/integration/test_api_docs_access.py (verify admin-only access to docs)
 
 ### Polish & Release
 - [ ] T0706 NF release notes draft (MVP scope)
@@ -249,9 +249,9 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0733 NF manual performance validation guide (docker stats for memory/CPU, controller propagation timing)
 
 ### Tech Debt Cleanup (from Phase 6 review)
-- [ ] T0734 NF Remove TODO comments in src/captive_portal/api/routes/integrations.py (lines 71, 104) - admin auth placeholders already implemented elsewhere
-- [ ] T0735 NF Remove TODO comment in src/captive_portal/api/routes/guest_portal.py (line 85) - make proxy trust configurable (currently uses safe defaults; add to PortalConfig model)
-- [ ] T0736 NF Evaluate skipped contract tests (135 tests) - document docker-compose test stack plan for local validation; Phase 7 review: final acceptance criteria verification
+- [x] T0734 NF Remove TODO comments in src/captive_portal/api/routes/integrations.py (lines 71, 104) - admin auth placeholders already implemented elsewhere
+- [x] T0735 NF Remove TODO comment in src/captive_portal/api/routes/guest_portal.py (line 85) - make proxy trust configurable (currently uses safe defaults; add to PortalConfig model)
+- [x] T0736 NF Evaluate skipped contract tests (135 tests) - document docker-compose test stack plan for local validation; Phase 7 review: final acceptance criteria verification
 
 ## Dependencies & Execution Order
 - Completion of Phase 0 required before Phase 1.

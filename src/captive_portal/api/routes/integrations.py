@@ -16,6 +16,8 @@ from captive_portal.models.ha_integration_config import (
     HAIntegrationConfig,
     IdentifierAttr,
 )
+from captive_portal.security.session_middleware import require_admin
+from captive_portal.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 
@@ -86,17 +88,6 @@ def get_db_session() -> Generator[Session, None, None]:
         yield session
 
 
-# Dependency: Admin authentication (placeholder - will be implemented in Phase 4)
-async def require_admin() -> None:
-    """Require admin authentication.
-
-    Raises:
-        HTTPException: If not authenticated as admin
-    """
-    # TODO: Implement actual admin auth check in Phase 4
-    pass
-
-
 @router.post(
     "",
     response_model=IntegrationConfigResponse,
@@ -105,14 +96,14 @@ async def require_admin() -> None:
 async def create_integration(
     config: IntegrationConfigCreate,
     session: Session = Depends(get_db_session),
-    _admin: None = Depends(require_admin),
+    admin_id: UUID = Depends(require_admin),
 ) -> HAIntegrationConfig:
     """Create new HA integration configuration.
 
     Args:
         config: Integration configuration data
         session: Database session
-        _admin: Admin authentication dependency
+        admin_id: Admin user ID from authentication
 
     Returns:
         Created integration configuration
@@ -120,6 +111,8 @@ async def create_integration(
     Raises:
         HTTPException: If integration_id already exists (409 Conflict)
     """
+    audit_service = AuditService(session)
+
     # Check for duplicate integration_id
     statement: Any = select(HAIntegrationConfig).where(
         HAIntegrationConfig.integration_id == config.integration_id
@@ -146,8 +139,17 @@ async def create_integration(
     session.refresh(new_config)
 
     # Audit log
-    # TODO: Integrate with AuditService in proper context
-    logger.info(f"Created HA integration config: {config.integration_id}")
+    await audit_service.log_admin_action(
+        admin_id=admin_id,
+        action="create_integration",
+        target_type="ha_integration",
+        target_id=str(new_config.id),
+        metadata={
+            "integration_id": config.integration_id,
+            "identifier_attr": config.identifier_attr.value,
+            "checkout_grace_minutes": config.checkout_grace_minutes,
+        },
+    )
 
     return new_config
 
@@ -155,7 +157,7 @@ async def create_integration(
 @router.get("", response_model=list[IntegrationConfigResponse])
 async def list_integrations(
     session: Session = Depends(get_db_session),
-    _admin: None = Depends(require_admin),
+    _admin: UUID = Depends(require_admin),
 ) -> list[HAIntegrationConfig]:
     """List all HA integration configurations.
 
@@ -177,7 +179,7 @@ async def list_integrations(
 async def get_integration(
     config_id: UUID,
     session: Session = Depends(get_db_session),
-    _admin: None = Depends(require_admin),
+    _admin: UUID = Depends(require_admin),
 ) -> HAIntegrationConfig:
     """Get specific HA integration configuration.
 
@@ -208,7 +210,7 @@ async def update_integration(
     config_id: UUID,
     updates: IntegrationConfigUpdate,
     session: Session = Depends(get_db_session),
-    _admin: None = Depends(require_admin),
+    _admin: UUID = Depends(require_admin),
 ) -> HAIntegrationConfig:
     """Update HA integration configuration.
 
@@ -252,7 +254,7 @@ async def update_integration(
 async def delete_integration(
     config_id: UUID,
     session: Session = Depends(get_db_session),
-    _admin: None = Depends(require_admin),
+    _admin: UUID = Depends(require_admin),
 ) -> None:
     """Delete HA integration configuration.
 

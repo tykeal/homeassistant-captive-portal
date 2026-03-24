@@ -90,6 +90,7 @@ def app(db_engine: Engine) -> FastAPI:
     from captive_portal.api.routes import (
         admin_accounts,
         admin_auth,
+        docs,
         grants,
         guest_portal,
         health,
@@ -100,6 +101,7 @@ def app(db_engine: Engine) -> FastAPI:
 
     test_app.include_router(admin_accounts.router)
     test_app.include_router(admin_auth.router)
+    test_app.include_router(docs.router)
     test_app.include_router(grants.router)
     test_app.include_router(guest_portal.router)
     test_app.include_router(health.router)
