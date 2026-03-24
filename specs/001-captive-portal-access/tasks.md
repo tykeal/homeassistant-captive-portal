@@ -236,7 +236,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0728 NF services/audit_cleanup_service.py (separate retention policy from grants/vouchers)
 - [x] T0729 NF tests/unit/services/test_audit_retention.py (configurable cleanup tests)
 - [x] T0730 NF api/routes/audit_config.py (admin endpoint for audit retention configuration)
-- [ ] T0704 NF verify SPDX headers across repository (reuse lint + spot-check)
+- [x] T0704 NF verify SPDX headers across repository (reuse lint + spot-check)
 
 ### API Documentation (D26: Embedded docs)
 - [x] T0703 NF finalize OpenAPI description & examples
@@ -283,7 +283,7 @@ SPDX-License-Identifier: Apache-2.0
 - [ ] T0712 NF tests/integration/test_session_cookie_security_headers.py (Secure, HttpOnly, SameSite=Lax, CSP, Referrer-Policy, Permissions-Policy) & middleware header additions.
 - [ ] T0713 NF tests/integration/test_theme_precedence.py (admin override > default > fallback) including error pages & vouchers.
 - [ ] T0714 NF tests/integration/test_health_readiness_liveness.py + implement readiness & liveness endpoints & document container probes.
-- [ ] T0715 NF cache_decision.md: decide keep (add NFR: reduce controller round-trips 60% + tests) or remove T0611; record rationale.
+- [x] T0715 NF cache_decision.md: decide keep (add NFR: reduce controller round-trips 60% + tests) or remove T0611; record rationale.
 - [ ] T0716 NF add NFR (disconnect enforcement p95 <30s after access expiry) + tests/integration/test_disconnect_enforcement.py.
 - [ ] T0717 NF extend metrics (active_sessions, controller_latency, auth_failures) + tests/unit/metrics/test_metrics_export.py & instrumentation updates.
 - [ ] T0718 NF tests/integration/test_addon_build_run.py: build HA addon image, start container, verify health & readiness endpoints, graceful shutdown.
