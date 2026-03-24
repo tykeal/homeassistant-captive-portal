@@ -229,7 +229,7 @@ SPDX-License-Identifier: Apache-2.0
 ### Security Hardening (D24: Basic headers)
 - [x] T0725 NF middleware/security_headers.py (X-Frame-Options: DENY, X-Content-Type-Options: nosniff)
 - [x] T0726 NF tests/integration/test_security_headers.py (verify headers present on all responses)
-- [ ] T0705 NF security review checklist (session hardening, CSRF, headers)
+- [x] T0705 NF security review checklist (session hardening, CSRF, headers)
 
 ### Audit & Compliance (D25: Configurable retention, D28: Automated + spot-check)
 - [x] T0727 NF models/audit_config.py (audit_retention_days field, default 30, max 90)
@@ -244,9 +244,9 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0732 NF tests/integration/test_api_docs_access.py (verify admin-only access to docs)
 
 ### Polish & Release
-- [ ] T0706 NF release notes draft (MVP scope)
-- [ ] T0707 NF audit logging review & gap fixes
-- [ ] T0733 NF manual performance validation guide (docker stats for memory/CPU, controller propagation timing)
+- [x] T0706 NF release notes draft (MVP scope)
+- [x] T0707 NF audit logging review & gap fixes
+- [x] T0733 NF manual performance validation guide (docker stats for memory/CPU, controller propagation timing)
 
 ### Tech Debt Cleanup (from Phase 6 review)
 - [x] T0734 NF Remove TODO comments in src/captive_portal/api/routes/integrations.py (lines 71, 104) - admin auth placeholders already implemented elsewhere
