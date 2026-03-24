@@ -26,17 +26,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
         # Content Security Policy - restrictive by default
-        # Allow same-origin scripts and styles, no inline
-        csp = (
-            "default-src 'self'; "
-            "script-src 'self'; "
-            "style-src 'self'; "
-            "img-src 'self' data:; "
-            "font-src 'self'; "
-            "connect-src 'self'; "
-            "frame-ancestors 'none'"
-        )
-        response.headers["Content-Security-Policy"] = csp
+        # Only set if not already provided by route-specific handler
+        if "Content-Security-Policy" not in response.headers:
+            csp = (
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "style-src 'self'; "
+                "img-src 'self' data:; "
+                "font-src 'self'; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none'"
+            )
+            response.headers["Content-Security-Policy"] = csp
 
         # Permissions Policy - disable unnecessary features
         permissions = (

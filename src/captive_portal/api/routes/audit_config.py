@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Request
 from captive_portal.models.audit_config import AuditConfig
 from captive_portal.security.session_middleware import require_admin
 
-router = APIRouter(prefix="/api/v1/admin/audit", tags=["admin", "audit"])
+router = APIRouter(prefix="/api/admin/audit", tags=["admin", "audit"])
 
 
 def _get_audit_config(request: Request) -> AuditConfig:

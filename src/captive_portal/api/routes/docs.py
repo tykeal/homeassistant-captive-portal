@@ -32,7 +32,7 @@ async def swagger_ui(
     return get_swagger_ui_html(
         openapi_url=str(request.app.openapi_url),
         title=f"{request.app.title} - Swagger UI",
-        swagger_favicon_url="/static/favicon.ico",
+        swagger_favicon_url="",
     )
 
 
@@ -55,5 +55,5 @@ async def redoc(
     return get_redoc_html(
         openapi_url=str(request.app.openapi_url),
         title=f"{request.app.title} - ReDoc",
-        redoc_favicon_url="/static/favicon.ico",
+        redoc_favicon_url="",
     )

@@ -397,7 +397,7 @@ rate_limit_attempts: 3
 rate_limit_window_seconds: 60
 voucher_length: 16
 log_level: INFO
-audit_retention_days: 365
+audit_retention_days: 60
 ```
 
 ### Development/Testing Configuration

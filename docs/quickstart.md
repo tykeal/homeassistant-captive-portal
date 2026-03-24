@@ -166,8 +166,8 @@ If using Rental Control for booking-based guest access:
 ### Via API
 
 ```bash
-curl -X POST http://<ip>:8080/api/v1/vouchers \
-  -H "Authorization: Bearer <admin-session-token>" \
+curl -X POST http://<ip>:8080/api/vouchers \
+  -H "Cookie: session_id=<admin-session-cookie>" \
   -H "Content-Type: application/json" \
   -d '{
     "duration_minutes": 1440,
@@ -179,7 +179,7 @@ curl -X POST http://<ip>:8080/api/v1/vouchers \
 
 - **Admin Dashboard**: Real-time view of active grants, recent authentications
 - **Audit Log**: Settings → Audit Log shows all admin actions
-- **Health Check**: `http://<ip>:8080/health` - Returns controller connectivity status
+- **Health Check**: `http://<ip>:8080/api/health` - Returns controller connectivity status
 - **Logs**: Add-on Log tab or `docker logs captive-portal`
 
 ## Troubleshooting
