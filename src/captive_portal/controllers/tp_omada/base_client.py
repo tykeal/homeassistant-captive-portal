@@ -130,7 +130,7 @@ class OmadaClient:
         except httpx.RequestError as e:
             raise OmadaAuthenticationError(f"Connection error: {e}") from e
 
-    async def post_with_retry(
+    async def post_with_retry(  # noqa: C901 - TODO: refactor to reduce complexity
         self,
         endpoint: str,
         payload: dict[str, Any],
