@@ -328,20 +328,18 @@ log_level: DEBUG
 #### `audit_retention_days`
 **Type**: `integer`
 **Required**: No
-**Default**: `90`
-**Range**: `1` to `3650` (10 years), or `0` for unlimited
+**Default**: `30`
+**Range**: `1` to `90`
 
 Days to retain audit log entries before automatic purging.
 
 ```yaml
-audit_retention_days: 180
+audit_retention_days: 60
 ```
 
 **Recommendations**:
-- **30-90**: Standard deployments (default range)
-- **180-365**: Compliance requirements (6-12 months)
-- **730+**: Long-term archival needs
-- **0**: Unlimited (manual purge only) - **not recommended** (database growth)
+- **30**: Standard deployments (default)
+- **60-90**: Extended retention for compliance needs
 
 ### Data Persistence
 

@@ -72,8 +72,8 @@ def test_security_headers_on_all_routes(client: TestClient) -> None:
     """Verify security headers are present on various routes."""
     routes = [
         "/api/health",
-        "/api/v1/captive-detect/success.txt",
-        "/api/v1/portal/settings",
+        "/success.txt",
+        "/generate_204",
     ]
 
     for route in routes:

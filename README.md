@@ -87,7 +87,7 @@ See [Architecture Overview](docs/architecture_overview.md) for detailed componen
 - **[HA Integration Guide](docs/ha_integration_guide.md)**: Rental Control setup and troubleshooting
 - **[Architecture Overview](docs/architecture_overview.md)**: System design and component interaction
 - **[Troubleshooting](docs/troubleshooting.md)**: Common issues and diagnostics
-- **[API Documentation](http://localhost:8080/docs)**: OpenAPI interactive docs (admin-only, when running)
+- **[API Documentation](http://localhost:8080/admin/docs)**: OpenAPI interactive docs (admin-only, when running)
 
 ## Configuration
 
@@ -109,7 +109,7 @@ See [docs/addon/config.md](docs/addon/config.md) for complete reference.
 
 ### Requirements
 
-- Python 3.12+
+- Python 3.13+
 - uv (recommended) or pip
 - SQLite 3.35+
 

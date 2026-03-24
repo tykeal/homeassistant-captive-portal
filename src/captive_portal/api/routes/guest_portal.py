@@ -70,11 +70,15 @@ def get_portal_config_dep(session: Session = Depends(get_session)) -> PortalConf
     config: Optional[PortalConfig] = session.exec(stmt).first()
 
     if not config:
-        # Create default config if it doesn't exist
-        config = PortalConfig(id=1)
-        session.add(config)
-        session.commit()
-        session.refresh(config)
+        # Atomic get-or-create to avoid race condition under concurrency
+        try:
+            config = PortalConfig(id=1)
+            session.add(config)
+            session.commit()
+            session.refresh(config)
+        except Exception:
+            session.rollback()
+            config = session.exec(stmt).first()
 
     return config
 

@@ -63,7 +63,7 @@ docker run -d \
   -e OMADA_USERNAME=api_user \
   -e OMADA_PASSWORD=api_password \
   -e OMADA_SITE=Default \
-  ghcr.io/tykeal/captive-portal:latest
+  ghcr.io/tykeal/captive-portal:latest  # or build locally: docker build -t captive-portal .
 ```
 
 #### From Source
