@@ -3,7 +3,7 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM ${BUILD_FROM}
 
-RUN apk add --no-cache python3 py3-pip
+RUN apk add --no-cache python3 py3-pip bash
 
 WORKDIR /app
 
@@ -14,5 +14,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 RUN "$VIRTUAL_ENV/bin/python" -m pip install --no-cache-dir fastapi uvicorn[standard]
 
+COPY rootfs /
+
 EXPOSE 8080
-CMD ["python3","-c","import fastapi,uvicorn; from fastapi import FastAPI; app=FastAPI();\n@app.get('/health')\nasync def health(): return {'status':'ok'}; uvicorn.run(app,host='0.0.0.0',port=8080)"]
+CMD ["/usr/bin/run.sh"]
