@@ -3,488 +3,323 @@ SPDX-FileCopyrightText: 2025 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Security Review Checklist - Phase 7
+# Security Review Checklist — Captive Portal MVP
 
-**Review Date**: 2025-03-24
-**Reviewer**: Implementation Team
-**Version**: 0.1.0 (MVP)
-**Status**: COMPLETE
-
-## Overview
-
-This checklist validates security hardening measures implemented in Phase 7 of the Captive Portal system. It covers session management, CSRF protection, security headers, authentication, and general security posture.
+This checklist documents the security controls implemented in the captive
+portal add-on together with notes for reviewers. Each section references
+the concrete source files that implement the control.
 
 ---
 
 ## 1. Session Hardening
 
-### 1.1 Cookie Security Flags
+**Implementation:** `src/captive_portal/security/session_middleware.py`
 
-- [x] **HttpOnly Flag**: Session cookies inaccessible to JavaScript
-  - **Implementation**: `src/captive_portal/security/session_middleware.py` - `SessionConfig.http_only = True`
-  - **Verification**: Check `Set-Cookie` header includes `HttpOnly` attribute
-  - **Status**: ✓ PASS
+| Control | Value | Notes |
+|---------|-------|-------|
+| Cookie `Secure` flag | `True` | Cookies only sent over HTTPS |
+| Cookie `HttpOnly` flag | `True` | Prevents JavaScript access |
+| Cookie `SameSite` | `strict` | Strict cross-origin protection for admin sessions |
+| Session ID entropy | `secrets.token_urlsafe(32)` | 256-bit cryptographic random |
+| Idle timeout | 30 minutes | Configurable via `SessionConfig.idle_minutes` (D17) |
+| Absolute timeout | 8 hours | Configurable via `SessionConfig.max_hours` (D17) |
+| Session store | In-memory `SessionStore` | Sessions are not persisted across restarts |
+| IP / User-Agent tracking | Stored per session | Enables anomaly detection in audit logs |
+| Expired session cleanup | Automatic | `SessionStore` prunes expired entries |
 
-- [x] **Secure Flag**: Session cookies transmitted only over HTTPS
-  - **Implementation**: `SessionConfig.secure = True` (production), `False` (development)
-  - **Verification**: Check `Set-Cookie` header includes `Secure` in production
-  - **Status**: ✓ PASS (configurable via environment)
+**Review items:**
 
-- [x] **SameSite Attribute**: CSRF protection at cookie level
-  - **Implementation**: `SessionConfig.same_site = "Lax"` (default)
-  - **Options**: `Strict` (max protection), `Lax` (usability), `None` (not recommended)
-  - **Verification**: Check `Set-Cookie` header includes `SameSite=Lax`
-  - **Status**: ✓ PASS
-
-### 1.2 Session Expiration
-
-- [x] **Idle Timeout**: Sessions expire after inactivity period
-  - **Implementation**: `SessionConfig.max_age = 86400` (24 hours default)
-  - **Configurable**: Via `SESSION_MAX_AGE_SECONDS` environment variable
-  - **Status**: ✓ PASS
-
-- [x] **Session Revocation**: Admin logout clears server-side session
-  - **Implementation**: `session_store.delete(session_id)` in logout handler
-  - **Verification**: Logout removes session from store, subsequent requests fail auth
-  - **Status**: ✓ PASS
-
-- [x] **Session Cleanup**: Expired sessions purged from store
-  - **Implementation**: Background cleanup task in session middleware
-  - **Frequency**: Every 1 hour
-  - **Status**: ✓ PASS
-
-### 1.3 Session Storage
-
-- [x] **Secret Key Management**: Strong, unique session secret
-  - **Implementation**: `SessionConfig.secret_key` from `SESSION_SECRET` env var
-  - **Validation**: Minimum 32 characters, random generation
-  - **Fallback**: Application generates secure random secret on startup if not provided
-  - **Status**: ✓ PASS
-
-- [x] **Session ID Entropy**: Cryptographically secure random session IDs
-  - **Implementation**: `uuid.uuid4()` for session identifiers
-  - **Verification**: 128-bit random UUID v4
-  - **Status**: ✓ PASS
-
-- [x] **Session Fixation Prevention**: New session ID on login
-  - **Implementation**: `create_session()` generates new ID after authentication
-  - **Verification**: Session ID changes between pre-login and post-login states
-  - **Status**: ✓ PASS
+- [x] `set_cookie()` applies Secure, HttpOnly, SameSite flags
+      (`session_middleware.py` lines 156-163)
+- [x] Session IDs generated with `secrets.token_urlsafe(32)`
+      (`session_middleware.py` line 63)
+- [x] Both idle and absolute timeout enforced on every request
+      (`session_middleware.py` lines 125-139)
+- [ ] Session ID rotation on privilege escalation — not currently
+      implemented; consider adding after login success
 
 ---
 
 ## 2. CSRF Protection
 
-### 2.1 Token Generation
+**Implementation:** `src/captive_portal/security/csrf.py`
 
-- [x] **CSRF Token in Forms**: All state-changing forms include CSRF token
-  - **Implementation**: `{% csrf_token %}` macro in Jinja2 templates
-  - **Verification**: Hidden input field `<input type="hidden" name="csrf_token" value="...">`
-  - **Status**: ✓ PASS
+| Control | Value |
+|---------|-------|
+| Pattern | Double-submit cookie |
+| Token entropy | `secrets.token_urlsafe(32)` |
+| Comparison | `secrets.compare_digest()` (constant-time) |
+| Header name | `X-CSRF-Token` |
+| Form field fallback | Supported |
+| Admin cookie `SameSite` | `strict` |
+| Guest cookie `SameSite` | `lax` |
+| Cookie `HttpOnly` | `False` (required so JavaScript can read the token) |
 
-- [x] **Token Uniqueness**: Each session has unique CSRF token
-  - **Implementation**: Token stored in session: `session['csrf_token'] = secrets.token_urlsafe(32)`
-  - **Verification**: Token changes per session
-  - **Status**: ✓ PASS
+**Callers:**
 
-- [x] **Token Entropy**: Tokens are cryptographically secure
-  - **Implementation**: `secrets.token_urlsafe()` - 32-byte URL-safe random string
-  - **Status**: ✓ PASS
+| Route | File | Purpose |
+|-------|------|---------|
+| Admin modification endpoints | `api/routes/admin_accounts.py` line 116 | Validates before account changes |
+| Guest authorize | `api/routes/guest_portal.py` line 259 | Validates before granting access |
+| Bootstrap CSRF endpoint | `api/routes/admin_auth.py` lines 202-219 | Issues CSRF token |
 
-### 2.2 Token Validation
+**Review items:**
 
-- [x] **POST/PUT/DELETE Protection**: State-changing endpoints validate CSRF token
-  - **Implementation**: `@csrf_protect` decorator on admin routes
-  - **Protected Endpoints**:
-    - `/admin/grants` (POST, PUT, DELETE)
-    - `/admin/vouchers` (POST, DELETE)
-    - `/admin/config` (POST, PUT)
-    - `/portal/authorize` (POST)
-    - `/portal/voucher` (POST)
-  - **Status**: ✓ PASS
-
-- [x] **Token Comparison**: Constant-time comparison prevents timing attacks
-  - **Implementation**: `secrets.compare_digest(provided_token, session_token)`
-  - **Status**: ✓ PASS
-
-- [x] **Missing Token Handling**: Requests without token rejected with 403
-  - **Implementation**: `raise HTTPException(status_code=403, detail="CSRF token missing")`
-  - **Verification**: Test POST request without `csrf_token` field
-  - **Status**: ✓ PASS
-
-### 2.3 CSRF Exceptions
-
-- [x] **GET Requests Exempt**: Read-only operations don't require CSRF token
-  - **Implementation**: Middleware only validates POST/PUT/DELETE/PATCH methods
-  - **Status**: ✓ PASS
-
-- [x] **Health Endpoints Exempt**: `/health`, `/ready`, `/generate_204` bypass CSRF
-  - **Implementation**: Path exemptions in CSRF middleware
-  - **Status**: ✓ PASS
-
-- [x] **API Endpoints (Future)**: Bearer token auth bypasses CSRF for machine clients
-  - **Implementation**: Not in MVP scope (session-based auth only)
-  - **Status**: N/A
+- [x] Token generated with CSPRNG
+- [x] Constant-time comparison prevents timing attacks
+- [x] Token validated on all state-changing endpoints
+- [x] Separate SameSite policies for admin (`strict`) and guest (`lax`)
 
 ---
 
 ## 3. Security Headers
 
-### 3.1 Content Security
+**Implementation:** `src/captive_portal/web/middleware/security_headers.py`
+Registered in `app.py` line 70.
 
-- [x] **X-Content-Type-Options**: Prevents MIME-type sniffing
-  - **Implementation**: `X-Content-Type-Options: nosniff`
-  - **Middleware**: `SecurityHeadersMiddleware` in `web/middleware/security_headers.py`
-  - **Status**: ✓ PASS
+| Header | Value | Purpose |
+|--------|-------|---------|
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'` | XSS / injection mitigation |
+| `X-Frame-Options` | `DENY` | Clickjacking prevention |
+| `X-Content-Type-Options` | `nosniff` | MIME-sniffing prevention |
+| `X-XSS-Protection` | `1; mode=block` | Legacy XSS filter |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Prevents referrer leakage |
+| `Permissions-Policy` | Disables geolocation, microphone, camera, payment, USB, magnetometer, gyroscope, accelerometer | Feature restriction |
 
-- [x] **X-Frame-Options**: Prevents clickjacking
-  - **Implementation**: `X-Frame-Options: DENY`
-  - **Verification**: Admin pages cannot be embedded in iframes
-  - **Status**: ✓ PASS
+**Guest portal CSP** (`guest_portal.py` lines 111-120):
 
-- [x] **Content-Security-Policy**: Restricts resource loading
-  - **Implementation**: `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'`
-  - **Rationale**: `unsafe-inline` needed for HTMX and inline styles (future: nonces)
-  - **Status**: ✓ PASS (with documented trade-offs)
+- Allows `'unsafe-inline'` for styles (template rendering)
+- Scripts restricted to `'self'`
+- `frame-ancestors 'none'`
 
-### 3.2 Information Disclosure
+**Review items:**
 
-- [x] **X-Powered-By Removal**: Server header doesn't reveal technology stack
-  - **Implementation**: FastAPI default (no `X-Powered-By` header)
-  - **Status**: ✓ PASS
-
-- [x] **Server Header**: Generic server identifier (no version info)
-  - **Implementation**: FastAPI default server header
-  - **Recommendation**: Use reverse proxy (nginx/Caddy) to set custom server header
-  - **Status**: ✓ PASS
-
-- [x] **Error Messages**: Stack traces disabled in production
-  - **Implementation**: `app.debug = False` in production mode
-  - **Verification**: Errors return generic 500 messages, details logged server-side
-  - **Status**: ✓ PASS
-
-### 3.3 Referrer Policy
-
-- [x] **Referrer-Policy Header**: Controls referrer information leakage
-  - **Implementation**: `Referrer-Policy: strict-origin-when-cross-origin`
-  - **Behavior**: Full URL for same-origin, origin-only for cross-origin HTTPS
-  - **Status**: ✓ PASS
-
-### 3.4 Permissions Policy
-
-- [x] **Permissions-Policy Header**: Restricts browser features
-  - **Implementation**: `Permissions-Policy: geolocation=(), microphone=(), camera=()`
-  - **Rationale**: Guest portal doesn't require device sensors
-  - **Status**: ✓ PASS
-
-### 3.5 HSTS (Future)
-
-- [ ] **Strict-Transport-Security**: Force HTTPS for domain (production deployment)
-  - **Implementation**: Handled by reverse proxy (nginx/Caddy) in production
-  - **Recommendation**: `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
-  - **Status**: ⚠️ DEFERRED (infrastructure-level concern)
+- [x] Middleware registered before route handlers
+- [x] CSP includes `frame-ancestors 'none'` (supplements X-Frame-Options)
+- [x] No `'unsafe-eval'` anywhere
+- [ ] Consider removing `'unsafe-inline'` from guest style-src by using
+      external CSS
 
 ---
 
-## 4. Authentication & Authorization
+## 4. Authentication
 
-### 4.1 Password Security
+### 4.1 Admin Authentication
 
-- [x] **Password Hashing**: Passwords stored as bcrypt hashes
-  - **Implementation**: `passlib.hash.bcrypt.hash()` in `security/password_utils.py`
-  - **Cost Factor**: 12 rounds (2^12 iterations)
-  - **Status**: ✓ PASS
+**Implementation:** `src/captive_portal/api/routes/admin_auth.py`
 
-- [x] **Salt**: Unique salt per password (bcrypt built-in)
-  - **Implementation**: bcrypt generates random salt per hash
-  - **Status**: ✓ PASS
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/admin/auth/login` | POST | Validate credentials, create session |
+| `/api/admin/auth/logout` | POST | Destroy session, clear cookies |
+| `/api/admin/auth/bootstrap` | POST | First-run admin creation (one-time) |
 
-- [x] **Password Complexity**: Minimum length enforced
-  - **Implementation**: Pydantic validation (min 8 characters)
-  - **Recommendation**: Add complexity requirements (uppercase, numbers, symbols) in future
-  - **Status**: ✓ PASS (basic validation)
+- Login sets session cookie + CSRF cookie on success
+- Failed login returns 401 with generic message (no user enumeration)
+- Bootstrap returns 409 if an admin already exists
 
-### 4.2 Authentication Flow
+### 4.2 Password Hashing
 
-- [x] **Timing Attack Prevention**: Password comparison uses constant-time
-  - **Implementation**: bcrypt's `verify()` has constant-time comparison
-  - **Status**: ✓ PASS
+**Implementation:** `src/captive_portal/security/password_hashing.py`
 
-- [x] **Account Lockout**: Rate limiting on login attempts
-  - **Implementation**: Rate limiter middleware (10 attempts per 15 minutes per IP)
-  - **Status**: ✓ PASS
+| Parameter | Value |
+|-----------|-------|
+| Algorithm | Argon2id |
+| Time cost | 3 iterations |
+| Memory cost | 64 MiB |
+| Parallelism | 4 threads |
+| Hash length | 32 bytes |
+| Salt length | 16 bytes |
+| Format | PHC string |
 
-- [x] **Failed Login Logging**: Authentication failures audited
-  - **Implementation**: `audit_service.log(action="login_failed")` on auth failures
-  - **Status**: ✓ PASS
+Parameters follow OWASP recommendations for Argon2id.
 
-### 4.3 Authorization
+**Callers:** `admin_auth.py` (login, bootstrap), `admin_accounts.py`
+(account create, password update).
 
-- [x] **Admin Endpoints Protected**: Session validation required
-  - **Implementation**: `get_current_session` dependency on `/admin/*` routes
-  - **Verification**: Unauthenticated requests return 401
-  - **Status**: ✓ PASS
+### 4.3 Session Management
 
-- [x] **Guest Endpoints Public**: Portal accessible without auth
-  - **Implementation**: `/portal/*` routes have no auth dependency
-  - **Rate Limiting**: Guest endpoints rate-limited (20 req/min per IP)
-  - **Status**: ✓ PASS
+**Implementation:** `src/captive_portal/security/session_middleware.py`
 
-- [x] **RBAC Placeholder**: Role-based access control structure in place
-  - **Implementation**: `admin_user.role` field exists (all users `admin` role in MVP)
-  - **Future**: Granular roles (viewer, operator, admin)
-  - **Status**: ✓ PASS (foundation ready)
+- `get_current_admin()` dependency in `admin_accounts.py` (lines 54-75)
+  validates session and retrieves admin from database
+- All admin routes require this dependency
+- Returns 401 when session is missing or expired
 
----
+### 4.4 RBAC
 
-## 5. Input Validation & Sanitization
+**Implementation:** `src/captive_portal/security/rbac.py`
 
-### 5.1 API Input Validation
+Roles: `viewer`, `auditor`, `operator`, `admin`. Deny-by-default
+permission matrix. Returns 403 on unauthorized access (FR-017).
 
-- [x] **Pydantic Models**: All API inputs validated
-  - **Implementation**: Request/response models use Pydantic with constraints
-  - **Examples**: `MAC address regex`, `voucher code alphanumeric`, `duration_minutes range`
-  - **Status**: ✓ PASS
+**Review items:**
 
-- [x] **SQL Injection Prevention**: Parameterized queries only
-  - **Implementation**: SQLModel ORM (no raw SQL, parameterized internally)
-  - **Verification**: All repository queries use ORM methods
-  - **Status**: ✓ PASS
-
-- [x] **Path Traversal Prevention**: File paths validated
-  - **Implementation**: Theme paths validated against whitelist
-  - **Status**: ✓ PASS
-
-### 5.2 Output Encoding
-
-- [x] **XSS Prevention**: Template auto-escaping enabled
-  - **Implementation**: Jinja2 `autoescape=True` (default)
-  - **Verification**: User input in templates (guest names, booking codes) HTML-escaped
-  - **Status**: ✓ PASS
-
-- [x] **JSON Responses**: Pydantic serialization prevents injection
-  - **Implementation**: FastAPI serializes responses via Pydantic models
-  - **Status**: ✓ PASS
+- [x] Password hashing uses Argon2id with OWASP parameters
+- [x] No plaintext passwords stored
+- [x] Session cookies are HTTP-only
+- [x] Bootstrap endpoint is one-shot
+- [x] RBAC deny-by-default
 
 ---
 
-## 6. Network Security
+## 5. Input Validation & SQL Injection Prevention
 
-### 6.1 TLS/SSL
+### 5.1 Pydantic / SQLModel Validation
 
-- [x] **HTTPS Support**: Application supports TLS
-  - **Implementation**: FastAPI runs on uvicorn with SSL support
-  - **Configuration**: `SSL_CERT_FILE` and `SSL_KEY_FILE` environment variables
-  - **Development**: HTTP acceptable (localhost only)
-  - **Production**: HTTPS enforced via reverse proxy
-  - **Status**: ✓ PASS (configurable)
+All request payloads are validated via Pydantic models before reaching
+business logic:
 
-- [x] **Certificate Validation**: Controller API calls verify SSL certs
-  - **Implementation**: `httpx.AsyncClient(verify=True)` in TP-Omada client
-  - **Configurable**: `OMADA_VERIFY_SSL` for dev/test (not recommended)
-  - **Status**: ✓ PASS
+| Model | File | Key constraints |
+|-------|------|-----------------|
+| `LoginRequest` | `admin_auth.py` | Username + password required |
+| `BootstrapRequest` | `admin_auth.py` | Email validated with `EmailStr` |
+| `AdminUser` | `models/admin_user.py` | `max_length=64` (username), `max_length=255` (email) |
+| `Voucher` | `models/voucher.py` | A-Z0-9 codes, configurable 4-24 chars (FR-018) |
+| `AuditLog` | `models/audit_log.py` | Field-level `max_length` constraints |
+| `PortalConfig` | `models/portal_config.py` | `Field(ge=1, le=1000)` for rate limits |
 
-### 6.2 API Security
+### 5.2 Parameterized Queries
 
-- [x] **Rate Limiting**: All endpoints rate-limited
-  - **Implementation**: `slowapi` middleware with redis/memory backend
-  - **Limits**:
-    - Guest portal: 20 req/min per IP
-    - Admin login: 10 req/min per IP
-    - Admin API: 100 req/min per session
-  - **Status**: ✓ PASS
+All database access uses SQLModel/SQLAlchemy ORM with parameterized
+statements via the repository abstraction layer
+(`persistence/repositories.py`).
 
-- [x] **CORS Configuration**: Cross-origin requests restricted
-  - **Implementation**: No CORS middleware (same-origin only)
-  - **Future**: If needed, whitelist specific origins
-  - **Status**: ✓ PASS
+Example:
 
----
+```python
+select(Voucher).where(Voucher.booking_ref == booking_ref)
+```
 
-## 7. Data Protection
+No raw SQL string concatenation exists in the codebase. Foreign key
+constraints are enabled in `persistence/database.py` (line 50).
 
-### 7.1 Sensitive Data
+### 5.3 Output Encoding
 
-- [x] **Passwords Never Logged**: Password fields excluded from logs
-  - **Implementation**: Pydantic `Field(exclude=True)` on password fields
-  - **Verification**: Grep logs for password strings (none found)
-  - **Status**: ✓ PASS
+- Jinja2 auto-escaping enabled explicitly (`guest_portal.py` line 36)
+- Additional output sanitisation with regex (`guest_portal.py` line 150)
 
-- [x] **API Keys/Tokens Masked**: Secrets redacted in logs
-  - **Implementation**: Logging formatters mask `token`, `password`, `secret` keys
-  - **Status**: ✓ PASS
+**Review items:**
 
-- [x] **Database Encryption**: Sensitive fields encrypted at rest (future enhancement)
-  - **Implementation**: SQLite file system-level encryption (not application-level)
-  - **Recommendation**: Use full-disk encryption or encrypted volumes
-  - **Status**: ⚠️ DEFERRED (infrastructure-level concern)
-
-### 7.2 Audit Logging
-
-- [x] **Comprehensive Audit Trail**: All security events logged
-  - **Events Logged**:
-    - Admin login/logout
-    - Grant create/extend/revoke
-    - Voucher generation/redemption
-    - Configuration changes
-    - Failed authorization attempts
-  - **Status**: ✓ PASS
-
-- [x] **Immutable Logs**: Audit records cannot be modified
-  - **Implementation**: No UPDATE/DELETE operations on `audit_log` table
-  - **Cleanup**: Retention policy deletes old records (no modification)
-  - **Status**: ✓ PASS
-
-- [x] **Log Retention**: Configurable retention policy
-  - **Implementation**: `audit_retention_days` in config (default 30, max 90)
-  - **Status**: ✓ PASS
+- [x] No raw SQL anywhere in codebase
+- [x] All user input validated before use
+- [x] Jinja2 auto-escaping enabled
+- [x] Foreign key constraints enabled
 
 ---
 
-## 8. Dependency Security
+## 6. Rate Limiting
 
-### 8.1 Dependency Management
+**Implementation:** `src/captive_portal/security/rate_limiter.py`
 
-- [x] **Pinned Versions**: All dependencies version-locked
-  - **Implementation**: `uv.lock` file with exact versions
-  - **Status**: ✓ PASS
+| Parameter | Default | Config Source |
+|-----------|---------|---------------|
+| Max attempts | 5 | `PortalConfig.rate_limit_attempts` |
+| Window | 60 seconds | `PortalConfig.rate_limit_window_seconds` |
+| Scope | Per IP | Rolling window |
+| Cleanup interval | 5 minutes | Automatic (prevents memory leak) |
 
-- [x] **Vulnerability Scanning**: Dependencies scanned for known CVEs
-  - **Implementation**: Dependabot enabled on GitHub repo
-  - **Verification**: No high/critical vulnerabilities in dependencies
-  - **Status**: ✓ PASS (as of review date)
+**Behaviour:**
 
-- [x] **Minimal Dependencies**: Only essential packages included
-  - **Implementation**: Reviewed dependency tree, removed unused packages
-  - **Status**: ✓ PASS
+- `is_allowed(ip)` returns `False` when limit exceeded
+- Returns HTTP 429 with `Retry-After` header (`guest_portal.py` line 284)
+- Cleared on successful authorization (`guest_portal.py` line 521)
+- Rate limit violations are audited with outcome `rate_limited`
 
-### 8.2 Supply Chain Security
+**Review items:**
 
-- [x] **SPDX License Headers**: All source files have license info
-  - **Implementation**: REUSE-compliant license headers
-  - **Verification**: `reuse lint` passes
-  - **Status**: ✓ PASS
-
-- [x] **Package Integrity**: PyPI packages verified via hashes
-  - **Implementation**: uv verifies package hashes on install
-  - **Status**: ✓ PASS
-
----
-
-## 9. Operational Security
-
-### 9.1 Secrets Management
-
-- [x] **Environment Variables**: Secrets loaded from environment, not hardcoded
-  - **Implementation**: `settings.py` reads from env vars with no defaults for secrets
-  - **Status**: ✓ PASS
-
-- [x] **Secret Rotation**: Process for rotating credentials
-  - **Documentation**: Admin guide includes password rotation instructions
-  - **Implementation**: Update env var, restart service
-  - **Status**: ✓ PASS (documented)
-
-### 9.2 Error Handling
-
-- [x] **Graceful Degradation**: Service continues on non-critical errors
-  - **Implementation**: Controller errors queued for retry, app remains functional
-  - **Status**: ✓ PASS
-
-- [x] **Error Logging**: All exceptions logged with context
-  - **Implementation**: Structured logging with correlation IDs
-  - **Status**: ✓ PASS
-
-### 9.3 Monitoring
-
-- [x] **Security Metrics**: Failed auth attempts tracked
-  - **Implementation**: Prometheus metrics: `auth_failures_total`
-  - **Status**: ✓ PASS
-
-- [x] **Alerting Hooks**: Integration points for alerts (future)
-  - **Implementation**: Metrics endpoint ready for Prometheus scraping
-  - **Recommendation**: Configure alerts on `auth_failures_total > threshold`
-  - **Status**: ✓ PASS (foundation ready)
+- [x] Rate limiter applied to guest authorization endpoint
+- [x] 429 response includes `Retry-After` header
+- [x] Audit logging on rate limit trigger
+- [ ] Consider adding rate limiting to admin login endpoint
+- [ ] Consider distributed rate limiting if multiple instances are
+      deployed
 
 ---
 
-## 10. Known Limitations & Future Work
+## 7. HTTPS / TLS Requirements
 
-### Identified Security Gaps (Accepted Risk for MVP)
+**Current status:** TLS is handled at the deployment layer, not in the
+application.
 
-1. **No Multi-Factor Authentication (MFA)**
-   - **Risk**: Admin accounts vulnerable if password compromised
-   - **Mitigation**: Strong password policy, account lockout
-   - **Future**: Add TOTP-based MFA
+| Layer | Detail |
+|-------|--------|
+| Application | Runs on port 8080 (HTTP) |
+| Deployment | Expected behind Home Assistant Ingress reverse proxy with TLS |
+| Guest portal | `cookie_secure=False` for captive portal HTTP mode (`guest_portal.py` line 42) |
+| Upstream connections | `verify_ssl=True` by default for Omada controller (`controllers/tp_omada/base_client.py`) |
 
-2. **Session Storage in Memory**
-   - **Risk**: Sessions lost on restart, no multi-instance support
-   - **Mitigation**: Acceptable for single-instance deployment
-   - **Future**: Redis/PostgreSQL-backed session store
+**Redirect validation:** `services/redirect_validator.py` restricts
+protocols to HTTP/HTTPS only, preventing open redirect attacks.
 
-3. **No IP Whitelisting for Admin**
-   - **Risk**: Admin interface accessible from any IP
-   - **Mitigation**: Firewall rules recommended at infrastructure level
-   - **Future**: Application-level IP whitelist configuration
+**Review items:**
 
-4. **Inline Styles/Scripts (CSP Exceptions)**
-   - **Risk**: `unsafe-inline` weakens CSP protection
-   - **Mitigation**: HTMX requires inline, no user-generated content
-   - **Future**: Use CSP nonces or hashes
-
-5. **No Automated Security Testing in CI**
-   - **Risk**: Regressions not caught until manual review
-   - **Mitigation**: Manual security review checklist
-   - **Future**: Integrate SAST tools (Bandit, Safety) in CI pipeline
-
-### Recommendations for Production Deployment
-
-1. **Reverse Proxy**: Deploy behind nginx/Caddy for:
-   - HSTS header
-   - TLS termination
-   - Rate limiting (additional layer)
-   - Custom server header
-
-2. **Web Application Firewall (WAF)**: Consider Cloudflare, AWS WAF, or ModSecurity for:
-   - DDoS protection
-   - Bot detection
-   - Anomaly detection
-
-3. **Network Segmentation**: Place Captive Portal in DMZ or management VLAN
-
-4. **Regular Security Audits**: Schedule quarterly reviews of:
-   - Dependency vulnerabilities
-   - Access logs for anomalies
-   - Session store cleanup effectiveness
-
-5. **Incident Response Plan**: Document procedures for:
-   - Compromised admin account
-   - Suspected data breach
-   - Service abuse (spam, DDoS)
+- [x] Upstream (Omada) connections verify SSL certificates
+- [x] Redirect validator prevents protocol injection
+- [ ] Document TLS termination requirements in deployment guide
+- [ ] Consider `TrustedHostMiddleware` for HTTPS enforcement
 
 ---
 
-## Review Sign-Off
+## 8. Audit Logging Coverage
 
-- [x] **Session Hardening**: Complete
-- [x] **CSRF Protection**: Complete
-- [x] **Security Headers**: Complete (with documented exceptions)
-- [x] **Authentication**: Complete (basic password auth)
-- [x] **Authorization**: Complete (session-based)
-- [x] **Input Validation**: Complete
-- [x] **Network Security**: Complete (configurable TLS)
-- [x] **Data Protection**: Audit logging complete, encryption deferred
-- [x] **Dependency Security**: Complete
-- [x] **Operational Security**: Complete (documentation + metrics)
+**Implementation:** `src/captive_portal/services/audit_service.py`
+**Model:** `src/captive_portal/models/audit_log.py`
 
-**Overall Status**: ✅ **APPROVED FOR MVP RELEASE**
+### 8.1 Audit Entry Fields
 
-**Reviewer Notes**:
-- All critical security controls implemented
-- Identified limitations acceptable for MVP scope
-- Production deployment recommendations documented
-- Future enhancements prioritized (MFA, WAF, SAST)
+| Field | Type | Purpose |
+|-------|------|---------|
+| `id` | UUID | Immutable primary key |
+| `actor` | str (128) | Username, `system`, or `guest:{mac}` |
+| `role_snapshot` | str (32) | Actor's role at time of action |
+| `action` | str (64) | Dot-notation action (e.g., `voucher.create`) |
+| `target_type` | str (32) | Entity type (`voucher`, `grant`, `session`) |
+| `target_id` | str (128) | Entity identifier |
+| `timestamp_utc` | datetime | Immutable UTC timestamp (indexed) |
+| `outcome` | str (32) | `success`, `failure`, `denied`, `error`, `rate_limited` |
+| `meta` | JSON | IP address, user-agent, error details, reason |
 
-**Next Steps**:
-- Proceed to performance validation (T0733)
-- Complete release notes (T0706)
-- Final audit logging review (T0707)
+### 8.2 Audited Actions
+
+| Action | Outcome(s) | File |
+|--------|------------|------|
+| `admin.login` | success, failure | `admin_auth.py` |
+| `guest.authorize` | success, denied, error, rate_limited | `guest_portal.py` |
+| `create_voucher` | success | `vouchers.py` |
+| `extend_grant` | success | `grants.py` |
+| `revoke_grant` | success | `grants.py` |
+| `list_grants` | success | `grants.py` |
+| `create_integration` | success | `integrations.py`, `integrations_ui.py` |
+| `update_integration` | success | `integrations_ui.py` |
+| `delete_integration` | success | `integrations_ui.py` |
+| `portal_config.update` | success | `portal_settings_ui.py` |
+| `event.cleanup` | success | `cleanup_service.py` |
+
+### 8.3 Known Gaps
+
+See `docs/audit_logging_review.md` for the full gap analysis. Key
+missing items:
+
+- Admin logout not audited
+- Admin bootstrap not audited
+- Admin account create / update / delete not audited
+- RBAC denials not consistently audited
+- Booking authorization flow not audited
+
+**Review items:**
+
+- [x] All successful guest authorizations logged
+- [x] All failed guest authorizations logged with reason
+- [x] Rate limit violations logged
+- [x] Admin login success and failure logged
+- [ ] Fill audit gaps identified in `docs/audit_logging_review.md`
+
+---
+
+## Reviewer Sign-off
+
+| Reviewer | Date | Result |
+|----------|------|--------|
+| ___________ | __________ | ☐ Pass ☐ Fail |
+| ___________ | __________ | ☐ Pass ☐ Fail |
