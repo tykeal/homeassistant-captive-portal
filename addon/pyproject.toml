@@ -22,11 +22,12 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["setuptools", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-captive_portal = ["web/templates/**/*.html", "web/themes/**/*.css"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/captive_portal"]
+include = [
+  "src/captive_portal/web/templates/**",
+  "src/captive_portal/web/themes/**",
+]

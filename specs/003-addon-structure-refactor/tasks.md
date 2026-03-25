@@ -40,8 +40,8 @@ SPDX-License-Identifier: Apache-2.0
 
 **⚠️ CRITICAL**: The Dockerfile rewrite (Phase 3) depends on both the hatchling build backend and the frozen lock file being in place. No user story work can begin until this phase is complete.
 
-- [ ] T001 Switch addon/pyproject.toml from setuptools to hatchling build backend in addon/pyproject.toml
-- [ ] T002 Generate frozen dependency lock file by running `cd addon && uv lock` to create addon/uv.lock
+- [x] T001 Switch addon/pyproject.toml from setuptools to hatchling build backend in addon/pyproject.toml
+- [x] T002 Generate frozen dependency lock file by running `cd addon && uv lock` to create addon/uv.lock
 
 **T001 Details**:
 
@@ -87,11 +87,11 @@ SPDX-License-Identifier: Apache-2.0
 
 ### Implementation for User Story 1
 
-- [ ] T003 [P] [US1] Update addon/build.yaml to use Python-specific HA base images in addon/build.yaml
-- [ ] T004 [P] [US1] Rewrite addon/Dockerfile with two-phase uv sync --frozen install pattern in addon/Dockerfile
-- [ ] T005 [P] [US1] Create addon/config.yaml by converting addon/config.json to YAML format as addon/config.yaml
-- [ ] T006 [US1] Delete addon/config.json after YAML replacement is in place
-- [ ] T007 [P] [US1] Update s6-overlay run script for new .venv path in addon/rootfs/etc/s6-overlay/s6-rc.d/captive-portal/run
+- [x] T003 [P] [US1] Update addon/build.yaml to use Python-specific HA base images in addon/build.yaml
+- [x] T004 [P] [US1] Rewrite addon/Dockerfile with two-phase uv sync --frozen install pattern in addon/Dockerfile
+- [x] T005 [P] [US1] Create addon/config.yaml by converting addon/config.json to YAML format as addon/config.yaml
+- [x] T006 [US1] Delete addon/config.json after YAML replacement is in place
+- [x] T007 [P] [US1] Update s6-overlay run script for new .venv path in addon/rootfs/etc/s6-overlay/s6-rc.d/captive-portal/run
 
 **T003 Details**:
 
@@ -169,8 +169,8 @@ SPDX-License-Identifier: Apache-2.0
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Remove stale root src/ directory that contains only empty directories and \_\_pycache\_\_ artifacts
-- [ ] T009 [US2] Regenerate root uv.lock and verify full development workflow from repo root
+- [x] T008 [US2] Remove stale root src/ directory that contains only empty directories and \_\_pycache\_\_ artifacts
+- [x] T009 [US2] Regenerate root uv.lock and verify full development workflow from repo root
 
 **T008 Details**:
 
@@ -256,8 +256,8 @@ SPDX-License-Identifier: Apache-2.0
 
 ### Implementation for User Story 6
 
-- [ ] T010 [P] [US6] Update REUSE.toml for new and changed file patterns in REUSE.toml
-- [ ] T011 [US6] Verify SPDX headers on all new and modified files across the repository
+- [x] T010 [P] [US6] Update REUSE.toml for new and changed file patterns in REUSE.toml
+- [x] T011 [US6] Verify SPDX headers on all new and modified files across the repository
 
 **T010 Details**:
 
@@ -290,7 +290,7 @@ SPDX-License-Identifier: Apache-2.0
 
 **Purpose**: End-to-end validation across all user stories
 
-- [ ] T012 Run quickstart.md developer workflow validation end-to-end per specs/003-addon-structure-refactor/quickstart.md
+- [x] T012 Run quickstart.md developer workflow validation end-to-end per specs/003-addon-structure-refactor/quickstart.md
 
 **T012 Details**:
 
