@@ -22,7 +22,6 @@ from collections.abc import Generator
 import pytest
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
-ADDON_DIR = os.path.join(REPO_ROOT, "addon")
 IMAGE_TAG = "captive-portal-test:latest"
 # Full app uses /api/health
 HEALTH_ENDPOINT = "/api/health"

@@ -218,9 +218,9 @@ class AppSettings(BaseModel):
 
         abs_db_path = os.path.abspath(self.db_path)
         parent = Path(abs_db_path).parent
-        if not parent.exists():
+        if not parent.is_dir():
             msg = f"Database directory does not exist for db_path='{self.db_path}': {parent}"
             raise RuntimeError(msg)
-        if not os.access(str(parent), os.W_OK):
+        if not os.access(str(parent), os.W_OK | os.X_OK):
             msg = f"Database directory is not writable for db_path='{self.db_path}': {parent}"
             raise RuntimeError(msg)
