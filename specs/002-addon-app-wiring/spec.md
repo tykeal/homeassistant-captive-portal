@@ -1,4 +1,4 @@
-SPDX-FileCopyrightText: 2026 Andrew Grimberg
+SPDX-FileCopyrightText: 2025 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
 
 # Feature Specification: Wire Real Application into Addon Container
@@ -16,12 +16,12 @@ As a Home Assistant administrator, I install the Captive Portal addon and start 
 
 **Why this priority**: Without the real application running inside the addon container, no other addon functionality is accessible. This is the foundational integration that makes the addon useful instead of a stub.
 
-**Independent Test**: Can be fully tested by installing the addon in a Home Assistant environment, starting it, and confirming the health endpoint responds with application details, the admin login page loads, and the guest portal page loads — delivering a working captive portal system.
+**Independent Test**: Can be fully tested by installing the addon in a Home Assistant environment, starting it, and confirming the readiness endpoint (`/api/ready`) reports the application as ready, the admin login page loads, and the guest portal page loads — delivering a working captive portal system.
 
 **Acceptance Scenarios**:
 
 1. **Given** the addon is installed and started, **When** a user navigates to the addon's web UI on port 8080, **Then** the full captive portal application responds (not the placeholder).
-2. **Given** the addon is started, **When** the health endpoint is requested, **Then** it returns a success status confirming the application and database are operational.
+2. **Given** the addon is started, **When** the readiness endpoint (`/api/ready`) is requested, **Then** it returns a success status confirming the application and its database dependencies are operational.
 3. **Given** the addon is started for the first time, **When** the application initializes, **Then** all database tables are created automatically and the application is ready to serve requests within 30 seconds of container start.
 4. **Given** the addon is restarted, **When** it starts again, **Then** all previously stored data (admin accounts, access grants, vouchers, audit logs) is preserved and accessible.
 

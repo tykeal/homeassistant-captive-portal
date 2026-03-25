@@ -1,4 +1,4 @@
-SPDX-FileCopyrightText: 2026 Andrew Grimberg
+SPDX-FileCopyrightText: 2025 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
 
 # Specification Quality Checklist: Wire Real Application into Addon Container
