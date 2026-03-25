@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 **Input**: Design documents from `/specs/003-addon-structure-refactor/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Not requested — no test tasks included. The existing test suite (441+ tests) serves as the authoritative validation of application correctness (SC-002). Existing integration tests (`test_addon_build_run.py`, `test_addon_startup_wiring.py`) cover build and startup scenarios.
+**Tests**: No new tests are requested. Verification relies on running the existing test suite (441+ tests) as the authoritative validation of application correctness (SC-002), including existing integration tests (`test_addon_build_run.py`, `test_addon_startup_wiring.py`) for build and startup scenarios.
 
 **Organization**: Tasks are grouped by user story. User Stories 3, 4, and 5 require no additional implementation beyond earlier phases; their satisfaction is documented in the Dependencies section.
 
