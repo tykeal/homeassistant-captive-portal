@@ -15,12 +15,12 @@ import time
 
 import pytest
 
-from captive_portal.utils.metrics import MetricsCollector
-
-# Metric name constants used in production code
-METRIC_ACTIVE_SESSIONS = "active_sessions_count"
-METRIC_CONTROLLER_LATENCY = "controller_latency_seconds"
-METRIC_AUTH_FAILURES = "auth_failures_total"
+from captive_portal.utils.metrics import (
+    METRIC_ACTIVE_SESSIONS,
+    METRIC_AUTH_FAILURES,
+    METRIC_CONTROLLER_LATENCY,
+    MetricsCollector,
+)
 
 
 @pytest.fixture

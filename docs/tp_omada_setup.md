@@ -38,7 +38,7 @@ The Captive Portal integrates with TP-Link Omada Controllers using the **Externa
    - **Portal Type**: Select **External Portal**
    - **Portal Name**: `Captive Portal Guest Access` (or your preference)
    - **External Portal URL**: Enter Captive Portal address
-     - Example: `https://captiveportal.local:8080/portal`
+     - Example: `https://captiveportal.local:8080/guest/authorize`
      - Must be reachable from clients (use public IP or hostname if needed)
 
 4. **Configure Portal Parameters**
@@ -139,7 +139,7 @@ If using VLANs or strict firewall policies:
 2. **Verify Portal Parameters**
    - Captive Portal should receive URL like:
      ```
-     https://captiveportal.local:8080/portal?clientMac=AA:BB:CC:DD:EE:FF&apMac=00:11:22:33:44:55&ssidName=Guest+WiFi&t=1711234567890123&radioId=1&site=Default&redirectUrl=https://www.example.com
+     https://captiveportal.local:8080/guest/authorize?clientMac=AA:BB:CC:DD:EE:FF&apMac=00:11:22:33:44:55&ssidName=Guest+WiFi&t=1711234567890123&radioId=1&site=Default&redirectUrl=https://www.example.com
      ```
    - Check Captive Portal logs for incoming requests
 
@@ -302,7 +302,7 @@ omada_failover_timeout_seconds: 30
 
 4. **Firewall Blocking Portal**
    - Verify guest VLAN can reach Captive Portal URL
-   - Check: `curl https://captiveportal.local:8080/portal` from guest network
+   - Check: `curl https://captiveportal.local:8080/guest/authorize` from guest network
 
 5. **iOS/Android Detection Failure**
    - Implement captive portal detection endpoints:

@@ -23,6 +23,7 @@ import pytest
 
 ADDON_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "addon")
 IMAGE_TAG = "captive-portal-test:latest"
+# Placeholder addon exposes /health; full app will use /api/health
 HEALTH_ENDPOINT = "/health"
 CONTAINER_PORT = 8080
 

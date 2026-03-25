@@ -37,8 +37,8 @@ Run through these checks first to narrow down the problem area:
 
 | Check | Command | Expected |
 |-------|---------|----------|
-| Portal is running | `curl -s http://localhost:8080/health` | `{"status": "ok", ...}` |
-| Portal is ready | `curl -s http://localhost:8080/ready` | `{"status": "ok", ...}` |
+| Portal is running | `curl -s http://localhost:8080/api/health` | `{"status": "ok", ...}` |
+| Portal is ready | `curl -s http://localhost:8080/api/ready` | `{"status": "ok", ...}` |
 | Omada reachable | `curl -sk https://<omada_ip>:8043` | HTML or JSON response |
 | HA reachable (addon) | `curl -sH "Authorization: Bearer $SUPERVISOR_TOKEN" http://supervisor/core/api/` | JSON response |
 | HA reachable (standalone) | `curl -sH "Authorization: Bearer <token>" https://<ha_host>:8123/api/` | `{"message": "API running."}` |
@@ -49,12 +49,12 @@ Run through these checks first to narrow down the problem area:
 
 ## Health and Readiness Checks
 
-### Liveness Probe — `/health`
+### Startup Probe — `/api/health`
 
 Returns basic service status:
 
 ```bash
-curl -s http://localhost:8080/health | python3 -m json.tool
+curl -s http://localhost:8080/api/health | python3 -m json.tool
 ```
 
 **Healthy response:**
@@ -66,7 +66,7 @@ curl -s http://localhost:8080/health | python3 -m json.tool
 }
 ```
 
-**If `/health` does not respond:**
+**If `/api/health` does not respond:**
 
 - The application process is not running or has crashed.
 - Check container/addon logs for startup errors.
@@ -76,14 +76,14 @@ curl -s http://localhost:8080/health | python3 -m json.tool
 ss -tlnp | grep 8080
 ```
 
-### Readiness Probe — `/ready`
+### Readiness Probe — `/api/ready`
 
 Checks that downstream dependencies (controller, database) are accessible. If
-`/health` returns OK but `/ready` does not, the application is running but
+`/api/health` returns OK but `/api/ready` does not, the application is running but
 cannot serve requests because a dependency is down.
 
 ```bash
-curl -s http://localhost:8080/ready | python3 -m json.tool
+curl -s http://localhost:8080/api/ready | python3 -m json.tool
 ```
 
 **Degraded response example:**
@@ -717,7 +717,7 @@ rejects it.
 ping <portal_ip>
 
 # Test HTTP port
-curl -v http://<portal_ip>:8080/health
+curl -v http://<portal_ip>:8080/api/health
 
 # Test captive portal detection
 curl -v http://<portal_ip>:8080/generate_204

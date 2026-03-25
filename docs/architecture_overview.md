@@ -88,7 +88,7 @@ The Captive Portal Guest Access system is a Python-based web application that br
   - Entity mapping management
   - API documentation (`/admin/docs`, `/admin/redoc`)
 
-- **Health & Detection Routes** (`/`, `/health`, `/generate_204`)
+- **Health & Detection Routes** (`/`, `/api/health`, `/generate_204`)
   - iOS/Android captive portal detection
   - Kubernetes liveness/readiness probes
   - No authentication required
@@ -462,8 +462,8 @@ class UniFiController(ControllerBackend):
 
 ### Health Endpoints
 
-- **`GET /health`**: Liveness probe (returns 200 if app running)
-- **`GET /ready`**: Readiness probe (checks DB + controller connectivity)
+- **`GET /api/health`**: Liveness probe (returns 200 if app running)
+- **`GET /api/ready`**: Readiness probe (checks DB + controller connectivity)
 - **`GET /generate_204`**: iOS/Android captive portal detection
 
 ### Metrics (Prometheus Format)

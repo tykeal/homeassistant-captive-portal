@@ -103,7 +103,7 @@ echo "Current memory: ${MEM}"
 
 ```bash
 curl -o /dev/null -s -w "HTTP %{http_code} in %{time_total}s\n" \
-  "${BASE_URL}/health"
+  "${BASE_URL}/api/health"
 ```
 
 Expected: HTTP 200 in < 0.1 s.
@@ -114,7 +114,7 @@ Run 100 requests and compute the 95th percentile:
 
 ```bash
 for i in $(seq 1 100); do
-  curl -o /dev/null -s -w "%{time_total}\n" "${BASE_URL}/health"
+  curl -o /dev/null -s -w "%{time_total}\n" "${BASE_URL}/api/health"
 done | sort -n | awk '
   { a[NR] = $1 }
   END {
@@ -128,7 +128,7 @@ done | sort -n | awk '
 ### 4.3 Load Test with wrk
 
 ```bash
-wrk -t2 -c10 -d30s "${BASE_URL}/health"
+wrk -t2 -c10 -d30s "${BASE_URL}/api/health"
 ```
 
 Check the output for:
@@ -203,7 +203,7 @@ done | sort -n | awk '
 Test that the application handles concurrent connections without errors:
 
 ```bash
-wrk -t4 -c50 -d30s "${BASE_URL}/health"
+wrk -t4 -c50 -d30s "${BASE_URL}/api/health"
 ```
 
 **Pass criteria:**
@@ -302,7 +302,7 @@ docker stats "${CONTAINER}" --no-stream \
 echo ""
 echo "=== 2. Health endpoint (100 requests) ==="
 for i in $(seq 1 100); do
-  curl -o /dev/null -s -w "%{time_total}\n" "${BASE_URL}/health"
+  curl -o /dev/null -s -w "%{time_total}\n" "${BASE_URL}/api/health"
 done | sort -n | awk '
   { a[NR]=$1 }
   END {
@@ -314,7 +314,7 @@ done | sort -n | awk '
 echo ""
 echo "=== 3. Concurrent connections (wrk) ==="
 if command -v wrk &>/dev/null; then
-  wrk -t4 -c50 -d15s "${BASE_URL}/health"
+  wrk -t4 -c50 -d15s "${BASE_URL}/api/health"
 else
   echo "  wrk not installed — skipping"
 fi

@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import Dict
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlmodel import Session, text
 
@@ -58,7 +59,7 @@ async def health_check() -> HealthResponse:
 @router.get("/ready", response_model=ReadinessResponse)
 async def readiness_check(
     session: Session = Depends(get_session),
-) -> ReadinessResponse:
+) -> JSONResponse:
     """Readiness probe – verifies DB connectivity.
 
     Kubernetes / container orchestrators should use this to decide
@@ -79,10 +80,15 @@ async def readiness_check(
         checks["database"] = "unavailable"
         overall = "degraded"
 
-    return ReadinessResponse(
+    response = ReadinessResponse(
         status=overall,
         timestamp=datetime.now(timezone.utc),
         checks=checks,
+    )
+    status_code = 503 if overall != "ok" else 200
+    return JSONResponse(
+        content=response.model_dump(mode="json"),
+        status_code=status_code,
     )
 
 
