@@ -20,7 +20,7 @@ connection closure.
 
 ## Technical Context
 
-**Language/Version**: Python 3.13+ (per `pyproject.toml` `requires-python = ">=3.13"`)
+**Language/Version**: Python 3.12+ (per `pyproject.toml` `requires-python = ">=3.12"`)
 **Primary Dependencies**: FastAPI, uvicorn\[standard\], SQLModel, Jinja2, pydantic, argon2-cffi, httpx, passlib, python-multipart, email-validator
 **Storage**: SQLite via SQLModel/SQLAlchemy at `/data/captive_portal.db` (persistent HA addon volume)
 **Testing**: pytest + pytest-asyncio + pytest-cov; unit / integration / contract / performance categories

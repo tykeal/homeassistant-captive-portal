@@ -7,7 +7,7 @@ description = "Captive portal guest access (TP-Omada + Home Assistant)"
 authors = [{name="Andrew Grimberg", email="tykeal@bardicgrove.org"}]
 license = {text = "Apache-2.0"}
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
   "fastapi",
   "uvicorn[standard]",
@@ -38,7 +38,7 @@ fail-under = 100
 ignore-init-module = true
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.12"
 strict = true
 
 [[tool.mypy.overrides]]

@@ -109,7 +109,7 @@ See [docs/addon/config.md](docs/addon/config.md) for complete reference.
 
 ### Requirements
 
-- Python 3.13+
+- Python 3.12+
 - uv (recommended) or pip
 - SQLite 3.35+
 

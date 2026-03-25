@@ -7,7 +7,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-25
 
 ## Active Technologies
 
-- Python 3.13+ (per `pyproject.toml` `requires-python = ">=3.13"`) + FastAPI, uvicorn\[standard\], SQLModel, Jinja2, pydantic, argon2-cffi, httpx, passlib, python-multipart, email-validator (002-addon-app-wiring)
+- Python 3.12+ (per `pyproject.toml` `requires-python = ">=3.12"`) + FastAPI, uvicorn\[standard\], SQLModel, Jinja2, pydantic, argon2-cffi, httpx, passlib, python-multipart, email-validator (002-addon-app-wiring)
 
 ## Project Structure
 
@@ -26,11 +26,11 @@ uv run mypy src
 
 ## Code Style
 
-Python 3.13+ (per `pyproject.toml` `requires-python = ">=3.13"`): Follow standard conventions
+Python 3.12+ (per `pyproject.toml` `requires-python = ">=3.12"`): Follow standard conventions
 
 ## Recent Changes
 
-- 002-addon-app-wiring: Added Python 3.13+ (per `pyproject.toml` `requires-python = ">=3.13"`) + FastAPI, uvicorn\[standard\], SQLModel, Jinja2, pydantic, argon2-cffi, httpx, passlib, python-multipart, email-validator
+- 002-addon-app-wiring: Added Python 3.12+ (per `pyproject.toml` `requires-python = ">=3.12"`) + FastAPI, uvicorn\[standard\], SQLModel, Jinja2, pydantic, argon2-cffi, httpx, passlib, python-multipart, email-validator
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
