@@ -1,7 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "addon-options-schema",
-  "$comment": "SPDX-FileCopyrightText: 2026 Andrew Grimberg\nSPDX-License-Identifier: Apache-2.0",
+  "$id": "/specs/002-addon-app-wiring/contracts/addon-options-schema.json",
   "title": "Captive Portal Addon Options",
   "description": "Schema for /data/options.json written by the HA Supervisor based on addon config.json schema. Defines the user-configurable options exposed in the HA addon configuration panel.",
   "type": "object",

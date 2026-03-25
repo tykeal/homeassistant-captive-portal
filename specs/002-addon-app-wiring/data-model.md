@@ -105,7 +105,7 @@ first startup. No schema changes are made by this feature:
 | Model | Table | Purpose |
 |-------|-------|---------|
 | `AdminUser` | `adminuser` | Admin accounts (UUID PK, Argon2 hash) |
-| `AdminSession` | _(in-memory)_ | Session data (not persisted to DB) |
+| `AdminSession` | `admin_session` | Admin session data |
 | `AccessGrant` | `accessgrant` | WiFi access grants (voucher/booking) |
 | `Voucher` | `voucher` | Redeemable access codes |
 | `AuditLog` | `auditlog` | Immutable audit trail |

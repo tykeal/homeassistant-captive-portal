@@ -41,7 +41,9 @@ curl http://<ha-host>:8080/api/health
 curl http://<ha-host>:8080/api/ready
 ```
 
-Navigate to `http://<ha-host>:8080/admin/login` to access the admin interface.
+Navigate to `http://<ha-host>:8080/admin/portal-settings` to access the
+admin interface. First-time setup requires bootstrapping an admin account
+via `POST /api/admin/auth/bootstrap`.
 
 ### Configuration
 
