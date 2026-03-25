@@ -8,8 +8,8 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Summary
 
-Wire the existing captive portal application (FastAPI + SQLModel + 13 routers + 8
-models + 12 services) into the Home Assistant addon container, replacing the
+Wire the existing captive portal application (FastAPI + SQLModel + 12 routers + 8
+models + 10 services) into the Home Assistant addon container, replacing the
 current placeholder startup. This requires: (1) a new `AppSettings` configuration
 layer merging addon options, environment variables, and defaults with proper
 precedence; (2) a production Dockerfile that installs the full `captive_portal`
