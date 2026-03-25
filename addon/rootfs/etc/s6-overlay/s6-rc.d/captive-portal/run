@@ -1,0 +1,15 @@
+#!/command/with-contenv bashio
+# SPDX-FileCopyrightText: 2025 Andrew Grimberg
+# SPDX-License-Identifier: Apache-2.0
+# shellcheck shell=bash
+# s6-overlay run script for the captive portal service.
+
+declare log_level
+log_level=$(bashio::config 'log_level' 'info')
+bashio::log.info "Starting captive portal (log_level=${log_level})..."
+
+exec "${VIRTUAL_ENV}/bin/python" -m uvicorn \
+    captive_portal.app:create_app \
+    --factory \
+    --host 0.0.0.0 \
+    --port 8080

@@ -3,26 +3,25 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM ${BUILD_FROM}
 
-RUN apk add --no-cache python3 py3-pip bash
+RUN apk add --no-cache python3
+
+# Install uv for fast Python package management
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Use a venv to avoid PEP 668 externally-managed-environment error
 ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m venv "$VIRTUAL_ENV"
+RUN uv venv "$VIRTUAL_ENV"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Copy project files and install the full captive_portal package.
-# NOTE: Build context must be the repository root (not addon/).
-# For HA addon store distribution, use a pre-built image tag in
-# config.json or adjust CI to set the appropriate build context.
-COPY pyproject.toml /app/
-COPY README.md /app/
+# Install the captive_portal package.
+# Build context is addon/ — source lives here alongside the Dockerfile.
+COPY pyproject.toml README.md /app/
 COPY src/ /app/src/
 
-RUN "$VIRTUAL_ENV/bin/python" -m pip install --no-cache-dir /app
+RUN uv pip install --no-cache /app
 
-COPY addon/rootfs /
+# s6-overlay service definitions and rootfs overlay
+COPY rootfs /
 
 EXPOSE 8080
-CMD ["/usr/bin/run.sh"]

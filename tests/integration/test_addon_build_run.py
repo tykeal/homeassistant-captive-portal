@@ -3,7 +3,7 @@
 """T0718 – Integration tests for HA addon Docker image build and run.
 
 Validates:
-- Docker image builds successfully from repository root context
+- Docker image builds successfully with addon/ as build context
 - Container starts and responds on health endpoint (/api/health)
 - Container performs graceful shutdown on SIGTERM
 """
@@ -76,9 +76,9 @@ class TestAddonDockerBuild:
     """Test that the HA addon Docker image builds successfully."""
 
     def test_docker_build_succeeds(self) -> None:
-        """Docker build of addon/ should exit 0."""
+        """Docker build with addon/ as context should exit 0."""
         result = subprocess.run(
-            ["docker", "build", "-f", "addon/Dockerfile", "-t", IMAGE_TAG, "."],
+            ["docker", "build", "-t", IMAGE_TAG, "addon"],
             cwd=os.path.abspath(REPO_ROOT),
             capture_output=True,
             text=True,
@@ -99,7 +99,7 @@ class TestAddonContainerRun:
     def _build_image(self) -> None:
         """Ensure image is built before run tests."""
         result = subprocess.run(
-            ["docker", "build", "-f", "addon/Dockerfile", "-t", IMAGE_TAG, "."],
+            ["docker", "build", "-t", IMAGE_TAG, "addon"],
             cwd=os.path.abspath(REPO_ROOT),
             capture_output=True,
             timeout=300,
@@ -140,7 +140,7 @@ class TestAddonContainerRun:
             proc.kill()
 
     @pytest.mark.skip(
-        reason="Container runtime not yet wired (run.sh / app startup issues)",
+        reason="Container runtime not yet wired (s6-overlay / app startup issues)",
     )
     def test_container_starts_and_health_responds(self, container: subprocess.Popen[bytes]) -> None:
         """Container should start and /api/health should return 200."""
@@ -169,7 +169,7 @@ class TestAddonContainerRun:
         raise AssertionError(msg)
 
     @pytest.mark.skip(
-        reason="Container runtime not yet wired (run.sh / app startup issues)",
+        reason="Container runtime not yet wired (s6-overlay / app startup issues)",
     )
     def test_graceful_shutdown(self, container: subprocess.Popen[bytes]) -> None:
         """Container should shut down gracefully on docker stop (SIGTERM)."""
