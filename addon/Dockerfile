@@ -12,7 +12,11 @@ ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv "$VIRTUAL_ENV"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-RUN "$VIRTUAL_ENV/bin/python" -m pip install --no-cache-dir fastapi uvicorn[standard]
+# Copy project files and install the full captive_portal package
+COPY pyproject.toml /app/
+COPY src/ /app/src/
+
+RUN "$VIRTUAL_ENV/bin/python" -m pip install --no-cache-dir /app
 
 COPY rootfs /
 
