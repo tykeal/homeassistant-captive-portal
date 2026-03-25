@@ -68,7 +68,7 @@ Supervisor — data survives addon restarts and upgrades.
 
 ### Prerequisites
 
-- Python 3.13+
+- Python 3.12+
 - [uv](https://docs.astral.sh/uv/) package manager
 
 ### Setup

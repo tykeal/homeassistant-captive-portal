@@ -3,9 +3,6 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM ${BUILD_FROM}
 
-# NOTE: requires-python >= 3.13 in pyproject.toml. The default HA base
-# image ships Python 3.12; a custom base image or version adjustment
-# is needed for production builds.
 RUN apk add --no-cache python3 py3-pip bash
 
 WORKDIR /app
