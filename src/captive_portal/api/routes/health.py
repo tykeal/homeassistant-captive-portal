@@ -8,15 +8,18 @@ Container probe mapping:
   - startupProbe:   GET /api/health (general health)
 """
 
+import logging
 from datetime import datetime, timezone
 from typing import Dict
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session, text
 
 from captive_portal.persistence.database import get_session
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["health"])
 
@@ -58,12 +61,14 @@ async def health_check() -> HealthResponse:
 
 @router.get("/ready", response_model=ReadinessResponse)
 async def readiness_check(
+    response: Response,
     session: Session = Depends(get_session),
-) -> JSONResponse:
+) -> ReadinessResponse:
     """Readiness probe – verifies DB connectivity.
 
     Kubernetes / container orchestrators should use this to decide
-    whether to route traffic to the instance.
+    whether to route traffic to the instance. Returns 503 when
+    dependencies are unavailable.
 
     Returns:
         Readiness status with individual component checks
@@ -76,19 +81,18 @@ async def readiness_check(
         result = session.execute(text("SELECT 1"))
         result.close()
         checks["database"] = "ok"
-    except Exception:
+    except SQLAlchemyError:
+        logger.warning("Readiness check: database unavailable", exc_info=True)
         checks["database"] = "unavailable"
         overall = "degraded"
 
-    response = ReadinessResponse(
+    if overall != "ok":
+        response.status_code = 503
+
+    return ReadinessResponse(
         status=overall,
         timestamp=datetime.now(timezone.utc),
         checks=checks,
-    )
-    status_code = 503 if overall != "ok" else 200
-    return JSONResponse(
-        content=response.model_dump(mode="json"),
-        status_code=status_code,
     )
 
 

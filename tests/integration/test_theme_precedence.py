@@ -17,8 +17,7 @@ from fastapi.testclient import TestClient
 # Theme defaults
 # ---------------------------------------------------------------------------
 
-# The default theme gradient and primary colour used across guest pages.
-_DEFAULT_GRADIENT = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+# The default theme primary colour used across guest pages.
 _DEFAULT_PRIMARY = "#667eea"
 
 

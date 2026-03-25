@@ -143,7 +143,7 @@ The Captive Portal Guest Access system is a Python-based web application that br
 
 - **`voucher.py`**: Single-use/multi-use vouchers with expiration
 - **`access_grant.py`**: Active client authorizations (MAC, expiry, booking/voucher reference)
-- **`admin_user.py`**: Admin accounts with bcrypt password hashing
+- **`admin_user.py`**: Admin accounts with Argon2id password hashing
 - **`admin_session.py`**: Session tokens with secure cookie configuration
 - **`audit_log.py`**: Immutable audit records (user, action, resource, result, correlation_id)
 - **`rental_control_event.py`**: HA booking event cache
@@ -164,11 +164,11 @@ The Captive Portal Guest Access system is a Python-based web application that br
 **Authentication and session management:**
 
 - **`session_middleware.py`**: Secure session cookie handling
-  - HttpOnly, Secure (HTTPS), SameSite=Lax
-  - Configurable max age (default 24h)
+  - HttpOnly, Secure (HTTPS), SameSite=strict
+  - Configurable max age (default 8h)
   - Session store with expiry cleanup
 
-- **`password_utils.py`**: bcrypt password hashing and verification
+- **`password_hashing.py`**: Argon2id password hashing and verification
 - **CSRF Protection**: Token validation on state-changing operations
 
 ### 8. Middleware (`src/captive_portal/middleware.py`, `src/captive_portal/web/middleware/`)
@@ -376,9 +376,9 @@ The Captive Portal Guest Access system is a Python-based web application that br
    - HSTS header support
 
 2. **Authentication**
-   - Admin: Session-based with bcrypt passwords
+   - Admin: Session-based with Argon2id passwords
    - Guest: Rate-limited, no persistent auth
-   - Session expiry: 24h default (configurable)
+   - Session expiry: 8h default (configurable)
 
 3. **Authorization**
    - Admin endpoints: Session validation required
@@ -504,7 +504,7 @@ class UniFiController(ControllerBackend):
 | **Template Engine**| Jinja2 3.1+                   | HTML rendering with theming      |
 | **HTTP Client**    | httpx 0.27+                   | Async controller/HA API calls    |
 | **Database**       | SQLite (SQLModel 0.0.22+)     | Persistent storage               |
-| **Password Hash**  | bcrypt (via passlib)          | Admin credential security        |
+| **Password Hash**  | Argon2id (argon2-cffi)          | Admin credential security        |
 | **Validation**     | Pydantic 2.9+                 | Input validation & serialization |
 | **Testing**        | pytest + pytest-asyncio       | Unit/integration/contract tests  |
 | **Linting**        | Ruff 0.8+                     | Code quality & formatting        |

@@ -9,6 +9,7 @@ when a grant expires or is explicitly revoked.
 
 from __future__ import annotations
 
+import math
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -118,8 +119,8 @@ class TestDisconnectEnforcementTiming:
             latencies.append(time.monotonic() - start)
 
         latencies.sort()
-        p95_idx = int(len(latencies) * 0.95)
-        p95 = latencies[min(p95_idx, len(latencies) - 1)]
+        p95_idx = min(math.ceil(len(latencies) * 0.95) - 1, len(latencies) - 1)
+        p95 = latencies[p95_idx]
         assert p95 < DISCONNECT_P95_LIMIT_SECONDS, (
             f"p95={p95:.3f}s exceeds {DISCONNECT_P95_LIMIT_SECONDS}s"
         )
@@ -127,13 +128,13 @@ class TestDisconnectEnforcementTiming:
 
 @pytest.mark.integration
 class TestDisconnectEnforcementMetrics:
-    """Verify disconnect enforcement records timing metrics."""
+    """Verify disconnect enforcement timing is within acceptable bounds."""
 
     @pytest.mark.asyncio
-    async def test_revoke_records_latency_metric(
+    async def test_revoke_latency_within_limit(
         self, grant_service: GrantService, active_grant: AccessGrant
     ) -> None:
-        """Revoke should complete and be measurable via metrics collector."""
+        """Revoke call latency must be within NFR limit."""
         collector = MetricsCollector()
         with collector.time_operation("disconnect_enforcement_latency"):
             await grant_service.revoke(active_grant.id)

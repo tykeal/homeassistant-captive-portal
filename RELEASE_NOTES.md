@@ -58,7 +58,7 @@ The Captive Portal Guest Access system v0.1.0 is a production-ready solution for
 - **Session-Based Authentication**: Secure admin sessions with HttpOnly, Secure cookies
 - **CSRF Protection**: Token validation on all state-changing operations
 - **Security Headers**: X-Frame-Options, X-Content-Type-Options, CSP, Referrer-Policy
-- **Password Hashing**: bcrypt with 12-round cost factor
+- **Password Hashing**: Argon2id with secure memory, time, and parallelism parameters
 - **Rate Limiting**: Protection against brute-force and abuse
 - **Audit Logging**: Immutable records of all security events
 - **SPDX Compliance**: All source files have license headers
@@ -82,7 +82,7 @@ The Captive Portal Guest Access system v0.1.0 is a production-ready solution for
 
 ### Observability
 
-- **Health Endpoints**: `/health` (liveness), `/ready` (readiness) for Kubernetes
+- **Health Endpoints**: `/api/health` (startup), `/api/ready` (readiness), `/api/live` (liveness) for Kubernetes
 - **Prometheus Metrics**: Active sessions, controller latency, auth failures, voucher redemptions
 - **Structured Logging**: JSON logs with correlation IDs
 - **Audit Trail**: Admin-accessible logs with filtering and search
@@ -109,7 +109,7 @@ The Captive Portal Guest Access system v0.1.0 is a production-ready solution for
 - **Template Engine**: Jinja2 3.1+
 - **Database**: SQLite (via SQLModel 0.0.22+)
 - **HTTP Client**: httpx 0.27+ (async)
-- **Password Hashing**: bcrypt (via passlib)
+- **Password Hashing**: Argon2id (argon2-cffi)
 - **Testing**: pytest + pytest-asyncio
 - **Linting**: Ruff 0.8+
 - **Type Checking**: mypy 1.13+

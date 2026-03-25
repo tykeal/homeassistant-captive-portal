@@ -151,7 +151,7 @@ identifiers and receive time-limited network access.
 
 | Requirement | Detail |
 |-------------|--------|
-| Python | 3.11+ |
+| Python | 3.13+ |
 | Database | SQLite (bundled, no external DB required) |
 | Network | Access to TP-Link Omada controller API |
 | HA integration | Home Assistant with Rental Control (optional) |
