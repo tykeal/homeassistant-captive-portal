@@ -202,3 +202,23 @@ class AppSettings(BaseModel):
         log.info("  db_path = %s", self.db_path)
         log.info("  session_idle_minutes = %d", self.session_idle_minutes)
         log.info("  session_max_hours = %d", self.session_max_hours)
+
+    @staticmethod
+    def load_and_validate(db_path: str) -> None:
+        """Validate that the database path's parent directory exists and is writable.
+
+        Args:
+            db_path: Path to the SQLite database file.
+
+        Raises:
+            RuntimeError: If the parent directory does not exist or is not writable.
+        """
+        from pathlib import Path
+
+        parent = Path(db_path).parent
+        if not parent.exists():
+            msg = f"Database directory does not exist: {parent}"
+            raise RuntimeError(msg)
+        if not os.access(str(parent), os.W_OK):
+            msg = f"Database directory is not writable: {parent}"
+            raise RuntimeError(msg)
