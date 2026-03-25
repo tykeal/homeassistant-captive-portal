@@ -1,27 +1,29 @@
 # SPDX-FileCopyrightText: 2025 Andrew Grimberg
 # SPDX-License-Identifier: Apache-2.0
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.13-alpine3.21
 FROM ${BUILD_FROM}
-
-RUN apk add --no-cache python3
 
 # Install uv for fast Python package management
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-ENV VIRTUAL_ENV=/opt/venv
-RUN uv venv "$VIRTUAL_ENV"
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# Phase 1: Install dependencies only (cached when only source changes)
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
 
-# Install the captive_portal package.
-# Build context is addon/ — source lives here alongside the Dockerfile.
-COPY pyproject.toml README.md /app/
-COPY src/ /app/src/
+# Phase 2: Copy source and install the project
+COPY src/ ./src/
+COPY README.md ./
+RUN uv sync --frozen --no-dev
 
-RUN uv pip install --no-cache /app
+# Set Python path and runtime environment
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
 # s6-overlay service definitions and rootfs overlay
 COPY rootfs /
+RUN chmod +x /etc/s6-overlay/s6-rc.d/captive-portal/run
 
 EXPOSE 8080
