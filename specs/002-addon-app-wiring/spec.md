@@ -96,7 +96,7 @@ As a Home Assistant administrator running on different hardware (Intel/AMD PC, R
 - What happens when the /data/ directory is not writable? The application must fail with a clear error message rather than crashing silently.
 - What happens when the addon configuration JSON contains invalid values (e.g., negative timeout, unknown log level)? For each invalid option, the application must ignore that specific addon configuration value, then apply the normal precedence rules (environment variable for that option, if set and valid, otherwise the built-in default), and log a warning describing the invalid value and the effective value used.
 - What happens when the addon is started but the Python package has a missing dependency? The container must fail fast with a clear error in the addon log, not hang indefinitely.
-- What happens when the database schema has changed between addon versions? The application must handle schema migration or at minimum not crash on startup (existing tables should remain usable).
+- What happens when the database schema has changed between addon versions? Schema migration is out of scope for this feature. On upgrades, the application assumes the existing schema is already compatible and may fail startup with a clear error rather than attempting automatic migration.
 
 ## Requirements *(mandatory)*
 
@@ -147,5 +147,5 @@ As a Home Assistant administrator running on different hardware (Intel/AMD PC, R
 - The existing session middleware configuration (`SessionConfig` with `idle_minutes` and `max_hours` fields) accepts the timeout values defined in the addon options schema.
 - The project's package metadata (pyproject.toml) accurately lists all runtime dependencies needed for the application to function.
 - Template and static file paths within the application use relative references that work regardless of the installation location inside the container.
-- No database schema migration mechanism is needed for this initial wiring — the application creates tables from scratch on first run. Migration support is a separate future concern.
+- Database schema migration logic is out of scope for this feature: on a fresh install or when the database is empty, the application creates tables from scratch on first run; on upgrades, this feature assumes the existing schema is already compatible and may fail startup with a clear error rather than attempting automatic migration. Migration support will be specified in a separate future feature.
 - Omada controller settings (host, credentials) are out of scope for the initial addon configuration schema and will be added when the Omada integration feature is wired up.
