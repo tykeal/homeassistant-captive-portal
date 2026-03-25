@@ -65,8 +65,9 @@ initial administrator must be created through the bootstrap process:
 - There is also an **8-hour absolute timeout**, after which you must log in
   again regardless of activity.
 
-**Locked out?** If you enter incorrect credentials, the system enforces rate
-limiting (5 attempts per 60 seconds by default). Wait a minute and try again.
+**Locked out?** Admin login does not currently enforce rate limiting.
+Ensure you use a strong password and consider network-level access
+controls for the admin interface.
 
 ### Logging Out
 

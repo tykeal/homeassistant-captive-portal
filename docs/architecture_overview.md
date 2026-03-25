@@ -73,7 +73,7 @@ The Captive Portal Guest Access system is a Python-based web application that br
 
 **FastAPI-based HTTP interface with three primary surface areas:**
 
-- **Guest Portal Routes** (`/portal/*`)
+- **Guest Portal Routes** (`/guest/*`)
   - Booking code & voucher redemption
   - Self-service WiFi authorization
   - Rate-limited, CSRF-protected
@@ -217,8 +217,8 @@ The Captive Portal Guest Access system is a Python-based web application that br
 
 ```text
 1. Guest connects to WiFi → Captive portal redirect
-2. GET /portal/authorize → Booking code entry form
-3. POST /portal/authorize {booking_code}
+2. GET /guest/authorize → Booking code entry form
+3. POST /guest/authorize {booking_code}
    ↓
 4. unified_code_service validates booking code
    ↓
@@ -238,8 +238,8 @@ The Captive Portal Guest Access system is a Python-based web application that br
 
 ```text
 1. Guest receives voucher code from admin/host
-2. GET /portal/voucher → Voucher entry form
-3. POST /portal/voucher {voucher_code}
+2. GET /guest/voucher → Voucher entry form
+3. POST /guest/voucher {voucher_code}
    ↓
 4. voucher_service validates code (expiry, usage limit)
    ↓
@@ -463,7 +463,7 @@ class UniFiController(ControllerBackend):
 ### Health Endpoints
 
 - **`GET /api/health`**: Liveness probe (returns 200 if app running)
-- **`GET /api/ready`**: Readiness probe (checks DB + controller connectivity)
+- **`GET /api/ready`**: Readiness probe (checks DB connectivity)
 - **`GET /generate_204`**: iOS/Android captive portal detection
 
 ### Metrics (Prometheus Format)

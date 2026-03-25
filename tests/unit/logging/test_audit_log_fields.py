@@ -86,8 +86,8 @@ async def test_log_entry_has_target_id(db_session: Session) -> None:
 
 
 @pytest.mark.asyncio
-async def test_log_entry_has_correlation_id(db_session: Session) -> None:
-    """Every audit entry receives a unique UUID as correlation_id."""
+async def test_log_entry_has_unique_id(db_session: Session) -> None:
+    """Every audit entry receives a unique UUID as its primary key."""
     svc = AuditService(db_session)
     entry = await svc.log(actor="system", action="cleanup", outcome="success")
     assert entry.id is not None

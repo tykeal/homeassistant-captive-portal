@@ -577,7 +577,7 @@ All booking-based authorizations are logged:
 
 ### Force Poll Endpoint
 
-**POST** `/api/v1/integrations/ha/poll`
+**POST** `/api/integrations/ha/poll`
 
 **Authentication**: Admin session required
 

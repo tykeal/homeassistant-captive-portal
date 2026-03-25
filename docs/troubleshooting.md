@@ -196,8 +196,8 @@ receives an error indicating the code is invalid.
    - Check remaining uses in the admin UI. Create a new voucher if needed:
 
      ```bash
-     curl -s -X POST http://localhost:8080/api/v1/vouchers \
-       -H "Cookie: session=<admin_session>" \
+     curl -s -X POST http://localhost:8080/api/vouchers \
+       -H "Cookie: session_id=<admin_session>" \
        -H "Content-Type: application/json" \
        -d '{"max_uses": 5, "duration_hours": 24}'
      ```
@@ -251,8 +251,8 @@ still cannot access the internet.
 1. Verify the grant was created:
 
    ```bash
-   curl -s http://localhost:8080/api/v1/grants \
-     -H "Cookie: session=<admin_session>" | python3 -m json.tool
+   curl -s http://localhost:8080/api/grants \
+     -H "Cookie: session_id=<admin_session>" | python3 -m json.tool
    ```
 
    Look for the guest's MAC address with `status: "active"`.
@@ -288,8 +288,8 @@ still cannot access the internet.
 - If the previous grant needs to be replaced, revoke it from the admin UI first:
 
   ```bash
-  curl -s -X POST http://localhost:8080/api/v1/grants/<grant_id>/revoke \
-    -H "Cookie: session=<admin_session>"
+  curl -s -X POST http://localhost:8080/api/grants/<grant_id>/revoke \
+    -H "Cookie: session_id=<admin_session>"
   ```
 
 ---
@@ -608,12 +608,12 @@ curl -s -H "Authorization: Bearer <long_lived_token>" \
 
 ```bash
 # Force an immediate poll
-curl -s -X POST http://localhost:8080/api/v1/integrations/ha/poll \
-  -H "Cookie: session=<admin_session>"
+curl -s -X POST http://localhost:8080/api/integrations/ha/poll \
+  -H "Cookie: session_id=<admin_session>"
 
 # Check discovered entities
-curl -s http://localhost:8080/api/v1/integrations/ha/entities \
-  -H "Cookie: session=<admin_session>" | python3 -m json.tool
+curl -s http://localhost:8080/api/integrations/ha/entities \
+  -H "Cookie: session_id=<admin_session>" | python3 -m json.tool
 ```
 
 **Solutions:**
@@ -681,8 +681,8 @@ rejects it.
 1. Check if the event has been cached by the poller:
 
    ```bash
-   curl -s http://localhost:8080/api/v1/integrations/ha/entities \
-     -H "Cookie: session=<admin_session>" | python3 -m json.tool
+   curl -s http://localhost:8080/api/integrations/ha/entities \
+     -H "Cookie: session_id=<admin_session>" | python3 -m json.tool
    ```
 
 2. Check the grace period window. The portal validates that the current time
@@ -695,8 +695,8 @@ rejects it.
 - **Stale cache:** Force a poll to refresh the cache:
 
   ```bash
-  curl -s -X POST http://localhost:8080/api/v1/integrations/ha/poll \
-    -H "Cookie: session=<admin_session>"
+  curl -s -X POST http://localhost:8080/api/integrations/ha/poll \
+    -H "Cookie: session_id=<admin_session>"
   ```
 
 - **Case sensitivity:** By default, matching is case-insensitive. If you've
@@ -1128,8 +1128,8 @@ From the admin API:
 
 ```bash
 # List all active grants
-GRANTS=$(curl -s http://localhost:8080/api/v1/grants \
-  -H "Cookie: session=<admin_session>")
+GRANTS=$(curl -s http://localhost:8080/api/grants \
+  -H "Cookie: session_id=<admin_session>")
 
 # Revoke each one (extract grant IDs and loop)
 echo "$GRANTS" | python3 -c "
@@ -1139,8 +1139,8 @@ for g in grants:
     if g.get('status') == 'active':
         print(g['id'])
 " | while read id; do
-  curl -s -X POST "http://localhost:8080/api/v1/grants/$id/revoke" \
-    -H "Cookie: session=<admin_session>"
+  curl -s -X POST "http://localhost:8080/api/grants/$id/revoke" \
+    -H "Cookie: session_id=<admin_session>"
 done
 ```
 
@@ -1214,8 +1214,8 @@ If the troubleshooting steps above do not resolve your issue:
 3. **Check the audit log** for a timeline of events:
 
    ```bash
-   curl -s http://localhost:8080/api/v1/audit/logs \
-     -H "Cookie: session=<admin_session>" | python3 -m json.tool
+   curl -s http://localhost:8080/api/audit/logs \
+     -H "Cookie: session_id=<admin_session>" | python3 -m json.tool
    ```
 
 4. **Review related documentation:**

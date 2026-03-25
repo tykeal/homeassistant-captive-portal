@@ -14,7 +14,8 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
-from sqlmodel import Session, text
+from sqlalchemy import text
+from sqlmodel import Session
 
 from captive_portal.persistence.database import get_session
 

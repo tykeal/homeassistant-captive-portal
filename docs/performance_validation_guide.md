@@ -230,7 +230,7 @@ Test admin API under concurrent load (requires valid session):
 
 ```bash
 wrk -t2 -c20 -d15s \
-  -H "Cookie: session=${SESSION_COOKIE}" \
+  -H "Cookie: session_id=${SESSION_COOKIE}" \
   "${BASE_URL}/api/grants?status=active"
 ```
 
