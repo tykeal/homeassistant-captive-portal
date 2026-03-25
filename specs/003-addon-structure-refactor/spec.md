@@ -29,15 +29,15 @@ A Home Assistant user adds the captive-portal repository to their HA instance an
 
 ### User Story 2 — Developer Runs Tests from the Repo Root (Priority: P2)
 
-A developer clones the repository, installs development dependencies from the root, and runs the full test suite. All 441 existing tests pass without modification to the test assertions or application logic. The developer can iterate on code changes and re-run tests using the same workflow they use today.
+A developer clones the repository, installs development dependencies from the root, and runs the full test suite. The full existing test suite (currently 441 tests) passes without modification to the test assertions or application logic. The developer can iterate on code changes and re-run tests using the same workflow they use today.
 
 **Why this priority**: Maintaining the development workflow ensures contributors can continue working on the project without disruption. If tests break or the development experience degrades, the restructure creates more problems than it solves.
 
-**Independent Test**: Can be fully tested by cloning the repository, running the standard test command from the repo root, and verifying all 441 tests pass with no failures.
+**Independent Test**: Can be fully tested by cloning the repository, running the standard test command from the repo root, and verifying the full test suite passes with no failures.
 
 **Acceptance Scenarios**:
 
-1. **Given** a fresh clone of the repository on the feature branch, **When** the developer installs dependencies and runs the full test suite from the repo root, **Then** all 441 tests pass.
+1. **Given** a fresh clone of the repository on the feature branch, **When** the developer installs dependencies and runs the full test suite from the repo root, **Then** the full existing test suite passes with no failures.
 2. **Given** the source code has been relocated into the addon directory, **When** the developer imports any captive-portal module in a test file, **Then** the import resolves correctly.
 3. **Given** the root project configuration has been updated, **When** the developer runs linting and type-checking tools from the repo root, **Then** they analyze the source code at its new location without errors.
 
@@ -151,7 +151,7 @@ A compliance reviewer checks the repository and verifies that every new or modif
 #### Development Workflow Preservation
 
 - **FR-017**: The root-level project configuration MUST be updated to reference source code at its new location within the addon directory.
-- **FR-018**: The full existing test suite (441 tests) MUST pass from the repository root without changes to test logic or assertions.
+- **FR-018**: The full existing test suite MUST pass from the repository root without changes to test logic or assertions.
 - **FR-019**: Development tooling (linting, type-checking, coverage) MUST continue to work from the repository root against the relocated source.
 
 #### Dependency Lock File
@@ -168,7 +168,7 @@ A compliance reviewer checks the repository and verifies that every new or modif
 ### Measurable Outcomes
 
 - **SC-001**: The addon container image builds to completion from the `addon/` directory as build context with zero errors.
-- **SC-002**: All 441 existing tests pass from the repository root after the restructure, with zero test failures and zero test modifications.
+- **SC-002**: The full existing test suite passes from the repository root after the restructure, with zero test failures and zero test modifications.
 - **SC-003**: The addon starts under HA Supervisor and reaches a running state within 60 seconds of the start command.
 - **SC-004**: The captive portal web interface responds to requests within 5 seconds of the addon reaching running state.
 - **SC-005**: When the application process is terminated, the process supervisor restarts it and the service is available again within 30 seconds.
@@ -178,7 +178,7 @@ A compliance reviewer checks the repository and verifies that every new or modif
 
 ## Assumptions
 
-- The existing 441-test suite is the authoritative measure of application correctness; if all tests pass, the application behavior is preserved.
+- The existing test suite (currently 441 tests) is the authoritative measure of application correctness; if all tests pass, the application behavior is preserved.
 - The HA Supervisor uses only the contents of the `addon/` directory as its build context. Files outside `addon/` are not available during the container build.
 - The reference implementation (rentalsync-bridge) represents the current best practice for HA addon structure and can be used as the pattern to follow.
 - The s6-overlay process supervisor is provided by the HA base container images and does not need to be installed separately.
