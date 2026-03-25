@@ -3,7 +3,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Implementation Plan: Wire Real Application into Addon Container
 
-**Branch**: `002-addon-app-wiring` | **Date**: 2025-07-14 | **Spec**: ./spec.md
+**Branch**: `002-addon-app-wiring` | **Date**: 2026-03-25 | **Spec**: ./spec.md
 **Input**: Feature specification from `/specs/002-addon-app-wiring/spec.md`
 
 ## Summary
