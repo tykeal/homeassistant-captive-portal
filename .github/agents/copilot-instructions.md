@@ -15,7 +15,6 @@ Auto-generated from all feature plans. Last updated: 2026-03-25
 
 ```text
 addon/src/
-addon/tests/
 src/
 tests/
 ```
@@ -25,7 +24,7 @@ tests/
 ```bash
 uv run pytest
 uv run ruff check .
-uv run mypy src addon/src
+uv run mypy addon/src/captive_portal
 ```
 
 ## Code Style

@@ -44,7 +44,7 @@ No application logic, data models, or test assertions are modified.
 | # | Principle | Status | Notes |
 |---|---|---|---|
 | I | Code Quality (NON-NEGOTIABLE) | ✅ PASS | No application code changes; config files get SPDX headers; linting unaffected |
-| II | Test-Driven Development (NON-NEGOTIABLE) | ✅ PASS | This is a structural refactor — no new application behavior to TDD. Verification is that all 441+ existing tests pass unchanged (SC-002). New integration tests for build/startup already exist in `tests/integration/test_addon_build_run.py` and `test_addon_startup_wiring.py`. |
+| II | Test-Driven Development (NON-NEGOTIABLE) | ✅ PASS | This is a structural refactor — no new application behavior to TDD. Verification is that all 441+ existing tests pass unchanged (SC-002). New integration tests for build/startup already exist in `tests/integration/test_addon_build_run.py` and `tests/integration/test_addon_startup_wiring.py`. |
 | III | User Experience Consistency | ✅ PASS | No user-facing changes; API contracts, portal UI, and admin interface are untouched |
 | IV | Performance Requirements | ✅ PASS | No runtime behavior changes; performance baselines unaffected |
 | V | Atomic Commits & Compliance (NON-NEGOTIABLE) | ✅ PASS | All new files will have SPDX headers (FR-021); commits will be atomic and signed off |
