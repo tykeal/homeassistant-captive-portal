@@ -1,5 +1,5 @@
-<!-- SPDX-FileCopyrightText: 2026 Andrew Grimberg -->
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+SPDX-FileCopyrightText: 2026 Andrew Grimberg
+SPDX-License-Identifier: Apache-2.0
 
 # Feature Specification: Restructure Addon to Standard HA Patterns
 
@@ -23,7 +23,7 @@ A Home Assistant user adds the captive-portal repository to their HA instance an
 1. **Given** the repository is added to HA as a custom addon repository, **When** the user clicks "Install" on the Captive Portal addon, **Then** the addon builds to completion without errors.
 2. **Given** the addon has been installed, **When** the user clicks "Start," **Then** the addon reaches a "running" state and the admin panel link becomes active.
 3. **Given** the addon is running, **When** the user opens the admin panel, **Then** the captive portal web interface loads and responds to requests.
-4. **Given** the addon is running, **When** the health check endpoint is accessed, **Then** it returns a healthy status.
+4. **Given** the addon is running, **When** the existing `/health` endpoint is accessed (its path is unchanged by this restructure), **Then** it returns a healthy status.
 
 ---
 
@@ -76,9 +76,9 @@ The captive portal application process crashes unexpectedly due to an unhandled 
 
 ### User Story 5 — Addon Builds on Multiple Architectures (Priority: P5)
 
-A user with an ARM-based Home Assistant device (e.g., Raspberry Pi with aarch64) installs the addon. The HA Supervisor selects the correct architecture-specific base image and builds the addon container. The addon builds and runs correctly regardless of whether the host is amd64, aarch64, or armv7.
+A user with an ARM-based Home Assistant device (e.g., Raspberry Pi with aarch64) installs the addon. The HA Supervisor selects the correct architecture-specific base image and builds the addon container. For this feature, the addon builds and runs correctly on hosts using the amd64 or aarch64 architectures.
 
-**Why this priority**: Multi-architecture support is required for HA addon distribution. Many HA users run on Raspberry Pi (aarch64) or other ARM devices. Without this, the addon is limited to amd64 users only.
+**Why this priority**: Multi-architecture support (amd64 and aarch64) is required for broadly usable HA addon distribution. Many HA users run on Raspberry Pi (aarch64) or other ARM devices. Without this, the addon is limited to amd64 users only; support for additional architectures (such as armv7) is out of scope for this feature.
 
 **Independent Test**: Can be fully tested by verifying the build configuration specifies correct base images for each supported architecture and that the container build succeeds when targeting different architectures.
 
@@ -184,6 +184,6 @@ A compliance reviewer checks the repository and verifies that every new or modif
 - The s6-overlay process supervisor is provided by the HA base container images and does not need to be installed separately.
 - The application's runtime behavior, API routes, and user-facing interfaces are unchanged by this restructure; only file locations, build tooling, and process management change.
 - The root-level project configuration is used only for development purposes (running tests, linting, type-checking) and is not involved in the addon build process.
-- The armv7 architecture will be added to the supported architectures list to match the reference implementation pattern, even though it is not currently listed.
+- The armv7 architecture is out of scope for this feature; only amd64 and aarch64 are targeted. armv7 may be added in a future iteration.
 - The dependency lock file in the addon directory may be a copy of or symlink to the root lock file, as long as the container build can consume it.
-- The current JSON-format addon config contains the complete and correct set of metadata; the YAML conversion is a format change only, with no semantic changes needed beyond adding armv7 support.
+- The current JSON-format addon config contains the complete and correct set of metadata; the YAML conversion is a format change only, with no semantic changes needed.

@@ -1,5 +1,5 @@
-<!-- SPDX-FileCopyrightText: 2026 Andrew Grimberg -->
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+SPDX-FileCopyrightText: 2026 Andrew Grimberg
+SPDX-License-Identifier: Apache-2.0
 
 # Specification Quality Checklist: Restructure Addon to Standard HA Patterns
 
@@ -9,9 +9,9 @@
 
 ## Content Quality
 
-- [x] No implementation details (languages, frameworks, APIs)
+- [x] No hidden implementation details (user-mandated tools are captured as requirements)
 - [x] Focused on user value and business needs
-- [x] Written for non-technical stakeholders
+- [x] Written for stakeholders familiar with the HA addon ecosystem
 - [x] All mandatory sections completed
 
 ## Requirement Completeness
@@ -30,11 +30,11 @@
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
-- [x] No implementation details leak into specification
+- [x] No hidden implementation details leak into specification
 
 ## Notes
 
 - All items pass. Specification is ready for `/speckit.clarify` or `/speckit.plan`.
-- The spec deliberately avoids naming specific technologies (uv, hatchling, s6-overlay) in success criteria, keeping them technology-agnostic. Implementation technology choices are captured in assumptions and the user's feature description context, not in requirements or success criteria.
+- The spec deliberately avoids naming specific technologies in success criteria, keeping them technology-agnostic. Where specific tools are mentioned, they reflect explicit user-mandated constraints, not hidden implementation choices.
 - FR-006 references "lock-file-based dependency installation" which is a pattern, not an implementation detail.
-- FR-007 names "uv" as the replacement tool — this is intentional as it was an explicit user requirement, not an implementation choice made by the spec. The requirement captures the user's stated need.
+- FR-007 (uv), FR-011 (s6-overlay), and FR-015 (hatchling) intentionally name specific tools because the user requested those tools explicitly; the requirements capture those stated needs rather than prescribing an implementation approach beyond the user's constraints.
