@@ -220,23 +220,23 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0700 NF quickstart.md (addon + standalone run)
 - [x] T0701 NF README updates (principles summary, architecture)
 - [x] T0702 NF docs/addon/config.md (explain config.json options)
-- [ ] T0720 NF docs/architecture_overview.md (system design, components, data flow)
-- [ ] T0721 NF docs/ha_integration_guide.md (Rental Control setup, entity discovery, troubleshooting)
-- [ ] T0722 NF docs/tp_omada_setup.md (controller configuration, external portal enablement, API access)
-- [ ] T0723 NF docs/troubleshooting.md (common issues, logs, diagnostics, FAQ)
-- [ ] T0724 NF docs/admin_ui_walkthrough.md (screenshots/descriptions of admin features)
+- [x] T0720 NF docs/architecture_overview.md (system design, components, data flow)
+- [x] T0721 NF docs/ha_integration_guide.md (Rental Control setup, entity discovery, troubleshooting)
+- [x] T0722 NF docs/tp_omada_setup.md (controller configuration, external portal enablement, API access)
+- [x] T0723 NF docs/troubleshooting.md (common issues, logs, diagnostics, FAQ)
+- [x] T0724 NF docs/admin_ui_walkthrough.md (screenshots/descriptions of admin features)
 
 ### Security Hardening (D24: Basic headers)
 - [x] T0725 NF middleware/security_headers.py (X-Frame-Options: DENY, X-Content-Type-Options: nosniff)
 - [x] T0726 NF tests/integration/test_security_headers.py (verify headers present on all responses)
-- [ ] T0705 NF security review checklist (session hardening, CSRF, headers)
+- [x] T0705 NF security review checklist (session hardening, CSRF, headers)
 
 ### Audit & Compliance (D25: Configurable retention, D28: Automated + spot-check)
 - [x] T0727 NF models/audit_config.py (audit_retention_days field, default 30, max 90)
 - [x] T0728 NF services/audit_cleanup_service.py (separate retention policy from grants/vouchers)
 - [x] T0729 NF tests/unit/services/test_audit_retention.py (configurable cleanup tests)
 - [x] T0730 NF api/routes/audit_config.py (admin endpoint for audit retention configuration)
-- [ ] T0704 NF verify SPDX headers across repository (reuse lint + spot-check)
+- [x] T0704 NF verify SPDX headers across repository (reuse lint + spot-check)
 
 ### API Documentation (D26: Embedded docs)
 - [x] T0703 NF finalize OpenAPI description & examples
@@ -244,9 +244,9 @@ SPDX-License-Identifier: Apache-2.0
 - [x] T0732 NF tests/integration/test_api_docs_access.py (verify admin-only access to docs)
 
 ### Polish & Release
-- [ ] T0706 NF release notes draft (MVP scope)
-- [ ] T0707 NF audit logging review & gap fixes
-- [ ] T0733 NF manual performance validation guide (docker stats for memory/CPU, controller propagation timing)
+- [x] T0706 NF release notes draft (MVP scope)
+- [x] T0707 NF audit logging review & gap fixes
+- [x] T0733 NF manual performance validation guide (docker stats for memory/CPU, controller propagation timing)
 
 ### Tech Debt Cleanup (from Phase 6 review)
 - [x] T0734 NF Remove TODO comments in src/captive_portal/api/routes/integrations.py (lines 71, 104) - admin auth placeholders already implemented elsewhere
@@ -278,13 +278,13 @@ SPDX-License-Identifier: Apache-2.0
 - Added after specification analysis to close coverage & alignment gaps.
 
 ### Remediation Tasks
-- [ ] T0709 NF tests/integration/test_portal_error_messages_theming.py (guest error clarity, theming, localization placeholders) (FR-012).
-- [ ] T0711 NF tests/unit/logging/test_audit_log_fields.py (validate user, action, resource, result, correlation_id) + ensure audit_service emits all fields.
-- [ ] T0712 NF tests/integration/test_session_cookie_security_headers.py (Secure, HttpOnly, SameSite=Lax, CSP, Referrer-Policy, Permissions-Policy) & middleware header additions.
-- [ ] T0713 NF tests/integration/test_theme_precedence.py (admin override > default > fallback) including error pages & vouchers.
-- [ ] T0714 NF tests/integration/test_health_readiness_liveness.py + implement readiness & liveness endpoints & document container probes.
-- [ ] T0715 NF cache_decision.md: decide keep (add NFR: reduce controller round-trips 60% + tests) or remove T0611; record rationale.
-- [ ] T0716 NF add NFR (disconnect enforcement p95 <30s after access expiry) + tests/integration/test_disconnect_enforcement.py.
-- [ ] T0717 NF extend metrics (active_sessions, controller_latency, auth_failures) + tests/unit/metrics/test_metrics_export.py & instrumentation updates.
-- [ ] T0718 NF tests/integration/test_addon_build_run.py: build HA addon image, start container, verify health & readiness endpoints, graceful shutdown.
+- [x] T0709 NF tests/integration/test_portal_error_messages_theming.py (guest error clarity, theming, localization placeholders) (FR-012).
+- [x] T0711 NF tests/unit/logging/test_audit_log_fields.py (validate user, action, resource, result, correlation_id) + ensure audit_service emits all fields.
+- [x] T0712 NF tests/integration/test_session_cookie_security_headers.py (Secure, HttpOnly, SameSite=Lax, CSP, Referrer-Policy, Permissions-Policy) & middleware header additions.
+- [x] T0713 NF tests/integration/test_theme_precedence.py (admin override > default > fallback) including error pages & vouchers.
+- [x] T0714 NF tests/integration/test_health_readiness_liveness.py + implement readiness & liveness endpoints & document container probes.
+- [x] T0715 NF cache_decision.md: decide keep (add NFR: reduce controller round-trips 60% + tests) or remove T0611; record rationale.
+- [x] T0716 NF add NFR (disconnect enforcement p95 <30s after access expiry) + tests/integration/test_disconnect_enforcement.py.
+- [x] T0717 NF extend metrics (active_sessions, controller_latency, auth_failures) + tests/unit/metrics/test_metrics_export.py & instrumentation updates.
+- [x] T0718 NF tests/integration/test_addon_build_run.py: build HA addon image, start container, verify health & readiness endpoints, graceful shutdown.
 - Recommendation (2025-10-23T13:57:51.702Z): Adopt minimal in-memory TTL cache (30–60s controller status, 5–10m HA rental metadata) with explicit bust on grant create/update/delete; implement via optional layer (T0611) if T0715 outcome = keep, else remove T0611.
