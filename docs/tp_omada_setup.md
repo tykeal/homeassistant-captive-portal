@@ -421,12 +421,12 @@ omada_failover_timeout_seconds: 30
 
 Captive Portal provides controller connectivity health endpoints:
 
-- **`GET /ready`**: Readiness probe
+- **`GET /api/ready`**: Readiness probe
   - Returns 200 if controller API accessible
-  - Returns 503 if controller unreachable
-  - Use for Kubernetes liveness checks
+  - Returns 503 if database unavailable
+  - Use for Kubernetes readiness checks
 
-- **`GET /health`**: Liveness probe
+- **`GET /api/health`**: Liveness probe
   - Returns 200 if app running
   - Does not check external dependencies
 

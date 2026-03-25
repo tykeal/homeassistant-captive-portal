@@ -191,7 +191,7 @@ Example:
 select(Voucher).where(Voucher.booking_ref == booking_ref)
 ```
 
-No raw SQL string concatenation exists in the codebase. Foreign key
+No raw SQL string concatenation with user input exists in the codebase. Only a static `SELECT 1` is used for readiness health checks. Foreign key
 constraints are enabled in `persistence/database.py` (line 50).
 
 ### 5.3 Output Encoding
@@ -201,7 +201,7 @@ constraints are enabled in `persistence/database.py` (line 50).
 
 **Review items:**
 
-- [x] No raw SQL anywhere in codebase
+- [x] No raw SQL involving user input; only `SELECT 1` for health checks
 - [x] All user input validated before use
 - [x] Jinja2 auto-escaping enabled
 - [x] Foreign key constraints enabled

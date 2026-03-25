@@ -100,7 +100,7 @@ The Captive Portal Guest Access system is a Python-based web application that br
 - **`voucher_service.py`**: Voucher creation, validation, redemption tracking
 - **`grant_service.py`**: Access grant lifecycle (create, extend, revoke, cleanup)
 - **`unified_code_service.py`**: Unified booking code & voucher validation
-- **`audit_service.py`**: Audit log creation with correlation IDs
+- **`audit_service.py`**: Audit log creation with unique entry IDs
 - **`audit_cleanup_service.py`**: Configurable retention policy (default 30 days, max 90)
 - **`cleanup_service.py`**: Expired grant cleanup (default 7 days)
 - **`retry_queue_service.py`**: Reliable controller API retry with exponential backoff
@@ -478,7 +478,7 @@ class UniFiController(ControllerBackend):
 
 ### Logging
 
-- **Structured JSON logs** with correlation IDs
+- **Structured JSON logs** with unique entry IDs
 - **Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
 - **Key Events**:
   - Guest authorization attempts

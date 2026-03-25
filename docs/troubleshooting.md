@@ -78,7 +78,7 @@ ss -tlnp | grep 8080
 
 ### Readiness Probe — `/api/ready`
 
-Checks that downstream dependencies (controller, database) are accessible. If
+Checks that downstream dependencies (database) are accessible. If
 `/api/health` returns OK but `/api/ready` does not, the application is running but
 cannot serve requests because a dependency is down.
 

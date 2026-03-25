@@ -3,8 +3,7 @@
 """T0711 – Unit tests for audit service required fields.
 
 Validates that AuditService.log() emits entries containing every
-required field: user (actor), action, resource (target_type),
-result (outcome), and correlation_id (the entry UUID).
+required field: actor, action, target_type, outcome, and id (UUID).
 """
 
 from __future__ import annotations

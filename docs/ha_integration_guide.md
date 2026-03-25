@@ -518,7 +518,7 @@ All booking-based authorizations are logged:
 
 ### Entity Discovery Endpoint
 
-**GET** `/api/v1/integrations/ha/entities`
+**GET** `/api/integrations/ha/entities`
 
 **Authentication**: Admin session required
 
@@ -544,7 +544,7 @@ All booking-based authorizations are logged:
 
 ### Booking Authorization Endpoint
 
-**POST** `/portal/authorize/booking`
+**POST** `/guest/authorize`
 
 **Authentication**: None (rate-limited)
 
