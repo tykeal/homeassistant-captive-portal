@@ -49,8 +49,18 @@ SPDX-License-Identifier: Apache-2.0
 - Replace `build-backend` from `"setuptools.build_meta"` to `"hatchling.build"`
 - Remove the entire `[tool.setuptools.packages.find]` section (`where = ["src"]`)
 - Remove the entire `[tool.setuptools.package-data]` section (`captive_portal = [...]`)
-- Add new section `[tool.hatch.build.targets.wheel]` with `packages = ["src/captive_portal"]`
-- Hatchling includes all non-Python files (HTML templates, CSS themes) in package dirs by default — no explicit package-data config needed
+- Add new section `[tool.hatch.build.targets.wheel]` with:
+  - `packages = ["src/captive_portal"]`
+  - Explicit inclusion of runtime assets so templates and themes are packaged:
+
+    ```toml
+    [tool.hatch.build.targets.wheel]
+    packages = ["src/captive_portal"]
+    include = [
+      "src/captive_portal/web/templates/**",
+      "src/captive_portal/web/themes/**",
+    ]
+    ```
 - Keep the existing `[project]` section unchanged (name, version, dependencies, etc.)
 - Keep the existing SPDX header (2025) unchanged
 - Reference pattern: rentalsync-bridge `pyproject.toml` uses identical hatchling setup
