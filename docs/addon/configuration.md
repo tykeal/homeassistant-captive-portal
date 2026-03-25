@@ -44,7 +44,8 @@ For each setting independently, the following priority applies:
 
 If a specific addon option value is invalid (wrong type, out of range),
 only that field falls through — other valid addon options are kept. A
-warning is logged describing the invalid value and the effective value used.
+warning is logged describing the invalid value, and the setting falls back
+to the next source in the precedence list.
 
 ## Log Level Mapping
 
