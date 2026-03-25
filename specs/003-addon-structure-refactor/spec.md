@@ -145,7 +145,7 @@ A compliance reviewer checks the repository and verifies that every new or modif
 #### Addon Package Configuration
 
 - **FR-014**: The addon directory MUST contain its own package configuration file that defines the addon as a self-contained installable package.
-- **FR-015**: The addon package configuration MUST use the hatchling build backend, following the reference implementation pattern.
+- **FR-015**: The addon package configuration MUST use a PEP 517-compliant build backend compatible with uv, following the reference implementation pattern.
 - **FR-016**: The addon package configuration MUST list all runtime dependencies required by the captive portal application.
 
 #### Development Workflow Preservation
@@ -185,5 +185,5 @@ A compliance reviewer checks the repository and verifies that every new or modif
 - The application's runtime behavior, API routes, and user-facing interfaces are unchanged by this restructure; only file locations, build tooling, and process management change.
 - The root-level project configuration is used only for development purposes (running tests, linting, type-checking) and is not involved in the addon build process.
 - The armv7 architecture is out of scope for this feature; only amd64 and aarch64 are targeted. armv7 may be added in a future iteration.
-- The dependency lock file in the addon directory may be a copy of or symlink to the root lock file, as long as the container build can consume it.
+- The dependency lock file required for the addon build MUST exist as a regular file within the `addon/` directory (typically a maintained copy or generated file), and MUST NOT rely on a symlink that points outside the `addon/` build context.
 - The current JSON-format addon config contains the complete and correct set of metadata; the YAML conversion is a format change only, with no semantic changes needed.

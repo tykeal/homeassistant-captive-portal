@@ -37,4 +37,4 @@ SPDX-License-Identifier: Apache-2.0
 - All items pass. Specification is ready for `/speckit.clarify` or `/speckit.plan`.
 - The spec deliberately avoids naming specific technologies in success criteria, keeping them technology-agnostic. Where specific tools are mentioned, they reflect explicit user-mandated constraints, not hidden implementation choices.
 - FR-006 references "lock-file-based dependency installation" which is a pattern, not an implementation detail.
-- FR-007 (uv), FR-011 (s6-overlay), and FR-015 (hatchling) intentionally name specific tools because the user requested those tools explicitly; the requirements capture those stated needs rather than prescribing an implementation approach beyond the user's constraints.
+- FR-007 (uv) and FR-011 (s6-overlay) intentionally name specific tools because the user requested those tools explicitly; the requirements capture those stated needs rather than prescribing an implementation approach beyond the user's constraints.
