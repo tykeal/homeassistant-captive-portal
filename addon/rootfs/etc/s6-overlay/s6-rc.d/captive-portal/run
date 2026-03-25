@@ -8,7 +8,7 @@ declare log_level
 log_level=$(bashio::config 'log_level' 'info')
 bashio::log.info "Starting captive portal (log_level=${log_level})..."
 
-exec "${VIRTUAL_ENV}/bin/python" -m uvicorn \
+exec python -m uvicorn \
     captive_portal.app:create_app \
     --factory \
     --host 0.0.0.0 \
