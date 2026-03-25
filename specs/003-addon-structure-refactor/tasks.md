@@ -22,7 +22,7 @@ SPDX-License-Identifier: Apache-2.0
 - **Application source**: `addon/src/captive_portal/`
 - **s6-overlay services**: `addon/rootfs/etc/s6-overlay/s6-rc.d/`
 - **Repository root**: Development workspace (tests, linting, type-checking)
-- **Reference implementation**: `/home/tykeal/repos/personal/homeassistant/rentalsync-bridge`
+- **Reference implementation**: A private Home Assistant addon (`rentalsync-bridge`) used during design (not part of this repo; contact the maintainer for details).
 
 ---
 
@@ -399,4 +399,4 @@ With two developers:
 - Commit after each task or logical group with proper DCO sign-off (per constitution principle V)
 - All new files use SPDX header: `SPDX-FileCopyrightText: 2026 Andrew Grimberg` / `SPDX-License-Identifier: Apache-2.0`
 - Modified files retain their existing 2025 SPDX headers unchanged
-- Reference implementation at `/home/tykeal/repos/personal/homeassistant/rentalsync-bridge` for Dockerfile, build.yaml, config.yaml, pyproject.toml patterns
+- Reference implementation (`rentalsync-bridge`, private repo; contact maintainer) for Dockerfile, build.yaml, config.yaml, pyproject.toml patterns
