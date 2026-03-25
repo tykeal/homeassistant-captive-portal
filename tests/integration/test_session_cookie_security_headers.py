@@ -142,7 +142,10 @@ class TestSessionCookieAttributes:
 
 
 def _find_set_cookie_header(resp: Any, cookie_name: str) -> str | None:
-    """Return the raw Set-Cookie header for *cookie_name*, or None."""
+    """Return the raw Set-Cookie header for *cookie_name*, or None.
+
+    Uses httpx Headers.multi_items() (TestClient wraps httpx, not requests).
+    """
     for header_name, header_value in resp.headers.multi_items():
         if header_name.lower() == "set-cookie" and header_value.startswith(f"{cookie_name}="):
             return str(header_value)

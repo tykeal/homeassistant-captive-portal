@@ -66,7 +66,12 @@ def expired_grant(db_session: Session) -> AccessGrant:
 
 @pytest.mark.integration
 class TestDisconnectEnforcementTiming:
-    """Verify disconnect enforcement meets p95 < 30 s NFR."""
+    """Verify grant revocation DB operations meet p95 < 30 s NFR.
+
+    These tests validate the DB-side revocation latency.  Full end-to-end
+    controller disconnect timing requires a live Omada controller and is
+    covered by the contract test suite (skipped without hardware).
+    """
 
     @pytest.mark.asyncio
     async def test_revoke_completes_under_p95_limit(

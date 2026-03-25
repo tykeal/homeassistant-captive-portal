@@ -468,11 +468,13 @@ class UniFiController(ControllerBackend):
 
 ### Metrics (Prometheus Format)
 
-- **`captive_portal_active_sessions`**: Current authorized clients
-- **`captive_portal_controller_latency_seconds`**: Controller API response time
-- **`captive_portal_auth_failures_total`**: Failed authorization attempts
-- **`captive_portal_voucher_redemptions_total`**: Successful voucher uses
-- **`captive_portal_grant_operations_total`**: Grant lifecycle events
+In-memory metrics tracked (Prometheus export endpoint planned for future release):
+
+| Metric Name | Type | Description |
+|---|---|---|
+| `active_sessions_count` | Gauge | Current authorized clients |
+| `controller_latency_seconds` | Histogram | Controller API response time |
+| `auth_failures_total` | Counter | Failed authorization attempts |
 
 **Endpoint**: In-memory metrics (export endpoint planned for future release)
 

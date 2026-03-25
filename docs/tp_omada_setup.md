@@ -432,20 +432,16 @@ Captive Portal provides controller connectivity health endpoints:
 
 ### Metrics
 
-Monitor controller integration via application logs and health endpoints:
+Monitor controller integration via application logs and health endpoints.
 
-```prometheus
-# Controller API latency
-captive_portal_controller_latency_seconds{operation="authorize"} 0.450
-captive_portal_controller_latency_seconds{operation="revoke"} 0.320
+The following in-memory metrics are tracked (a Prometheus export endpoint
+is planned for a future release):
 
-# API call failures
-captive_portal_controller_errors_total{operation="authorize"} 3
-captive_portal_controller_errors_total{operation="revoke"} 0
-
-# Active authorizations
-captive_portal_active_sessions{site="Default"} 12
-```
+| Metric Name | Type | Description |
+|---|---|---|
+| `controller_latency_seconds` | Histogram | Controller API call latency |
+| `auth_failures_total` | Counter | Authentication failure count |
+| `active_sessions_count` | Gauge | Currently active guest sessions |
 
 ### Controller Logs
 

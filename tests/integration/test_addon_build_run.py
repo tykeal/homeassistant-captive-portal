@@ -141,6 +141,7 @@ class TestAddonContainerRun:
 
     def test_container_starts_and_health_responds(self, container: subprocess.Popen[bytes]) -> None:
         """Container should start and /health should return 200."""
+        import urllib.error
         import urllib.request
 
         port = container.host_port  # type: ignore[attr-defined]
