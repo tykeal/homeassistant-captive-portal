@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/specs/002-addon-app-wiring/contracts/addon-options-schema.json",
+  "title": "Captive Portal Addon Options",
+  "description": "Schema for /data/options.json written by the HA Supervisor based on addon config.json schema. Defines the user-configurable options exposed in the HA addon configuration panel.",
+  "type": "object",
+  "properties": {
+    "log_level": {
+      "type": "string",
+      "title": "Log Level",
+      "description": "Application log verbosity. Maps to Python logging levels.",
+      "enum": ["trace", "debug", "info", "notice", "warning", "error", "fatal"],
+      "default": "info"
+    },
+    "session_idle_timeout": {
+      "type": "integer",
+      "title": "Session Idle Timeout (minutes)",
+      "description": "Number of minutes of inactivity before an admin session expires. Must be at least 1.",
+      "minimum": 1,
+      "default": 30
+    },
+    "session_max_duration": {
+      "type": "integer",
+      "title": "Session Max Duration (hours)",
+      "description": "Maximum number of hours an admin session can remain active regardless of activity. Must be at least 1.",
+      "minimum": 1,
+      "default": 8
+    }
+  },
+  "additionalProperties": false
+}
