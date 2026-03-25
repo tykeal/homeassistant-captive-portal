@@ -68,13 +68,13 @@ def _validate_field(field: str, value: Any) -> bool:
     if field == "db_path":
         return isinstance(value, str) and len(value) > 0
     if field == "session_idle_minutes":
-        if isinstance(value, int):
+        if type(value) is int:
             return value >= 1
         if isinstance(value, str) and value.isdigit():
             return int(value) >= 1
         return False
     if field == "session_max_hours":
-        if isinstance(value, int):
+        if type(value) is int:
             return value >= 1
         if isinstance(value, str) and value.isdigit():
             return int(value) >= 1
