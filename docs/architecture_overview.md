@@ -202,7 +202,7 @@ The Captive Portal Guest Access system is a Python-based web application that br
 
 **Cross-cutting concerns:**
 
-- **`metrics.py`**: Prometheus-compatible metrics
+- **`metrics.py`**: In-memory metrics collection (counters, gauges, histograms)
   - `active_sessions`
   - `controller_latency_seconds`
   - `auth_failures_total`
@@ -474,7 +474,7 @@ class UniFiController(ControllerBackend):
 - **`captive_portal_voucher_redemptions_total`**: Successful voucher uses
 - **`captive_portal_grant_operations_total`**: Grant lifecycle events
 
-**Endpoint**: `GET /metrics` (admin-only)
+**Endpoint**: In-memory metrics (export endpoint planned for future release)
 
 ### Logging
 

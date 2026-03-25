@@ -10,7 +10,6 @@ Container probe mapping:
 
 import logging
 from datetime import datetime, timezone
-from typing import Dict
 
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
@@ -36,7 +35,7 @@ class ReadinessResponse(BaseModel):
 
     status: str
     timestamp: datetime
-    checks: Dict[str, str]
+    checks: dict[str, str]
 
 
 class LivenessResponse(BaseModel):
@@ -73,7 +72,7 @@ async def readiness_check(
     Returns:
         Readiness status with individual component checks
     """
-    checks: Dict[str, str] = {}
+    checks: dict[str, str] = {}
     overall = "ok"
 
     # Check database connectivity

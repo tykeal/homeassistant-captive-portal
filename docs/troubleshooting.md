@@ -92,8 +92,7 @@ curl -s http://localhost:8080/api/ready | python3 -m json.tool
 {
   "status": "degraded",
   "checks": {
-    "database": "ok",
-    "omada_controller": "unreachable"
+    "database": "unavailable"
   }
 }
 ```
