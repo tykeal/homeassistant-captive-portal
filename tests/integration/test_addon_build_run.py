@@ -3,8 +3,8 @@
 """T0718 – Integration tests for HA addon Docker image build and run.
 
 Validates:
-- Docker image builds successfully from addon/ context
-- Container starts and responds on health endpoint (/health)
+- Docker image builds successfully from repository root context
+- Container starts and responds on health endpoint (/api/health)
 - Container performs graceful shutdown on SIGTERM
 """
 
