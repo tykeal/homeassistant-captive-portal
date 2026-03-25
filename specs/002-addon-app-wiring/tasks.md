@@ -247,11 +247,11 @@ With multiple developers after Foundational is complete:
 ## Notes
 
 - All new files MUST include SPDX header: `SPDX-FileCopyrightText: 2026 Andrew Grimberg` / `SPDX-License-Identifier: Apache-2.0`
-- Existing files being modified retain their existing SPDX headers (2025 copyright year)
+- Existing files being modified retain their existing SPDX headers (including the current copyright year), unless there is an intentional project-wide update
 - [P] tasks = different files, no dependencies on incomplete tasks
 - [Story] label maps task to specific user story for traceability
 - Each user story is independently completable and testable
 - TDD is non-negotiable per constitution: tests fail (red) before implementation (green)
 - Commit after each task or logical group (atomic commits per constitution principle V)
-- Existing test suite (78 test files) MUST continue passing after every task (FR-015)
+- Existing test suite MUST continue passing after every task (FR-015)
 - New test directories (`tests/unit/routes/`, `tests/unit/persistence/`) need `__init__.py` files
