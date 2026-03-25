@@ -20,7 +20,7 @@ principles.
 | Container CPU | < 50 % sustained | Operational constraint |
 | Health endpoint latency | < 100 ms p95 | Architecture principle |
 | Voucher redemption latency | < 100 ms p95 (app layer) | Architecture principle |
-| Controller propagation | < 5 s p95 | SC-002 (30 s e2e budget) |
+| Controller propagation | < 5 s p95 (internal budget; SC-002 allows 30 s e2e) | SC-002 |
 | Concurrent sessions | ≥ 50 simultaneous | Operational constraint |
 | DB query time | < 50 ms p95 | Operational constraint |
 

@@ -83,6 +83,7 @@ async def readiness_check(
         checks["database"] = "ok"
     except SQLAlchemyError:
         logger.warning("Readiness check: database unavailable", exc_info=True)
+        session.rollback()
         checks["database"] = "unavailable"
         overall = "degraded"
 

@@ -83,8 +83,8 @@ The Captive Portal Guest Access system v0.1.0 is a production-ready solution for
 ### Observability
 
 - **Health Endpoints**: `/api/health` (startup), `/api/ready` (readiness), `/api/live` (liveness) for Kubernetes
-- **Prometheus Metrics**: Active sessions, controller latency, auth failures, voucher redemptions
-- **Structured Logging**: JSON logs with correlation IDs
+- **In-Memory Metrics**: Active sessions, controller latency, auth failures (Prometheus export planned)
+- **Audit Logging**: Immutable audit trail with actor, action, target, and outcome
 - **Audit Trail**: Admin-accessible logs with filtering and search
 
 ## Deployment Options

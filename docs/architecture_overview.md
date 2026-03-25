@@ -402,7 +402,7 @@ The Captive Portal Guest Access system is a Python-based web application that br
      - Action type
      - Resource affected
      - Operation result
-     - Correlation ID (request tracing)
+     - Unique entry ID (UUID primary key)
    - Immutable records
    - Configurable retention (1-90 days)
 
@@ -480,7 +480,7 @@ In-memory metrics tracked (Prometheus export endpoint planned for future release
 
 ### Logging
 
-- **Structured JSON logs** with unique entry IDs
+- **Python logging** with configurable log levels
 - **Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
 - **Key Events**:
   - Guest authorization attempts

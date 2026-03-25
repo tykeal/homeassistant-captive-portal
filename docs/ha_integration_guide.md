@@ -496,19 +496,18 @@ curl -H "Authorization: Bearer $TOKEN" \
 All booking-based authorizations are logged:
 ```json
 {
-  "user": "guest",
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "actor": "guest",
   "action": "authorize_booking",
-  "resource": "access_grant:aa:bb:cc:dd:ee:ff",
-  "result": "success",
-  "metadata": {
+  "target_type": "access_grant",
+  "target_id": "aa:bb:cc:dd:ee:ff",
+  "outcome": "success",
+  "meta": {
     "booking_code": "ABC123",
     "entity_id": "sensor.rental_property_booking123",
-    "guest_name": "John Doe",
-    "check_in": "2025-03-25T15:00:00Z",
-    "check_out": "2025-03-27T11:00:00Z"
+    "guest_name": "John Doe"
   },
-  "correlation_id": "req-1234-5678",
-  "timestamp": "2025-03-25T13:45:00Z"
+  "timestamp_utc": "2025-03-25T13:45:00Z"
 }
 ```
 
