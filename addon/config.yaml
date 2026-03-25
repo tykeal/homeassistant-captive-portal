@@ -6,7 +6,7 @@ version: "0.0.0-dev"
 slug: captive_portal_guest_access
 description: >-
   Guest network captive portal integrating TP-Omada and Home Assistant
-url: https://example.com/placeholder
+url: https://github.com/tykeal/homeassistant-captive-portal
 arch:
   - amd64
   - aarch64
