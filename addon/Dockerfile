@@ -12,8 +12,10 @@ ENV VIRTUAL_ENV=/opt/venv
 RUN python3 -m venv "$VIRTUAL_ENV"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# Copy project files and install the full captive_portal package
-# Build context is the repository root (not addon/)
+# Copy project files and install the full captive_portal package.
+# NOTE: Build context must be the repository root (not addon/).
+# For HA addon store distribution, use a pre-built image tag in
+# config.json or adjust CI to set the appropriate build context.
 COPY pyproject.toml /app/
 COPY README.md /app/
 COPY src/ /app/src/
