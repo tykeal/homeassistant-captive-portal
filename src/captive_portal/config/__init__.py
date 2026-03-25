@@ -7,7 +7,6 @@ Home Assistant addon options, environment variables, and built-in defaults
 with a per-field three-tier precedence chain.
 """
 
-# Re-exported once settings.py is implemented:
-# from captive_portal.config.settings import AppSettings
+from captive_portal.config.settings import AppSettings
 
-__all__: list[str] = []
+__all__ = ["AppSettings"]
