@@ -93,9 +93,8 @@ addon/
 
 tests/
 ├── unit/config/
-│   └── test_settings_load.py  # MODIFY: activate skipped tests + add new tests
-├── unit/config/
-│   └── test_addon_options_loader.py  # NEW: addon options.json parsing tests
+│   ├── test_settings_load.py           # MODIFY: activate skipped tests + add new tests
+│   └── test_addon_options_loader.py    # NEW: addon options.json parsing tests
 ├── integration/
 │   └── test_addon_startup_wiring.py  # NEW: app factory with settings integration test
 └── [all existing tests unchanged — FR-015]

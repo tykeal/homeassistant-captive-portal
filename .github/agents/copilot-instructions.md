@@ -18,7 +18,11 @@ tests/
 
 ## Commands
 
-cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] pytest [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] ruff check .
+```bash
+uv run pytest
+uv run ruff check .
+uv run mypy src
+```
 
 ## Code Style
 
