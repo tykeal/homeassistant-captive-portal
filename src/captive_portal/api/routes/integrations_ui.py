@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Admin UI routes for Home Assistant integration management."""
 
+from pathlib import Path
 from uuid import UUID
 from typing import cast, Any
 
@@ -17,7 +18,8 @@ from captive_portal.security.session_middleware import require_admin
 from captive_portal.services.audit_service import AuditService
 
 router = APIRouter(prefix="/admin/integrations", tags=["admin-ui-integrations"])
-templates = Jinja2Templates(directory="src/captive_portal/web/templates")
+_TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
+templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
 @router.get("/", response_class=HTMLResponse)

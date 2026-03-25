@@ -3,6 +3,7 @@
 """Guest portal routes for authorization and welcome pages."""
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Annotated, Any, Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request, status
@@ -31,8 +32,10 @@ from captive_portal.services.voucher_service import VoucherRedemptionError, Vouc
 from captive_portal.utils.network_utils import get_client_ip, validate_mac_address
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
+_TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
+
 router = APIRouter(prefix="/guest", tags=["guest"])
-templates = Jinja2Templates(directory="src/captive_portal/web/templates")
+templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 templates.env.autoescape = True  # Explicitly enable auto-escaping for XSS protection
 
 # Guest-specific CSRF configuration (lighter-weight since no session state)

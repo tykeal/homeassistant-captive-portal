@@ -1,27 +1,90 @@
 # SPDX-FileCopyrightText: 2025 Andrew Grimberg
 # SPDX-License-Identifier: Apache-2.0
-"""App factory and minimal health endpoint (Phase 0 placeholder)."""
+"""App factory with AppSettings integration and lifespan management."""
+
+from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import Depends, FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 
+from captive_portal.config.settings import AppSettings
+from captive_portal.persistence.database import (
+    create_db_engine,
+    dispose_engine,
+    init_db,
+)
 from captive_portal.security.session_middleware import (
-    SessionConfig,
     SessionMiddleware,
 )
 from captive_portal.web.middleware.security_headers import SecurityHeadersMiddleware
 
 logger = logging.getLogger("captive_portal")
 
+# Package-relative paths for static assets
+_THEMES_DIR = Path(__file__).resolve().parent / "web" / "themes"
 
-def create_app() -> FastAPI:
-    """Create and configure the FastAPI application.
+
+def _make_lifespan(
+    settings: AppSettings,
+) -> Callable[..., Any]:
+    """Build a lifespan context manager bound to *settings*.
+
+    Args:
+        settings: Application settings to apply on startup.
 
     Returns:
-        Configured FastAPI application with health and placeholder endpoints
+        An async context manager suitable for ``FastAPI(lifespan=...)``.
     """
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        """Manage application startup and shutdown.
+
+        Args:
+            app: The FastAPI application instance.
+
+        Yields:
+            Control to the application after startup completes.
+        """
+        # --- Startup ---
+        log_cfg = settings.to_log_config()
+        logging.basicConfig(**log_cfg, force=True)
+
+        settings.log_effective(logger)
+
+        engine = create_db_engine(f"sqlite:///{settings.db_path}")
+        init_db(engine)
+        logger.info("Database initialized at %s", settings.db_path)
+
+        yield
+
+        # --- Shutdown ---
+        dispose_engine()
+        logger.info("Database connections closed.")
+
+    return lifespan
+
+
+def create_app(settings: AppSettings | None = None) -> FastAPI:
+    """Create and configure the FastAPI application.
+
+    Args:
+        settings: Optional application settings. When ``None``,
+            ``AppSettings.load()`` is called to resolve configuration
+            from addon options, environment variables, and defaults.
+
+    Returns:
+        Configured FastAPI application with all routes and middleware.
+    """
+    if settings is None:
+        settings = AppSettings.load()
+
     app = FastAPI(
         title="Captive Portal Guest Access",
         description="""
@@ -55,12 +118,13 @@ def create_app() -> FastAPI:
         # Disable public docs - admin-only docs available at /admin/docs and /admin/redoc
         docs_url=None,
         redoc_url=None,
+        lifespan=_make_lifespan(settings),
     )
 
-    # Initialize shared session store and config
+    # Initialize shared session store and config from settings
     from captive_portal.security.session_middleware import SessionStore
 
-    session_config = SessionConfig()
+    session_config = settings.to_session_config()
     session_store = SessionStore()
     # Store both in app state for access by routes
     app.state.session_config = session_config
@@ -71,6 +135,14 @@ def create_app() -> FastAPI:
 
     # Add session middleware with shared store
     app.add_middleware(SessionMiddleware, config=session_config, store=session_store)
+
+    # Mount static files for themes
+    if _THEMES_DIR.is_dir():
+        app.mount(
+            "/static/themes",
+            StaticFiles(directory=str(_THEMES_DIR)),
+            name="themes",
+        )
 
     # Register routes
     from captive_portal.api.routes import (
@@ -136,7 +208,3 @@ def create_app() -> FastAPI:
         return {"items": []}
 
     return app
-
-
-# convenience instance for uvicorn - optional usage
-app = create_app()

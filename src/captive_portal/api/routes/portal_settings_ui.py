@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Admin UI routes for portal configuration management."""
 
+from pathlib import Path
 from typing import Annotated, Any, Optional, cast
 from uuid import UUID
 
@@ -18,7 +19,8 @@ from captive_portal.security.session_middleware import require_admin
 from captive_portal.services.audit_service import AuditService
 
 router = APIRouter(prefix="/admin/portal-settings", tags=["admin-ui-portal-settings"])
-templates = Jinja2Templates(directory="src/captive_portal/web/templates")
+_TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
+templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
 def get_current_admin(request: Request, db: Session = Depends(get_session)) -> AdminUser:
