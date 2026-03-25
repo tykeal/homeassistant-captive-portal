@@ -358,7 +358,7 @@ omada_failover_timeout_seconds: 30
 
 3. **Retry Queue Backlog**
    - API retries accumulating
-   - Check Captive Portal metrics: `omada_controller_latency_seconds`
+   - Check Captive Portal metrics: `controller_latency_seconds`
    - Solution: Increase `omada_timeout_seconds` or retry limits
 
 4. **Controller Overload**
