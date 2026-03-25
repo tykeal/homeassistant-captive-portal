@@ -14,3 +14,8 @@ venv
 addon/coverage.xml
 captive_portal.egg-info/*
 src/captive_portal.egg-info/*
+
+# Build artifacts staged into addon/ by `make addon-prep`
+addon/pyproject.toml
+addon/README.md
+addon/src/

@@ -13,16 +13,16 @@ RUN python3 -m venv "$VIRTUAL_ENV"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # Copy project files and install the full captive_portal package.
-# NOTE: Build context must be the repository root (not addon/).
-# For HA addon store distribution, use a pre-built image tag in
-# config.json or adjust CI to set the appropriate build context.
+# HA Supervisor uses addon/ as the Docker build context, so all paths
+# are relative to addon/. Run `make addon-prep` from the repo root to
+# stage pyproject.toml, README.md, and src/ into addon/ before building.
 COPY pyproject.toml /app/
 COPY README.md /app/
 COPY src/ /app/src/
 
 RUN "$VIRTUAL_ENV/bin/python" -m pip install --no-cache-dir /app
 
-COPY addon/rootfs /
+COPY rootfs /
 
 EXPOSE 8080
 CMD ["/usr/bin/run.sh"]

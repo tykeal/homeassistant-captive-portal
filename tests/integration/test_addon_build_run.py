@@ -3,9 +3,13 @@
 """T0718 – Integration tests for HA addon Docker image build and run.
 
 Validates:
-- Docker image builds successfully from repository root context
+- Docker image builds successfully with addon/ as build context
 - Container starts and responds on health endpoint (/api/health)
 - Container performs graceful shutdown on SIGTERM
+
+HA Supervisor always uses addon/ as the Docker build context. Run
+``make addon-prep`` from the repo root to stage source files into
+addon/ before building.
 """
 
 from __future__ import annotations
@@ -70,16 +74,31 @@ docker_required = pytest.mark.skipif(
 )
 
 
+def _addon_prep(repo_root: str) -> None:
+    """Run ``make addon-prep`` to stage source files into addon/."""
+    result = subprocess.run(
+        ["make", "addon-prep"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"make addon-prep failed:\n{result.stderr}")
+
+
 @pytest.mark.integration
 @docker_required
 class TestAddonDockerBuild:
     """Test that the HA addon Docker image builds successfully."""
 
     def test_docker_build_succeeds(self) -> None:
-        """Docker build of addon/ should exit 0."""
+        """Docker build with addon/ as context should exit 0."""
+        repo_root = os.path.abspath(REPO_ROOT)
+        _addon_prep(repo_root)
         result = subprocess.run(
-            ["docker", "build", "-f", "addon/Dockerfile", "-t", IMAGE_TAG, "."],
-            cwd=os.path.abspath(REPO_ROOT),
+            ["docker", "build", "-t", IMAGE_TAG, "addon"],
+            cwd=repo_root,
             capture_output=True,
             text=True,
             timeout=300,
@@ -98,9 +117,14 @@ class TestAddonContainerRun:
     @pytest.fixture(autouse=True)
     def _build_image(self) -> None:
         """Ensure image is built before run tests."""
+        repo_root = os.path.abspath(REPO_ROOT)
+        try:
+            _addon_prep(repo_root)
+        except RuntimeError:
+            pytest.skip("make addon-prep failed; skipping run tests")
         result = subprocess.run(
-            ["docker", "build", "-f", "addon/Dockerfile", "-t", IMAGE_TAG, "."],
-            cwd=os.path.abspath(REPO_ROOT),
+            ["docker", "build", "-t", IMAGE_TAG, "addon"],
+            cwd=repo_root,
             capture_output=True,
             timeout=300,
         )
