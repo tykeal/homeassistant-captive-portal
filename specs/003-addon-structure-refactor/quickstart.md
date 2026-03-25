@@ -18,7 +18,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ```bash
 git clone <repo-url>
-cd captive-portal
+cd <repo-dir>
 git checkout 003-addon-structure-refactor
 
 # Install all dependencies (workspace resolves addon as editable)
@@ -76,7 +76,7 @@ docker build \
 docker run --rm -p 8080:8080 captive-portal:dev
 
 # Verify it's running
-curl http://localhost:8080/health
+curl http://localhost:8080/api/health
 ```
 
 ### Test on Home Assistant

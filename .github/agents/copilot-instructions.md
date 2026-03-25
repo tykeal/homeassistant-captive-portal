@@ -14,6 +14,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-25
 ## Project Structure
 
 ```text
+addon/src/
+addon/tests/
 src/
 tests/
 ```
@@ -23,7 +25,7 @@ tests/
 ```bash
 uv run pytest
 uv run ruff check .
-uv run mypy src
+uv run mypy src addon/src
 ```
 
 ## Code Style

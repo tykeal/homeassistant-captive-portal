@@ -106,7 +106,7 @@ and `__pycache__`) is removed as part of this refactor.
 | `webui` | string | `"http://[HOST]:[PORT:8080]"` | Web UI URL template |
 | `ports` | map | `{"8080/tcp": 8080}` | Port mapping |
 | `ports_description` | map | `{"8080/tcp": "Web admin & portal"}` | Port labels |
-| `schema.log_level` | string | `"list(trace\|debug\|...)\|fatal)?"` | Optional log level |
+| `schema.log_level` | string | `"list(trace\|debug\|info\|notice\|warning\|error\|fatal)?"` | Optional log level |
 | `schema.session_idle_timeout` | string | `"int(1,)?"` | Optional idle timeout |
 | `schema.session_max_duration` | string | `"int(1,)?"` | Optional max duration |
 
