@@ -21,10 +21,11 @@ from collections.abc import Generator
 
 import pytest
 
-ADDON_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "addon")
+REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
+ADDON_DIR = os.path.join(REPO_ROOT, "addon")
 IMAGE_TAG = "captive-portal-test:latest"
-# Placeholder addon exposes /health; full app will use /api/health
-HEALTH_ENDPOINT = "/health"
+# Full app uses /api/health
+HEALTH_ENDPOINT = "/api/health"
 CONTAINER_PORT = 8080
 
 
@@ -78,8 +79,8 @@ class TestAddonDockerBuild:
     def test_docker_build_succeeds(self) -> None:
         """Docker build of addon/ should exit 0."""
         result = subprocess.run(
-            ["docker", "build", "-t", IMAGE_TAG, "."],
-            cwd=os.path.abspath(ADDON_DIR),
+            ["docker", "build", "-f", "addon/Dockerfile", "-t", IMAGE_TAG, "."],
+            cwd=os.path.abspath(REPO_ROOT),
             capture_output=True,
             text=True,
             timeout=300,
@@ -99,8 +100,8 @@ class TestAddonContainerRun:
     def _build_image(self) -> None:
         """Ensure image is built before run tests."""
         result = subprocess.run(
-            ["docker", "build", "-t", IMAGE_TAG, "."],
-            cwd=os.path.abspath(ADDON_DIR),
+            ["docker", "build", "-f", "addon/Dockerfile", "-t", IMAGE_TAG, "."],
+            cwd=os.path.abspath(REPO_ROOT),
             capture_output=True,
             timeout=300,
         )
@@ -156,6 +157,8 @@ class TestAddonContainerRun:
                     assert resp.status == 200
                     body = resp.read().decode()
                     assert "ok" in body.lower() or "status" in body.lower()
+                    # Verify this is the real app, not the placeholder
+                    assert "placeholder" not in body.lower()
                     return
             except (ConnectionResetError, urllib.error.URLError, OSError) as exc:
                 last_err = exc

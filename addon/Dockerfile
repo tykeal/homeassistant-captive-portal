@@ -13,12 +13,13 @@ RUN python3 -m venv "$VIRTUAL_ENV"
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # Copy project files and install the full captive_portal package
+# Build context is the repository root (not addon/)
 COPY pyproject.toml /app/
 COPY src/ /app/src/
 
 RUN "$VIRTUAL_ENV/bin/python" -m pip install --no-cache-dir /app
 
-COPY rootfs /
+COPY addon/rootfs /
 
 EXPOSE 8080
 CMD ["/usr/bin/run.sh"]
