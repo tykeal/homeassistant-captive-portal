@@ -53,6 +53,11 @@ _ENV_VAR_MAP: dict[str, str] = {
 }
 
 
+# Reverse maps: field name → addon option key / env var name
+_FIELD_TO_ADDON_KEY: dict[str, str] = {v: k for k, v in _ADDON_OPTION_MAP.items()}
+_FIELD_TO_ENV_KEY: dict[str, str] = {v: k for k, v in _ENV_VAR_MAP.items()}
+
+
 def _validate_field(field: str, value: Any) -> bool:
     """Validate a single field value.
 
@@ -137,10 +142,7 @@ class AppSettings(BaseModel):
 
         for field_name in ("log_level", "db_path", "session_idle_minutes", "session_max_hours"):
             # --- Try addon option ---
-            addon_key = next(
-                (k for k, v in _ADDON_OPTION_MAP.items() if v == field_name),
-                None,
-            )
+            addon_key = _FIELD_TO_ADDON_KEY.get(field_name)
             if addon_key and addon_key in addon_options:
                 raw = addon_options[addon_key]
                 if _validate_field(field_name, raw):
@@ -155,10 +157,7 @@ class AppSettings(BaseModel):
                 )
 
             # --- Try environment variable ---
-            env_key = next(
-                (k for k, v in _ENV_VAR_MAP.items() if v == field_name),
-                None,
-            )
+            env_key = _FIELD_TO_ENV_KEY.get(field_name)
             if env_key:
                 env_val = os.environ.get(env_key)
                 if env_val is not None and _validate_field(field_name, env_val):

@@ -46,7 +46,7 @@ def test_settings_load_from_env() -> None:
     assert settings.session_max_hours == 4
 
 
-def test_settings_validation_error_on_invalid_log_level() -> None:
+def test_invalid_log_level_falls_back_to_default() -> None:
     """Settings should ignore invalid env var values and use defaults."""
     # GIVEN: env var with invalid log level
     with patch.dict(os.environ, {"CP_LOG_LEVEL": "banana"}, clear=False):
@@ -57,7 +57,7 @@ def test_settings_validation_error_on_invalid_log_level() -> None:
     assert settings.log_level == "info"
 
 
-def test_settings_validation_error_on_negative_timeout() -> None:
+def test_invalid_negative_timeout_falls_back_to_default() -> None:
     """Settings should ignore invalid negative timeout and use default."""
     # GIVEN: env var with negative value
     with patch.dict(os.environ, {"CP_SESSION_IDLE_TIMEOUT": "-1"}, clear=False):

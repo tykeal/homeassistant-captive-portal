@@ -154,12 +154,12 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
             name="themes",
         )
     else:
-        logger.error(
+        msg = (
             "Static themes directory '%s' not found; "
             "templates expect assets under '/static/themes'. "
-            "Verify that static theme files are included in the deployment.",
-            _THEMES_DIR,
+            "Verify that static theme files are included in the deployment."
         )
+        raise RuntimeError(msg % _THEMES_DIR)
 
     # Register routes
     from captive_portal.api.routes import (
