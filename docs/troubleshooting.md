@@ -91,6 +91,7 @@ curl -s http://localhost:8080/api/ready | python3 -m json.tool
 ```json
 {
   "status": "degraded",
+  "timestamp": "2025-03-25T12:00:00Z",
   "checks": {
     "database": "unavailable"
   }

@@ -87,8 +87,8 @@ class TestControllerLatencyHistogram:
         assert stats["count"] == 100.0
         assert stats["min"] == pytest.approx(0.01)
         assert stats["max"] == pytest.approx(1.0)
-        # p95 should be around 0.95-0.96
-        assert stats["p95"] >= 0.90
+        # p95 for 0.01..1.00 in steps of 0.01 should be ~0.95
+        assert stats["p95"] == pytest.approx(0.955, abs=0.02)
 
     def test_time_operation_records_histogram(self, collector: MetricsCollector) -> None:
         """time_operation context manager records elapsed time."""

@@ -42,7 +42,7 @@ whether to keep or remove this layer.
    adopted incrementally when controller or HA round-trip latency is
    measured.
 
-4. **NFR alignment.** The tasks addenda recommend a ~60 % reduction in
+4. **NFR alignment.** The tasks addenda recommend a ~35 % (revised from original 60 %) reduction in
    controller round-trips via caching. The existing 30 s TTL default
    matches the recommended 30–60 s window for controller status.
 
@@ -57,7 +57,7 @@ Before wiring `CacheService` into request handlers:
 
 - Establish baseline controller round-trip latency via the performance
   validation guide (`docs/performance_validation_guide.md`).
-- Confirm that caching yields ≥ 60 % reduction in controller API calls
+- Confirm that caching yields ≥ 35 % (revised from 60 %) reduction in controller API calls
   under representative load.
 - Add integration tests validating cache-hit / cache-miss / invalidation
   paths in the request lifecycle.
@@ -67,6 +67,6 @@ Before wiring `CacheService` into request handlers:
 ## Outcome
 
 - **T0611 retained** — no code removed.
-- **NFR target** (reduce controller round-trips ≥ 60 %) documented as a
+- **NFR target** (reduce controller round-trips ≥ 35 % (revised from 60 %)) documented as a
   post-MVP activation gate.
 - Cache activation deferred until baseline benchmarks are available.

@@ -21,12 +21,16 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def secure_client() -> TestClient:
-    """Client backed by a real create_app() with SecurityHeadersMiddleware."""
+def secure_client(db_engine: Any) -> TestClient:
+    """Client backed by a real create_app() with SecurityHeadersMiddleware.
+
+    Uses db_engine fixture to ensure the database is initialized before
+    the application starts.
+    """
     from captive_portal.app import create_app
 
-    app = create_app()
-    return TestClient(app)
+    test_app = create_app()
+    return TestClient(test_app)
 
 
 # ---------------------------------------------------------------------------

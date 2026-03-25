@@ -145,7 +145,7 @@ The Captive Portal Guest Access system is a Python-based web application that br
 - **`access_grant.py`**: Active client authorizations (MAC, expiry, booking/voucher reference)
 - **`admin_user.py`**: Admin accounts with Argon2id password hashing
 - **`admin_session.py`**: Session tokens with secure cookie configuration
-- **`audit_log.py`**: Immutable audit records (user, action, resource, result, correlation_id)
+- **`audit_log.py`**: Immutable audit records (actor, action, target_type, outcome)
 - **`rental_control_event.py`**: HA booking event cache
 - **`ha_integration_config.py`**: HA poller configuration
 - **`portal_config.py`**: System-wide settings (theme, redirect whitelist, proxy trust)
@@ -294,7 +294,7 @@ The Captive Portal Guest Access system is a Python-based web application that br
 ```text
 1. All state-changing operations emit audit events
    ↓
-2. audit_service.log(user, action, resource, result, correlation_id)
+2. audit_service.log(actor, action, target_type, outcome)
    ↓
 3. Immutable record stored in audit_log table
    ↓

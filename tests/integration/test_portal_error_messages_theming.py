@@ -64,7 +64,7 @@ class TestErrorMessageClarity:
 
     def test_html_in_error_message_stripped(self, client: TestClient) -> None:
         """HTML tags are stripped from error messages (XSS defence-in-depth)."""
-        response = client.get("/guest/error?message=<b>bold</b>+text")
+        response = client.get("/guest/error", params={"message": "<b>bold</b> text"})
         assert response.status_code == 200
         assert b"<b>" not in response.content
         assert b"text" in response.content
