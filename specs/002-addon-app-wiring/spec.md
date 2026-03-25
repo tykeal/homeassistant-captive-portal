@@ -12,7 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ### User Story 1 - Addon Starts the Real Application (Priority: P1)
 
-As a Home Assistant administrator, I install the Captive Portal addon and start it. The addon launches the full captive portal application — not the current placeholder — so that all 14 routes, database models, middleware, authentication, and the admin UI are available on port 8080.
+As a Home Assistant administrator, I install the Captive Portal addon and start it. The addon launches the full captive portal application — not the current placeholder — so that all existing routes, database models, middleware, authentication, and the admin UI are available on port 8080.
 
 **Why this priority**: Without the real application running inside the addon container, no other addon functionality is accessible. This is the foundational integration that makes the addon useful instead of a stub.
 
@@ -20,7 +20,7 @@ As a Home Assistant administrator, I install the Captive Portal addon and start 
 
 **Acceptance Scenarios**:
 
-1. **Given** the addon is installed and started, **When** a user navigates to the addon's web UI on port 8080, **Then** the full captive portal application responds (not the placeholder message "The full captive portal is not yet wired up").
+1. **Given** the addon is installed and started, **When** a user navigates to the addon's web UI on port 8080, **Then** the full captive portal application responds (not the placeholder).
 2. **Given** the addon is started, **When** the health endpoint is requested, **Then** it returns a success status confirming the application and database are operational.
 3. **Given** the addon is started for the first time, **When** the application initializes, **Then** all database tables are created automatically and the application is ready to serve requests within 30 seconds of container start.
 4. **Given** the addon is restarted, **When** it starts again, **Then** all previously stored data (admin accounts, access grants, vouchers, audit logs) is preserved and accessible.
@@ -94,7 +94,7 @@ As a Home Assistant administrator running on different hardware (Intel/AMD PC, R
 
 - What happens when the database file does not exist on first startup? The application must create the database and all tables automatically.
 - What happens when the /data/ directory is not writable? The application must fail with a clear error message rather than crashing silently.
-- What happens when the addon configuration JSON contains invalid values (e.g., negative timeout, unknown log level)? The application must fall back to defaults and log a warning.
+- What happens when the addon configuration JSON contains invalid values (e.g., negative timeout, unknown log level)? For each invalid option, the application must ignore that specific addon configuration value, then apply the normal precedence rules (environment variable for that option, if set and valid, otherwise the built-in default), and log a warning describing the invalid value and the effective value used.
 - What happens when the addon is started but the Python package has a missing dependency? The container must fail fast with a clear error in the addon log, not hang indefinitely.
 - What happens when the database schema has changed between addon versions? The application must handle schema migration or at minimum not crash on startup (existing tables should remain usable).
 
@@ -110,7 +110,7 @@ As a Home Assistant administrator running on different hardware (Intel/AMD PC, R
 - **FR-006**: The addon MUST expose a configuration schema in its manifest so that Home Assistant displays configurable options in the addon's configuration panel.
 - **FR-007**: The configuration schema MUST include options for: log level (with a default of "info"), session idle timeout in minutes (default 30), and session maximum duration in hours (default 8).
 - **FR-008**: The application MUST read configuration values from the addon's options mechanism (the file written by the Home Assistant Supervisor) and apply them at startup.
-- **FR-009**: The application MUST provide a settings/configuration layer that merges addon options, environment variables, and sensible defaults — with addon options taking precedence over environment variables, and environment variables taking precedence over defaults.
+- **FR-009**: The application MUST provide a settings/configuration layer that merges addon options, environment variables, and sensible defaults — with addon options taking precedence over environment variables, and environment variables taking precedence over defaults. If a specific addon option value is invalid (for example, the wrong type or outside the allowed range), the application MUST treat that option as unset for precedence purposes: it MUST ignore only that invalid value, then attempt to resolve the setting from the corresponding environment variable, and finally fall back to the built-in default if no valid value is found.
 - **FR-010**: All guest portal HTML templates MUST be included in the container image and served correctly by the application.
 - **FR-011**: All static assets (stylesheets, images, scripts) MUST be included in the container image and accessible via their expected URL paths.
 - **FR-012**: The application MUST perform a clean shutdown when the container receives a stop signal — closing database connections and releasing resources.
@@ -130,11 +130,11 @@ As a Home Assistant administrator running on different hardware (Intel/AMD PC, R
 ### Measurable Outcomes
 
 - **SC-001**: The addon starts and serves the full application within 30 seconds of container start on standard hardware.
-- **SC-002**: All 14 application routes respond correctly when the addon is running — verified by requesting each route group's primary endpoint and receiving a valid response (not a 404 or 500 error).
+- **SC-002**: All application routes respond correctly when the addon is running — verified by requesting each route group's primary endpoint and receiving a valid response (not a 404 or 500 error).
 - **SC-003**: Guest portal pages load completely with all templates and static assets — zero 404 errors for any resource referenced by the HTML pages.
 - **SC-004**: Configuration changes made through the Home Assistant UI take effect after addon restart — verified by changing log level and confirming output changes.
 - **SC-005**: Data persists across addon restarts — verified by creating an admin account, restarting the addon, and confirming the account still exists.
-- **SC-006**: The existing test suite (392+ passing tests) continues to pass with zero new failures introduced by the addon wiring changes.
+- **SC-006**: The existing test suite continues to pass with zero new failures introduced by the addon wiring changes.
 - **SC-007**: The addon builds successfully for both amd64 and aarch64 architectures.
 - **SC-008**: The application shuts down cleanly within 10 seconds of receiving a stop signal, with no database corruption.
 
@@ -142,7 +142,7 @@ As a Home Assistant administrator running on different hardware (Intel/AMD PC, R
 
 - The Home Assistant Supervisor writes addon configuration to the standard location (/data/options.json) before the addon starts, as documented in the HA addon development guide.
 - The /data/ directory inside the addon container is persistent across restarts and upgrades, as guaranteed by the Home Assistant addon architecture.
-- The base container image (Alpine Linux) provides a compatible Python 3.13+ runtime available via the system package manager.
+- The addon base image used for this project provides a Python runtime compatible with the application's supported Python version range, as defined in the project metadata (for example, `pyproject.toml`).
 - The existing application factory (`create_app()`) and database initialization functions (`create_db_engine()`, `init_db()`) are correct and complete — this feature wires them into the addon lifecycle without modifying their internal behavior.
 - The existing session middleware configuration (`SessionConfig` with `idle_minutes` and `max_hours` fields) accepts the timeout values defined in the addon options schema.
 - The project's package metadata (pyproject.toml) accurately lists all runtime dependencies needed for the application to function.
