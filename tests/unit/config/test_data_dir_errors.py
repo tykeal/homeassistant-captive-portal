@@ -19,6 +19,7 @@ def test_nonexistent_db_parent_directory_raises() -> None:
         settings.validate_db_path()
 
 
+@pytest.mark.skipif(os.geteuid() == 0, reason="Root ignores directory permissions")
 def test_unwritable_db_parent_directory_raises() -> None:
     """validate_db_path should raise when db_path parent directory is not writable."""
     # Create a read-only directory

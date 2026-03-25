@@ -64,9 +64,13 @@ def _make_lifespan(
         # a clear message instead of an opaque database error.
         settings.validate_db_path()
 
-        engine = create_db_engine(f"sqlite:///{settings.db_path}")
-        init_db(engine)
-        logger.info("Database initialized at %s", settings.db_path)
+        try:
+            engine = create_db_engine(f"sqlite:///{settings.db_path}")
+            init_db(engine)
+            logger.info("Database initialized at %s", settings.db_path)
+        except Exception:
+            dispose_engine()
+            raise
 
         yield
 
