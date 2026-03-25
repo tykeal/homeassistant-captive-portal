@@ -71,9 +71,8 @@ dev = [
     "pytest-asyncio>=1.2.0",
 ]
 
-[tool.setuptools]
-packages = ["captive_portal"]
-package-dir = {"captive_portal" = "src/captive_portal"}
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 captive_portal = ["web/templates/**/*.html", "web/themes/**/*.css"]

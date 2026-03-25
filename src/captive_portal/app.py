@@ -225,9 +225,3 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         return {"items": []}
 
     return app
-
-
-# Module-level instance for non-factory deployments
-# (e.g., ``uvicorn captive_portal.app:app``).
-# DB initialization is deferred until lifespan startup.
-app = create_app()
