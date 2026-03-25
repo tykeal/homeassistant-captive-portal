@@ -109,7 +109,8 @@ identifiers and receive time-limited network access.
 - Async operations throughout
 - Health check endpoint for monitoring
 - Automatic cleanup of expired grants and vouchers (7-day retention)
-- Sub-100 ms p95 latency target for voucher redemption
+- Sub-100 ms p95 application-layer processing latency target for voucher
+  redemption (excluding Omada controller propagation)
 
 ---
 

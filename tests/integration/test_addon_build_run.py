@@ -122,8 +122,8 @@ class TestAddonContainerRun:
                 f"cp-test-{host_port}",
                 IMAGE_TAG,
             ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         # Store port for test access
         proc.host_port = host_port  # type: ignore[attr-defined]

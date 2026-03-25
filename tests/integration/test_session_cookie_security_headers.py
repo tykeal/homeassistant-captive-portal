@@ -3,7 +3,7 @@
 """T0712 – Integration tests for session cookie attributes and security headers.
 
 Verifies:
-  - Session cookies carry Secure, HttpOnly, SameSite attributes
+  - Session cookies carry HttpOnly and SameSite attributes
   - CSP, Referrer-Policy, Permissions-Policy headers present on responses
 """
 
