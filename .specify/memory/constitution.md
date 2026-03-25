@@ -127,7 +127,7 @@
 
 ## Additional Constraints
 
-- **Language & Runtime**: Python 3.13+ with full type annotation
+- **Language & Runtime**: Python 3.12+ with full type annotation
   coverage enforced by mypy.
 - **Dependency Management**: Dependencies MUST be managed via `uv`
   with a locked dependency file (`uv.lock`) committed to the
