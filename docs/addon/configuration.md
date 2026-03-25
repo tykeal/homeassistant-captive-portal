@@ -37,8 +37,9 @@ with the `CP_` prefix:
 For each setting independently, the following priority applies:
 
 1. **Addon option** (from `/data/options.json`): Used if present and valid
+   (applies to `log_level`, `session_idle_timeout`, `session_max_duration`)
 2. **Environment variable** (with `CP_` prefix): Used if addon option is
-   missing or invalid
+   missing or invalid (applies to all settings including `db_path`)
 3. **Built-in default**: Used if both addon option and env var are missing
    or invalid
 
