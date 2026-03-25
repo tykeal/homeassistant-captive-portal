@@ -543,9 +543,11 @@ All booking-based authorizations are logged:
 
 ### Booking Authorization Endpoint
 
-**POST** `/guest/authorize`
+**POST** `/api/guest/authorize`
 
 **Authentication**: None (rate-limited)
+
+**Content-Type**: `application/json`
 
 **Request**:
 ```json
@@ -573,6 +575,12 @@ All booking-based authorizations are logged:
   "message": "Booking code not found or outside check-in window"
 }
 ```
+
+> **Note**: The guest HTML portal at `GET /guest/authorize` and
+> `POST /guest/authorize` uses `application/x-www-form-urlencoded`
+> with a `code` field, validates CSRF tokens, and returns HTTP
+> redirects rather than JSON. The JSON API above is for programmatic
+> integrations.
 
 ### Force Poll Endpoint
 

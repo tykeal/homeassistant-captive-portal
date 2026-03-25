@@ -60,7 +60,7 @@ async def health_check() -> HealthResponse:
 
 
 @router.get("/ready", response_model=ReadinessResponse)
-async def readiness_check(
+def readiness_check(
     response: Response,
     session: Session = Depends(get_session),
 ) -> ReadinessResponse:
