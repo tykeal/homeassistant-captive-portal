@@ -12,7 +12,7 @@ Implement a pluggable captive portal enabling rental guest network access with v
 
 ## Technical Context
 
-**Language/Version**: Python 3.12
+**Language/Version**: Python 3.12+
 **Primary Dependencies**: FastAPI (HTTP/API & admin UI simple templating), Jinja2 (theming templates), httpx (async HTTP to TP-Omada + HA REST), SQLModel (initial SQLite persistence), passlib/bcrypt (password hashing), pydantic (data validation), uv (package/environment manager), alembic (for future DB migrations if upgraded beyond SQLite)
 **Storage**: Adopt SQLite via SQLModel behind a repository abstraction (Clarification Q1). Future upgrade path to PostgreSQL documented; no multi-instance requirement in v1.
 **Testing**: pytest + pytest-asyncio; coverage enforcement; contract tests for controller API boundaries using recorded fixtures; integration tests spinning up FastAPI test client.

@@ -104,7 +104,7 @@ The Captive Portal Guest Access system v0.1.0 is a production-ready solution for
 
 ## Technology Stack
 
-- **Language**: Python 3.12
+- **Language**: Python 3.12+
 - **Web Framework**: FastAPI 0.115+
 - **Template Engine**: Jinja2 3.1+
 - **Database**: SQLite (via SQLModel 0.0.22+)
