@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2025 Andrew Grimberg
+# SPDX-License-Identifier: Apache-2.0
+[project]
+name = "captive-portal"
+version = "0.0.0.dev0"
+description = "Captive portal guest access (TP-Omada + Home Assistant)"
+authors = [{name="Andrew Grimberg", email="tykeal@bardicgrove.org"}]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "httpx",
+  "sqlmodel",
+  "pydantic",
+  "jinja2",
+  "passlib[bcrypt]",
+  "argon2-cffi>=25.1.0",
+  "email-validator>=2.3.0",
+  "python-multipart>=0.0.20",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+captive_portal = ["web/templates/**/*.html", "web/themes/**/*.css"]

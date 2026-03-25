@@ -1,0 +1,10 @@
+#!/command/with-contenv bashio
+# SPDX-FileCopyrightText: 2025 Andrew Grimberg
+# SPDX-License-Identifier: Apache-2.0
+# shellcheck shell=bash
+# s6-overlay finish script — log exit status on unexpected shutdown.
+
+declare exit_code=${1:-0}
+if [ "${exit_code}" -ne 0 ] && [ "${exit_code}" -ne 256 ]; then
+    bashio::log.warning "Captive portal exited with code ${exit_code}"
+fi
