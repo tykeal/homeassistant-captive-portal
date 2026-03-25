@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Database initialization and table creation via SQLModel."""
 
+import logging
 from collections.abc import Generator
 from typing import Optional
 
@@ -26,6 +27,7 @@ __all__ = [
     "RentalControlEvent",
     "Voucher",
     "create_db_engine",
+    "dispose_engine",
     "init_db",
     "get_session",
 ]
@@ -76,3 +78,19 @@ def get_session() -> Generator[Session, None, None]:
         raise RuntimeError("Database engine not initialized. Call create_db_engine() first.")
     with Session(_engine) as session:
         yield session
+
+
+def dispose_engine() -> None:
+    """Dispose the global database engine, closing all pooled connections.
+
+    Safe to call when no engine has been created — logs a debug message
+    and returns without error.
+    """
+    global _engine
+    if _engine is None:
+        logging.getLogger("captive_portal.persistence").debug(
+            "dispose_engine() called but no engine exists — no-op."
+        )
+        return
+    _engine.dispose()
+    _engine = None
