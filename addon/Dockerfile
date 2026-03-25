@@ -15,6 +15,7 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # Copy project files and install the full captive_portal package
 # Build context is the repository root (not addon/)
 COPY pyproject.toml /app/
+COPY README.md /app/
 COPY src/ /app/src/
 
 RUN "$VIRTUAL_ENV/bin/python" -m pip install --no-cache-dir /app

@@ -58,6 +58,11 @@ def _make_lifespan(
 
         settings.log_effective(logger)
 
+        # Validate database path before initializing SQLite engine so that
+        # configuration errors (e.g., missing /data directory) surface with
+        # a clear message instead of an opaque database error.
+        settings.validate_db_path()
+
         engine = create_db_engine(f"sqlite:///{settings.db_path}")
         init_db(engine)
         logger.info("Database initialized at %s", settings.db_path)
