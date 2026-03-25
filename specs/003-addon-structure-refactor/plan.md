@@ -241,4 +241,4 @@ REUSE compliance check passes; no stale artifacts remain.
 | File/directory layout model | [data-model.md](data-model.md) | Phase 1 |
 | HA Supervisor contract | [contracts/ha-supervisor-contract.md](contracts/ha-supervisor-contract.md) | Phase 1 |
 | Developer quickstart | [quickstart.md](quickstart.md) | Phase 1 |
-| Task list | [tasks.md](tasks.md) | Phase 2 (pending) |
+| Task list | [tasks.md](tasks.md) | Phase 2 |
