@@ -126,7 +126,7 @@ SPDX-License-Identifier: Apache-2.0
   - Store `settings.guest_external_url` in `app.state.guest_external_url`
   - Add SecurityHeadersMiddleware with guest-specific policy:
     - `frame_options="DENY"`
-    - `csp="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; object-src 'none'"`
+    - `csp="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"`
   - Do NOT add SessionMiddleware (guest routes don't use admin sessions)
   - Mount static themes: `/static/themes` → `addon/src/captive_portal/web/themes/` directory
   - Register routers (import only these — admin routes are never imported):
