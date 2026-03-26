@@ -4,10 +4,9 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.types import ASGIApp
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -25,7 +24,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app: Any,
+        app: ASGIApp,
         frame_options: str = "SAMEORIGIN",
         csp: str | None = None,
     ) -> None:

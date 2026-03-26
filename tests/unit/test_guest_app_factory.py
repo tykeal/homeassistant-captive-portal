@@ -155,9 +155,9 @@ class TestGuestAppNoSessionMiddleware:
     def test_no_session_cookie(self, guest_client: TestClient) -> None:
         """Guest app does not set a session cookie on responses."""
         response = guest_client.get("/api/health")
-        # SessionMiddleware would set a 'session' cookie
+        # SessionMiddleware would set a 'session_id' cookie
         cookies = response.cookies
-        assert "session" not in cookies
+        assert "session_id" not in cookies
 
 
 class TestGuestAppState:
