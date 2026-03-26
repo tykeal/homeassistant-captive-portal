@@ -121,14 +121,14 @@ As a portal administrator, I want to log out of the admin interface so that my s
 
 #### Logout
 
-- **FR-019**: The Logout button in the navigation bar MUST terminate the administrator's session when clicked.
+- **FR-019**: The Logout button in the navigation bar MUST terminate the administrator's session when clicked. The logout endpoint is intentionally CSRF-exempt as a documented exception to **FR-023**.
 - **FR-020**: After logout, the system MUST redirect the administrator to the login page.
 - **FR-021**: After logout, attempts to access any admin page MUST redirect to the login page.
 
 #### Cross-Cutting
 
 - **FR-022**: All new admin pages MUST require administrator authentication; unauthenticated users MUST be redirected to the login page.
-- **FR-023**: All new admin pages MUST include CSRF protection on state-changing operations.
+- **FR-023**: All new admin pages MUST include CSRF protection on state-changing operations, with the sole exception of the Logout operation described in **FR-019**, which is explicitly CSRF-exempt.
 - **FR-024**: All new pages MUST support ingress root path prefixing on all internal URLs and asset references.
 - **FR-025**: All JavaScript MUST be loaded from external files; no inline scripts are permitted.
 - **FR-026**: All new pages MUST follow the same visual design and navigation pattern as the existing Settings and Integrations pages.
@@ -137,7 +137,7 @@ As a portal administrator, I want to log out of the admin interface so that my s
 ### Key Entities
 
 - **Grant**: Represents an active network access authorization for a specific device. Key attributes: device identifier (MAC address), status (Pending, Active, Expired, Revoked), time window (start and end), optional booking reference, optional voucher code association, optional integration association.
-- **Voucher**: Represents a pre-generated code that can be redeemed by a guest to create a grant. Key attributes: unique code, access duration, status (available, redeemed), creation timestamp, optional booking reference, redemption details.
+- **Voucher**: Represents a pre-generated code that can be redeemed by a guest to create a grant. Key attributes: unique code, access duration, status (unredeemed, redeemed), creation timestamp, optional booking reference, redemption details.
 - **Admin Session**: Represents an authenticated administrator's active login session. Key attributes: session identifier, associated admin identity, creation time.
 - **Activity Log Entry**: Represents a recorded administrative action. Key attributes: timestamp, action type, target entity type and identifier, acting administrator.
 
@@ -156,11 +156,12 @@ As a portal administrator, I want to log out of the admin interface so that my s
 ## Assumptions
 
 - The existing admin authentication and session management system will be reused; no new authentication mechanism is required.
-- The existing backend APIs for grants and vouchers are complete, tested, and will not require modification to support these UI pages.
+- The existing backend API for grants is considered complete and sufficient for the operations described in this spec (list, filter, extend, revoke) and is not expected to require modification.
+- The existing backend API for vouchers currently only implements `POST /api/vouchers` (create). This spec assumes that additional voucher endpoints (for example: a list endpoint such as `GET /api/vouchers` and a detail endpoint such as `GET /api/vouchers/{id or code}` including redemption/use status) will be added to support the required UI behavior, or that the UI requirements will be updated to match whatever voucher APIs are actually provided.
 - The existing `dashboard.html` and `grants_enhanced.html` templates are suitable starting points and follow the established design conventions, though they may need updates to align with final requirements.
 - No voucher template currently exists; a new `vouchers.html` template will need to be created.
 - The existing `admin.css` stylesheet provides sufficient styling classes (tables, badges, forms, buttons) for the new pages; only minor CSS additions may be needed.
 - New external JavaScript files will be created for pages that need dynamic behavior (e.g., API fetching, progressive enhancement).
-- The logout mechanism MUST call the `/api/admin/auth/logout` endpoint; if the backend currently exposes a different path (e.g., `/api/admin/logout`), this is a requirements gap that MUST be resolved by aligning the backend to this contract or updating this spec before implementation begins.
+- The logout mechanism MUST call the existing `/api/admin/auth/logout` endpoint. Any current mismatches (for example, admin templates or navigation forms posting to a different path such as `/api/admin/logout`) MUST be corrected to use this endpoint; the backend API contract is assumed to remain `/api/admin/auth/logout`.
 - Activity log data for the Dashboard's recent activity feed is available from an existing service or can be derived from existing data.
 - The admin interface is used by a small number of administrators (typically 1-5), so high-concurrency optimization is not a concern.
