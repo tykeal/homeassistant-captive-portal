@@ -13,22 +13,6 @@ from sqlmodel import Session, select
 from captive_portal.models.admin_user import AdminUser
 
 
-@pytest.fixture
-def empty_admin_table(db_session: Session) -> Any:
-    """Ensure admin table is empty."""
-    # Clear all admins
-    admins = list(db_session.exec(select(AdminUser)).all())
-    for admin in admins:
-        db_session.delete(admin)
-    db_session.commit()
-    yield
-    # Cleanup
-    admins = list(db_session.exec(select(AdminUser)).all())
-    for admin in admins:
-        db_session.delete(admin)
-    db_session.commit()
-
-
 class TestInitialAdminBootstrap:
     """Test initial admin account bootstrap on first run."""
 
