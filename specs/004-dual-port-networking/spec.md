@@ -127,15 +127,15 @@ An operations team or monitoring system checks the health of the captive portal 
 - **FR-002**: The guest listener MUST serve guest authorization pages, guest API endpoints, and captive portal detection endpoints without requiring Home Assistant authentication.
 - **FR-003**: The guest listener MUST NOT serve any admin routes, including admin UI pages, admin API endpoints, grant management, voucher management, integration management, or account management endpoints.
 - **FR-004**: The ingress listener MUST continue to serve all current routes (admin and guest) with Home Assistant ingress authentication, preserving full backward compatibility.
-- **FR-005**: The guest listener port MUST be configurable by the addon administrator through addon configuration options.
-- **FR-006**: The addon MUST provide a sensible default guest port (8099) that works without explicit configuration.
-- **FR-007**: The addon configuration MUST expose the guest port mapping so that Home Assistant can map it to a host port accessible on the network.
+- **FR-005**: In the context of a Home Assistant addon, the *externally reachable* guest listener port (the host-mapped port defined in the addon `ports` mapping and configurable via the HA UI) MUST be configurable by the addon administrator. The internal container bind port for the guest listener MUST remain fixed and MUST NOT be exposed as a separate user-configurable schema option.
+- **FR-006**: The addon MUST bind the guest listener inside the container to a fixed default port (`8099`) and declare this port in the addon configuration so that, by default, Home Assistant can expose it via the `ports` mapping without requiring any additional configuration.
+- **FR-007**: The addon configuration MUST expose the guest listener's container port via the standard Home Assistant addon `ports` section so that Home Assistant can map it to a host port accessible on the network. The addon MUST NOT introduce a separate configuration option for the same port that conflicts with or duplicates Home Assistant's native port-mapping model.
 - **FR-008**: The guest listener MUST respond to captive portal detection requests from all major platforms (Android, iOS/macOS, Windows, Firefox) with appropriate redirects to the guest authorization page.
 - **FR-009**: The guest portal MUST support configuration of its externally reachable URL (host and port) so that generated redirect URLs are correct from the guest's network perspective.
 - **FR-010**: The guest listener MUST enforce rate limiting on authorization endpoints to prevent abuse from the public network.
 - **FR-011**: The guest listener MUST enforce CSRF protection on form submissions to prevent cross-site request forgery attacks.
 - **FR-012**: Both listeners MUST provide health check endpoints so that monitoring systems can verify each listener is operational.
-- **FR-013**: The system MUST validate that the configured guest port does not conflict with the ingress port and reject invalid configurations with a clear error.
+- **FR-013**: The system MUST validate that the guest listener's port configuration does not conflict with the ingress listener's port configuration (for the ports the application binds to inside the container, and, where detectable, for host-mapped ports) and reject invalid configurations with a clear error.
 - **FR-014**: The system MUST start and stop both listeners as part of the addon lifecycle — both must start when the addon starts and stop when the addon stops.
 - **FR-015**: If one listener fails to start or crashes, the system MUST log the failure clearly and attempt to recover independently without affecting the other listener.
 - **FR-016**: All existing tests MUST continue to pass without modification (backward compatibility).
