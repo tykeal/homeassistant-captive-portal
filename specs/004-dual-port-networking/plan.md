@@ -13,9 +13,9 @@ captive portal traffic (authorization, captive detection, guest API) is served
 on a dedicated port (`8099`) directly accessible on the local network, while the
 existing ingress listener (`8080`) continues to serve all routes (admin + guest)
 behind Home Assistant authentication.  The two listeners run as independent
-s6-overlay `longrun` services sharing a single FastAPI application with
-route-policy–based filtering.  The guest listener exposes **only** guest and
-health routes — admin endpoints are unreachable by design.
+s6-overlay `longrun` services, each backed by its own FastAPI application
+instance created via separate factory functions.  The guest app registers
+**only** guest and health routes — admin endpoints are unreachable by design.
 
 ## Technical Context
 
@@ -81,7 +81,7 @@ addon/
 │   ├── app.py                            # Updated: refactor route registration for reuse
 │   ├── guest_app.py                      # NEW: guest-only FastAPI app factory
 │   ├── config/
-│   │   └── settings.py                   # Updated: add guest_port, guest_external_url fields
+│   │   └── settings.py                   # Updated: add guest_external_url field
 │   ├── api/routes/
 │   │   ├── captive_detect.py             # Updated: use external URL for guest listener redirects
 │   │   ├── guest_portal.py              # Updated: use external URL for guest listener redirects

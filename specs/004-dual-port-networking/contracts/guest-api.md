@@ -40,7 +40,8 @@ GET /ncsi.txt
 ```
 
 **Response**: `302 Found`
-**Location**: `{guest_external_url}/guest/authorize`
+**Location**: `{guest_external_url}/guest/authorize` (or `/guest/authorize` if
+external URL is not configured)
 
 ### Apple iOS/macOS Detection
 
@@ -50,7 +51,8 @@ GET /library/test/success.html
 ```
 
 **Response**: `302 Found`
-**Location**: `{guest_external_url}/guest/authorize`
+**Location**: `{guest_external_url}/guest/authorize` (or `/guest/authorize` if
+external URL is not configured)
 
 ### Firefox Detection
 
@@ -59,7 +61,8 @@ GET /success.txt
 ```
 
 **Response**: `302 Found`
-**Location**: `{guest_external_url}/guest/authorize`
+**Location**: `{guest_external_url}/guest/authorize` (or `/guest/authorize` if
+external URL is not configured)
 
 ---
 

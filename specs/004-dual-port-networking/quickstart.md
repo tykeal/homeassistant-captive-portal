@@ -16,7 +16,8 @@ SPDX-License-Identifier: Apache-2.0
 
 ```bash
 # Clone and checkout
-cd /home/tykeal/repos/personal/homeassistant/captive-portal
+git clone <repo-url>
+cd <repo-directory>
 git checkout 004-dual-port-networking
 
 # Install dependencies (including dev tools)
