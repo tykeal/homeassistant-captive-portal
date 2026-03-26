@@ -23,7 +23,7 @@ As a portal administrator, I want to view all current access grants and be able 
 1. **Given** an authenticated admin, **When** they navigate to the Grants page, **Then** they see a table of all access grants showing MAC address, status, booking reference, voucher code, start time, end time, and available actions.
 2. **Given** an authenticated admin viewing the Grants page, **When** they select a status filter (e.g., "Active"), **Then** the table updates to show only grants matching that status.
 3. **Given** an authenticated admin viewing an active grant, **When** they choose to extend it and specify a duration, **Then** the grant's end time is updated and the page confirms the change.
-4. **Given** an authenticated admin viewing an active or pending grant, **When** they choose to revoke it, **Then** the grant status changes to "Revoked" and the page confirms the action.
+4. **Given** an authenticated admin viewing an active, pending, or expired grant, **When** they choose to revoke it, **Then** the grant status changes to "Revoked" and the page confirms the action.
 5. **Given** an authenticated admin, **When** the grant list is empty for a given filter, **Then** a clear "No grants found" message is displayed.
 
 ---
@@ -81,7 +81,7 @@ As a portal administrator, I want to log out of the admin interface so that my s
 
 ### Edge Cases
 
-- What happens when an admin tries to revoke a grant that has already expired? The system should display a clear message that the grant is already expired and cannot be revoked.
+- What happens when an admin tries to revoke a grant that has already expired? Revoking an expired grant succeeds (idempotent-like, transitions to REVOKED).
 - What happens when an admin tries to extend a revoked grant? The system should reject the extension and display an appropriate error message.
 - What happens when the backend API is unreachable while the admin is on the Dashboard? The page should display an error state rather than crashing, showing a message like "Unable to load data."
 - What happens when an admin creates a voucher while another admin simultaneously creates one? Each voucher should receive a unique code without conflicts.
@@ -105,7 +105,7 @@ As a portal administrator, I want to log out of the admin interface so that my s
 - **FR-006**: Grants page MUST display a table of all access grants with columns for MAC address, status, booking reference, voucher code, start time, end time, and actions.
 - **FR-007**: Grants page MUST support filtering the grant list by status (e.g., Active, Pending, Expired, Revoked).
 - **FR-008**: Grants page MUST allow administrators to extend an active grant's duration by specifying additional minutes.
-- **FR-009**: Grants page MUST allow administrators to revoke an active or pending grant.
+- **FR-009**: Grants page MUST allow administrators to revoke an active, pending, or expired grant.
 - **FR-010**: Extend and revoke actions MUST use form submissions with `method="POST"` as the primary mechanism, with optional progressive enhancement for a smoother experience.
 - **FR-011**: Grants page MUST display confirmation feedback after a successful extend or revoke operation.
 - **FR-012**: Grants page MUST display an appropriate error message when an extend or revoke operation fails (e.g., attempting to extend a revoked grant).
@@ -121,7 +121,7 @@ As a portal administrator, I want to log out of the admin interface so that my s
 
 #### Logout
 
-- **FR-019**: The Logout button in the navigation bar MUST be implemented as an HTML `<form>` that submits an HTTP `POST` request to the `/admin/logout` path. The `/admin/logout` handler MUST terminate the administrator's session (for example, by clearing any server-side session and authentication cookies) and MAY internally call the existing `/api/admin/auth/logout` API. The logout endpoint at `/admin/logout` is intentionally CSRF-exempt as a documented exception to **FR-023**.
+- **FR-019**: The Logout button in the navigation bar MUST be implemented as an HTML `<form>` that submits an HTTP `POST` request to the `/admin/logout` path. The `/admin/logout` handler MUST terminate the administrator's session (for example, by clearing any server-side session and authentication cookies) and MUST internally call the existing `/api/admin/auth/logout` API. The logout endpoint at `/admin/logout` is intentionally CSRF-exempt as a documented exception to **FR-023**.
 - **FR-020**: After logout, the system MUST redirect the administrator to the login page.
 - **FR-021**: After logout, attempts to access any admin page MUST redirect to the login page.
 

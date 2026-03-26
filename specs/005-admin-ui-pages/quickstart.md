@@ -116,11 +116,13 @@ Follow constitution-mandated TDD:
 
 ## Suggested Implementation Order
 
-1. `dashboard_service.py` + tests (foundation for dashboard)
-2. `dashboard_ui.py` + update `dashboard.html` + tests
-3. `grants_ui.py` + update `grants_enhanced.html` + tests
-4. `vouchers_ui.py` + create `vouchers.html` + tests
-5. `admin_logout_ui.py` + update all templates' logout forms + tests
-6. Cache-control headers in `security_headers.py` + tests
-7. Register all new routes in `app.py`
-8. Full integration test sweep
+> **Note**: `specs/005-admin-ui-pages/tasks.md` is the authoritative execution
+> order. The summary below is a simplified overview.
+
+1. **Phase 1 — Setup**: Register route modules in `app.py`, cache-control headers, CSS additions
+2. **Phase 2 — Foundational**: `DashboardService` + tests, logout form action updates in existing templates
+3. **Phase 3 — Grants (P1, MVP)**: `grants_ui.py` + update `grants_enhanced.html` + tests
+4. **Phase 4 — Dashboard (P2)**: `dashboard_ui.py` + update `dashboard.html` + tests
+5. **Phase 5 — Vouchers (P3)**: `vouchers_ui.py` + create `vouchers.html` + tests
+6. **Phase 6 — Logout (P4)**: `admin_logout_ui.py` + tests
+7. **Phase 7 — Polish**: Performance benchmarks, progressive enhancement JS, full test sweep
