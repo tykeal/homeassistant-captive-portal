@@ -23,7 +23,7 @@ All routes require admin authentication (via `SessionMiddleware` → `require_ad
 |----------|------|-------------|
 | `stats` | DashboardStats | Object with `.active_grants`, `.pending_grants`, `.available_vouchers`, `.integrations` (all int) |
 | `recent_logs` | list[ActivityLogEntry] | Up to 20 entries, each with `.timestamp`, `.action`, `.target_type`, `.target_id`, `.admin_username` |
-| `csrf_token` | str | CSRF token for logout form |
+| `csrf_token` | str | CSRF token for CSRF-protected forms on the dashboard; provided for consistency even though `/admin/logout` is CSRF-exempt and does not require it |
 
 ### Response Headers
 ```
@@ -218,10 +218,16 @@ Set-Cookie: session_id=; Max-Age=0; ...  (cookie deletion)
 ## Cross-Cutting Behaviors
 
 ### Authentication Redirect
-All `GET /admin/*` routes (except `/admin/login`) check `request.state.admin_id`. If `None`, they return:
-```
-303 See Other → {root_path}/admin/login
-```
+All admin HTML routes use the shared `require_admin` dependency (wired via `SessionMiddleware` or per-route dependency injection) to enforce authentication.
+
+- If `request.state.admin_id` is present, the request is allowed to proceed.
+- If `request.state.admin_id` is `None`, `require_admin` raises `HTTPException(status_code=401)`.
+- For `GET /admin/*` HTML routes (except `/admin/login`), a dedicated exception handler or UI-specific dependency layer maps this `401` to:
+  ```
+  303 See Other → {root_path}/admin/login
+  ```
+
+This contract describes the externally observable behavior (unauthenticated `GET /admin/*` requests are redirected with `303` to the login page), while allowing the implementation to centralize the low-level `401` behavior in `require_admin` and a shared exception handler.
 
 ### Cache-Control Headers (FR-028)
 Applied by `SecurityHeadersMiddleware` to all responses where `request.url.path.startswith("/admin")`:

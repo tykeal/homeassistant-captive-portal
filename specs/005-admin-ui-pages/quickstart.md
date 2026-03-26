@@ -15,7 +15,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ```bash
 # Clone and switch to feature branch
-cd /home/tykeal/repos/personal/homeassistant/captive-portal
+cd <your-clone>
 git checkout 005-admin-ui-pages
 
 # Install dependencies (dev group includes test tools)

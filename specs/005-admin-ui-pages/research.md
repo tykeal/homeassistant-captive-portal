@@ -27,7 +27,7 @@ This is safe to implement without CSRF because logout is idempotent and cannot b
 3. **Redirect from API endpoint itself**: Rejected — would break the documented JSON API contract and any programmatic callers.
 
 ### Impact on Existing Templates
-All existing templates (`dashboard.html`, `grants_enhanced.html`, `portal_settings.html`, `integrations.html`) currently have the logout form posting to `{{ rp }}/api/admin/logout`. These must be updated to post to `{{ rp }}/admin/logout` instead.
+All existing templates (`dashboard.html`, `grants_enhanced.html`, `portal_settings.html`, `integrations.html`) currently have the logout form posting to `{{ rp }}/api/admin/logout`. This path does **not** exist today (the only existing JSON logout endpoint is `/api/admin/auth/logout`), so the templates are incorrect and must be updated to post to `{{ rp }}/admin/logout` instead.
 
 ---
 
@@ -87,7 +87,7 @@ The UI route will:
 Create a `DashboardService` class in `services/dashboard_service.py` that aggregates statistics and recent activity using direct SQL queries against existing tables. The service will compute:
 - **Active grants count**: `SELECT COUNT(*) FROM accessgrant WHERE status != 'revoked' AND start_utc <= now AND end_utc > now`
 - **Pending grants count**: `SELECT COUNT(*) FROM accessgrant WHERE status != 'revoked' AND start_utc > now`
-- **Available vouchers count**: `SELECT COUNT(*) FROM voucher WHERE status = 'unused'` (where `expires_utc > now`)
+- **Available vouchers count**: `SELECT COUNT(*) FROM voucher WHERE status = 'unused' AND (created_utc + INTERVAL '1 minute' * duration_minutes) > now` (expiry is computed in SQL from `created_utc` and `duration_minutes`; `Voucher.expires_utc` is a Pydantic computed property, not a DB column)
 - **Integrations count**: `SELECT COUNT(*) FROM haintegrationconfig`
 - **Recent activity**: `SELECT * FROM auditlog ORDER BY timestamp_utc DESC LIMIT 20`
 

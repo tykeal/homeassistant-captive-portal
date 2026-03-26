@@ -110,7 +110,7 @@ Used only for Dashboard integrations count: `SELECT COUNT(*) FROM haintegrationc
 |-------|------|-------------|
 | `active_grants` | int | Count of grants where status ≠ REVOKED, start_utc ≤ now, end_utc > now |
 | `pending_grants` | int | Count of grants where status ≠ REVOKED, start_utc > now |
-| `available_vouchers` | int | Count of vouchers where status = UNUSED and expires_utc > now |
+| `available_vouchers` | int | Count of vouchers where status = UNUSED and Voucher.expires_utc (computed property) > now; computed in the service/ORM layer, not via an `expires_utc` DB column |
 | `integrations` | int | Count of all HAIntegrationConfig rows |
 
 ### ActivityLogEntry
