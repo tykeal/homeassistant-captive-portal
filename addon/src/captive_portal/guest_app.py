@@ -119,7 +119,8 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
         logger.warning(
             "guest_external_url is not configured. "
             "Captive portal detection redirects will use relative paths. "
-            "Set guest_external_url in addon options for correct redirect URLs."
+            "Set guest_external_url in addon options or via the CP_GUEST_EXTERNAL_URL "
+            "environment variable for correct redirect URLs."
         )
 
     app = FastAPI(

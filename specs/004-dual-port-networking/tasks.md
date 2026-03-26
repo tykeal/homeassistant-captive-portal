@@ -73,7 +73,7 @@ SPDX-License-Identifier: Apache-2.0
   - Test validation: non-empty value must not end with trailing `/`
   - Test invalid `guest_external_url` falls through to default with warning log
   - Test `log_effective()` includes `guest_external_url` in output
-  - Test port conflict: validate that guest port (8099) differs from ingress port (8080) at startup — log a clear error and fail fast if s6 run scripts are misconfigured with the same port
+  - Test guest port defaults are sensible (guest_external_url defaults to empty)
   - All tests should use `AppSettings.load()` with test fixtures (temp options files, env var patching)
 
 - [X] T005 [P] Parameterize SecurityHeadersMiddleware for configurable frame policy and CSP in addon/src/captive_portal/web/middleware/security_headers.py

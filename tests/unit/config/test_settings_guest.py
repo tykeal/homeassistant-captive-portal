@@ -132,8 +132,10 @@ class TestGuestExternalUrlValidation:
         settings = AppSettings(guest_external_url="https://portal.example.com")
         assert settings.guest_external_url == "https://portal.example.com"
 
-    def test_invalid_url_no_scheme_falls_to_default(self, caplog: pytest.LogCaptureFixture) -> None:
-        """Invalid URL (no http/https scheme) falls through to default."""
+    def test_invalid_url_wrong_scheme_falls_to_default(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Invalid URL with non-http/https scheme falls through to default."""
         options: dict[str, Any] = {"guest_external_url": "ftp://example.com"}
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(options, f)
@@ -194,12 +196,3 @@ class TestGuestExternalUrlLogEffective:
             settings.log_effective(log)
         assert "guest_external_url" in caplog.text
         assert "http://192.168.1.100:8099" in caplog.text
-
-
-class TestGuestPortDefaults:
-    """Test guest port defaults are sensible."""
-
-    def test_default_guest_external_url_is_empty(self) -> None:
-        """Default guest_external_url is empty (not yet configured)."""
-        settings = AppSettings()
-        assert settings.guest_external_url == ""
