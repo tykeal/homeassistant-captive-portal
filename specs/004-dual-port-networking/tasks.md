@@ -80,7 +80,8 @@ SPDX-License-Identifier: Apache-2.0
   - Add `__init__` method accepting optional `frame_options: str = "SAMEORIGIN"` and `csp: str | None = None` keyword arguments
   - Store parameters as instance attributes
   - In `dispatch()`, use `self.frame_options` for `X-Frame-Options` header (instead of hardcoded `"SAMEORIGIN"`)
-  - In `dispatch()`, if `self.csp` is provided, use it; otherwise use existing default CSP string
+  - In `dispatch()`, if `self.csp` is provided, always set/override the `Content-Security-Policy` response header to `self.csp` (even if a route/view has already set CSP)
+  - In `dispatch()`, if `self.csp` is not provided (`None`), preserve the existing behavior: only set the default CSP string when the response does not already have a `Content-Security-Policy` header
   - Default behavior (no args) MUST be identical to current behavior — existing tests must not break
   - Guest app will call: `SecurityHeadersMiddleware(frame_options="DENY", csp="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; object-src 'none'")`
 
@@ -104,7 +105,7 @@ SPDX-License-Identifier: Apache-2.0
   - Test `create_guest_app(settings=AppSettings(db_path=":memory:"))` works with in-memory DB
   - Test guest app mounts these routers (verify routes exist):
     - `captive_detect.router` — `/generate_204`, `/gen_204`, `/connecttest.txt`, `/ncsi.txt`, `/hotspot-detect.html`, `/library/test/success.html`, `/success.txt`
-    - `guest_portal.router` — `/guest/authorize`, `/guest/success`, `/guest/error`
+    - `guest_portal.router` — `/guest/authorize`, `/guest/welcome`, `/guest/error`
     - `booking_authorize.router` — `/api/guest/authorize`
     - `health.router` — `/api/health`, `/api/ready`, `/api/live`
   - Test guest app root redirect: `GET /` returns 303 to `/guest/authorize`
