@@ -35,7 +35,7 @@ uv run pytest tests/unit/ -x -q
 uv run pytest tests/integration/ -x -q
 
 # Run with coverage
-uv run pytest tests/ --cov=addon/src/captive_portal --cov-report=term-missing
+uv run pytest tests/ --cov=captive_portal --cov-report=term-missing
 
 # Run specific test files for this feature
 uv run pytest tests/unit/routes/test_dashboard_ui.py -x -v

@@ -198,7 +198,7 @@ All list pages (Grants, Vouchers, Dashboard activity) will handle empty states g
 - **Grants page**: When no grants match the filter, display "No grants found" in a styled empty-state row or message (FR-005, edge case).
 - **Vouchers page**: When no vouchers exist, display "No vouchers found. Create one above." (acceptance scenario 5).
 - **Dashboard**: When counts are zero, display `0` (not blank or error). When activity feed is empty, display "No recent activity" (FR-004).
-- **API errors**: If a database query fails, catch the exception and display an inline error message rather than a 500 page (edge case: "backend API unreachable").
+- **API errors**: If a database query fails, catch the exception and display an inline error message rather than a 500 page (edge case: "database error").
 
 ### Rationale
 FR-004 and the acceptance scenarios explicitly require graceful empty-state handling. The existing templates do not have empty-state handling — the `{% for %}` loops simply render nothing when the list is empty, leaving a table with only headers. Adding `{% if not items %}` blocks with clear messaging improves UX per constitution principle III.
