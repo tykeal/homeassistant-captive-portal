@@ -71,7 +71,7 @@ An addon administrator installs or updates the captive portal addon. In the addo
 
 **Acceptance Scenarios**:
 
-1. **Given** the addon is installed with default configuration, **When** the addon starts, **Then** both the ingress listener (port 8080) and the guest listener (default guest port) start successfully.
+1. **Given** the addon is installed with default configuration, **When** the addon starts, **Then** both the ingress listener (port 8080) and the guest listener (port 8099, the default guest port) start successfully.
 2. **Given** the addon configuration specifies a custom guest port number, **When** the addon starts, **Then** the guest listener binds to the configured port.
 3. **Given** the addon is running with a configured guest port, **When** the administrator updates the port number and restarts the addon, **Then** the guest listener starts on the new port.
 4. **Given** the addon configuration, **When** the administrator views the port mapping settings, **Then** the guest port is clearly labeled and its purpose is described.
