@@ -22,6 +22,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from captive_portal.api.routes import booking_authorize
 from captive_portal.config.settings import AppSettings
 from captive_portal.persistence.database import (
     create_db_engine,
@@ -84,6 +85,7 @@ def _make_guest_lifespan(
         try:
             engine = create_db_engine(f"sqlite:///{settings.db_path}")
             init_db(engine)
+            booking_authorize.set_db_engine(engine)
             logger.info("Guest listener database initialized at %s", settings.db_path)
         except Exception:
             dispose_engine()
