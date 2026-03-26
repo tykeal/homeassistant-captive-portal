@@ -23,7 +23,7 @@ As a portal administrator, I want to view all current access grants and be able 
 1. **Given** an authenticated admin, **When** they navigate to the Grants page, **Then** they see a table of all access grants showing MAC address, status, booking reference, voucher code, start time, end time, and available actions.
 2. **Given** an authenticated admin viewing the Grants page, **When** they select a status filter (e.g., "Active"), **Then** the table updates to show only grants matching that status.
 3. **Given** an authenticated admin viewing an active grant, **When** they choose to extend it and specify a duration, **Then** the grant's end time is updated and the page confirms the change.
-4. **Given** an authenticated admin viewing an active or pending grant, **When** they choose to revoke it, **Then** the grant status changes to "Revoked" and the page confirms the action.
+4. **Given** an authenticated admin viewing an active, pending, or expired grant, **When** they choose to revoke it, **Then** the grant status changes to "Revoked" and the page confirms the action.
 5. **Given** an authenticated admin, **When** the grant list is empty for a given filter, **Then** a clear "No grants found" message is displayed.
 
 ---
@@ -105,7 +105,7 @@ As a portal administrator, I want to log out of the admin interface so that my s
 - **FR-006**: Grants page MUST display a table of all access grants with columns for MAC address, status, booking reference, voucher code, start time, end time, and actions.
 - **FR-007**: Grants page MUST support filtering the grant list by status (e.g., Active, Pending, Expired, Revoked).
 - **FR-008**: Grants page MUST allow administrators to extend an active grant's duration by specifying additional minutes.
-- **FR-009**: Grants page MUST allow administrators to revoke an active or pending grant.
+- **FR-009**: Grants page MUST allow administrators to revoke an active, pending, or expired grant.
 - **FR-010**: Extend and revoke actions MUST use form submissions with `method="POST"` as the primary mechanism, with optional progressive enhancement for a smoother experience.
 - **FR-011**: Grants page MUST display confirmation feedback after a successful extend or revoke operation.
 - **FR-012**: Grants page MUST display an appropriate error message when an extend or revoke operation fails (e.g., attempting to extend a revoked grant).

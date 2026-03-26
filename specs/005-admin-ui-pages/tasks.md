@@ -60,18 +60,18 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 3: User Story 1 — View Grants and Manage Access (Priority: P1) 🎯 MVP
 
-**Goal**: Enable administrators to view all access grants in a table, filter by status, extend active grants, and revoke active/pending grants — entirely through the web UI.
+**Goal**: Enable administrators to view all access grants in a table, filter by status, extend active grants, and revoke active, pending, and expired grants (treating expired revokes as an idempotent-like EXPIRED→REVOKED success) — entirely through the web UI.
 
-**Independent Test**: Navigate to `/admin/grants`, verify table loads with correct columns, filter by status, extend a grant's duration, revoke a grant, and verify feedback messages. All form actions work without JavaScript.
+**Independent Test**: Navigate to `/admin/grants`, verify table loads with correct columns, filter by status, extend a grant's duration, revoke an active grant, revoke an expired grant and observe EXPIRED→REVOKED without error, and verify feedback messages. All form actions work without JavaScript.
 
 ### Tests for User Story 1
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 - [ ] T009 [P] [US1] Write unit tests for GET /admin/grants route handler in tests/unit/routes/test_grants_ui.py — cover grant listing with status recomputation, status filter query param, empty state, success/error flash messages per contract GET /admin/grants
-- [ ] T010 [P] [US1] Write unit tests for POST /admin/grants/extend/{grant_id} in tests/unit/routes/test_grants_ui.py — cover success redirect, grant not found, revoked grant error, invalid CSRF, invalid minutes per contract POST /admin/grants/extend. Include structured logging assertions for all error paths in the route handler.
-- [ ] T011 [P] [US1] Write unit tests for POST /admin/grants/revoke/{grant_id} in tests/unit/routes/test_grants_ui.py — cover success redirect (including idempotent revoke), grant not found, invalid CSRF per contract POST /admin/grants/revoke
-- [ ] T012 [P] [US1] Write integration tests for full grants page flow in tests/integration/test_admin_grants_page.py — cover page load with auth redirect, grant table rendering, filter by status, extend action with PRG redirect, revoke action with PRG redirect, empty-state display
+- [ ] T010 [P] [US1] Write unit tests for POST /admin/grants/extend/{grant_id} in tests/unit/routes/test_grants_ui.py — cover success redirect (including extending an expired grant reactivating it per data-model EXPIRED→ACTIVE behavior), grant not found, revoked grant error, invalid CSRF, invalid minutes per contract POST /admin/grants/extend. Include structured logging assertions for all error paths in the route handler.
+- [ ] T011 [P] [US1] Write unit tests for POST /admin/grants/revoke/{grant_id} in tests/unit/routes/test_grants_ui.py — cover success redirect (including idempotent revoke and revoking an expired grant transitioning to REVOKED), grant not found, invalid CSRF per contract POST /admin/grants/revoke
+- [ ] T012 [P] [US1] Write integration tests for full grants page flow in tests/integration/test_admin_grants_page.py — cover page load with auth redirect, grant table rendering, filter by status, extend action with PRG redirect, revoke action with PRG redirect (including revoking an expired grant and verifying it is shown as REVOKED), empty-state display
 
 ### Implementation for User Story 1
 
