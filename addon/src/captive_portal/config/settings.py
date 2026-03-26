@@ -100,6 +100,8 @@ def _validate_guest_url(value: Any) -> bool:
         return False
     if parts.query or parts.fragment:
         return False
+    if parts.path and parts.path != "/":
+        return False
     if stripped.endswith("/"):
         return False
     return True

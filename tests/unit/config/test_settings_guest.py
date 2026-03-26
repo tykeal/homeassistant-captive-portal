@@ -234,6 +234,22 @@ class TestGuestExternalUrlValidation:
         finally:
             os.unlink(path)
 
+    def test_invalid_url_with_path_falls_to_default(self, caplog: pytest.LogCaptureFixture) -> None:
+        """URL with non-root path is rejected (base URL only)."""
+        options: dict[str, Any] = {"guest_external_url": "http://example.com/foo"}
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(options, f)
+            f.flush()
+            path = f.name
+        try:
+            with patch.dict(os.environ, {}, clear=True):
+                with caplog.at_level(logging.WARNING, logger="captive_portal.config"):
+                    settings = AppSettings.load(options_path=path)
+            assert settings.guest_external_url == ""
+            assert "guest_external_url" in caplog.text
+        finally:
+            os.unlink(path)
+
 
 class TestGuestExternalUrlLogEffective:
     """Test that log_effective includes guest_external_url."""
