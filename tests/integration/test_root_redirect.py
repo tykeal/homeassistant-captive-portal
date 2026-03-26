@@ -3,7 +3,7 @@
 """Integration tests for the root ``/`` redirect route.
 
 Verifies that the HA ingress panel landing page redirects to
-``/admin/portal-settings/`` and respects the ingress ``root_path``.
+``/admin/login`` and respects the ingress ``root_path``.
 """
 
 from __future__ import annotations
@@ -55,12 +55,12 @@ def _make_client(root_path: str = "") -> Generator[TestClient, None, None]:
             pass
 
 
-def test_root_redirects_to_portal_settings() -> None:
-    """GET / should 303 redirect to /admin/portal-settings/."""
+def test_root_redirects_to_admin_login() -> None:
+    """GET / should 303 redirect to /admin/login."""
     with _make_client() as client:
         resp = client.get("/", follow_redirects=False)
         assert resp.status_code == 303
-        assert resp.headers["location"] == "/admin/portal-settings/"
+        assert resp.headers["location"] == "/admin/login"
 
 
 def test_root_redirect_respects_ingress_root_path() -> None:
@@ -68,4 +68,4 @@ def test_root_redirect_respects_ingress_root_path() -> None:
     with _make_client(root_path="/api/hassio_ingress/abc123") as client:
         resp = client.get("/", follow_redirects=False)
         assert resp.status_code == 303
-        assert resp.headers["location"] == "/api/hassio_ingress/abc123/admin/portal-settings/"
+        assert resp.headers["location"] == "/api/hassio_ingress/abc123/admin/login"

@@ -166,6 +166,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     from captive_portal.api.routes import (
         admin_accounts,
         admin_auth,
+        admin_login_ui,
         audit_config,
         captive_detect,
         docs,
@@ -181,6 +182,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
 
     app.include_router(admin_accounts.router)
     app.include_router(admin_auth.router)
+    app.include_router(admin_login_ui.router)
     app.include_router(audit_config.router)
     app.include_router(captive_detect.router)
     app.include_router(docs.router)
@@ -192,24 +194,26 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(vouchers.router)
     app.include_router(integrations_ui.router)
 
-    # HA ingress opens "/" — redirect to the admin portal-settings page.
+    # HA ingress opens "/" — redirect to the admin login page so
+    # unauthenticated users see a login form instead of a 401 error.
     @app.get("/")
     async def root_redirect(request: Request) -> RedirectResponse:
-        """Redirect the root path to the admin portal-settings page.
+        """Redirect the root path to the admin login page.
 
         Home Assistant ingress opens the sidebar panel at ``/`` which has
-        no handler.  This redirect sends the user to the admin
-        portal-settings page, respecting the ingress ``root_path``.
+        no handler.  This redirect sends the user to the admin login
+        page, respecting the ingress ``root_path``.  Authenticated
+        users are forwarded to portal-settings by the login route.
 
         Args:
             request: Incoming HTTP request.
 
         Returns:
-            303 redirect to the admin portal-settings page.
+            303 redirect to the admin login page.
         """
         root = request.scope.get("root_path", "")
         return RedirectResponse(
-            url=f"{root}/admin/portal-settings/",
+            url=f"{root}/admin/login",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
