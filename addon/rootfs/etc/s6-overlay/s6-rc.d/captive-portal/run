@@ -12,7 +12,7 @@ bashio::log.info "Starting captive portal (log_level=${log_level})..."
 # when served behind the Home Assistant ingress proxy.
 declare ingress_entry
 ingress_entry=$(bashio::addon.ingress_entry)
-bashio::log.info "Ingress entry: ${ingress_entry}"
+bashio::log.info "Ingress entry configured for captive portal ingress."
 
 exec python -m uvicorn \
     captive_portal.app:create_app \

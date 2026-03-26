@@ -21,7 +21,7 @@ ingress_port: 8080
 ingress_stream: false
 auth_api: true
 ports:
-  "8080/tcp": null
+  "8080/tcp": null  # Not exposed on host; admin UI accessed via Ingress
 ports_description:
   "8080/tcp": Web interface (not needed with Ingress)
 schema:

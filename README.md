@@ -87,7 +87,7 @@ See [Architecture Overview](docs/architecture_overview.md) for detailed componen
 - **[HA Integration Guide](docs/ha_integration_guide.md)**: Rental Control setup and troubleshooting
 - **[Architecture Overview](docs/architecture_overview.md)**: System design and component interaction
 - **[Troubleshooting](docs/troubleshooting.md)**: Common issues and diagnostics
-- **[API Documentation](/admin/docs)**: OpenAPI interactive docs (admin-only, when running)
+- **API Documentation**: OpenAPI interactive docs (admin-only, when running) at `/admin/docs` on your deployed instance
 
 ## Configuration
 

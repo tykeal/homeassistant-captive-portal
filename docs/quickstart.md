@@ -48,6 +48,10 @@ This guide walks you through installing and configuring the Captive Portal for g
    - Open the **Captive Portal** panel in the Home Assistant sidebar
    - Login with credentials from step 3
 
+> **Note:** Any `http://<captive-portal-ip>:8080/...` URLs referenced
+> later in this guide apply **only** to the standalone deployment in
+> [Option 2](#option-2-standalone-deployment), not to the add-on.
+
 ### Option 2: Standalone Deployment
 
 #### Using Docker
