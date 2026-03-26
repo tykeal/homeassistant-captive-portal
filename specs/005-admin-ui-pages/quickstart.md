@@ -37,16 +37,16 @@ uv run pytest tests/integration/ -x -q
 # Run with coverage
 uv run pytest tests/ --cov=captive_portal --cov-report=term-missing
 
-# Run specific test files for this feature
-uv run pytest tests/unit/routes/test_dashboard_ui.py -x -v
-uv run pytest tests/unit/routes/test_grants_ui.py -x -v
-uv run pytest tests/unit/routes/test_vouchers_ui.py -x -v
-uv run pytest tests/unit/routes/test_admin_logout_ui.py -x -v
-uv run pytest tests/integration/test_admin_dashboard_page.py -x -v
-uv run pytest tests/integration/test_admin_grants_page.py -x -v
-uv run pytest tests/integration/test_admin_vouchers_page.py -x -v
-uv run pytest tests/integration/test_admin_logout_flow.py -x -v
-uv run pytest tests/integration/test_admin_cache_headers.py -x -v
+# Run specific test files for this feature (once implementation is complete)
+# uv run pytest tests/unit/routes/test_dashboard_ui.py -x -v
+# uv run pytest tests/unit/routes/test_grants_ui.py -x -v
+# uv run pytest tests/unit/routes/test_vouchers_ui.py -x -v
+# uv run pytest tests/unit/routes/test_admin_logout_ui.py -x -v
+# uv run pytest tests/integration/test_admin_dashboard_page.py -x -v
+# uv run pytest tests/integration/test_admin_grants_page.py -x -v
+# uv run pytest tests/integration/test_admin_vouchers_page.py -x -v
+# uv run pytest tests/integration/test_admin_logout_flow.py -x -v
+# uv run pytest tests/integration/test_admin_cache_headers.py -x -v
 ```
 
 ## Lint & Type Check
