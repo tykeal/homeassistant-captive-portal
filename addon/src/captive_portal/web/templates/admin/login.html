@@ -9,6 +9,7 @@ SPDX-License-Identifier: Apache-2.0
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Captive Portal Admin</title>
+    <meta name="root-path" content="{{ rp }}">
     <link rel="stylesheet" href="{{ rp }}/static/themes/default/admin.css">
     <style>
         .login-wrapper {
@@ -38,7 +39,8 @@ SPDX-License-Identifier: Apache-2.0
             font-weight: 500;
         }
         .login-card input[type="text"],
-        .login-card input[type="password"] {
+        .login-card input[type="password"],
+        .login-card input[type="email"] {
             width: 100%;
             padding: 0.5rem;
             border: 1px solid var(--border-color);
@@ -63,6 +65,12 @@ SPDX-License-Identifier: Apache-2.0
             margin-bottom: 1rem;
             display: none;
         }
+        .setup-hint {
+            color: #555;
+            margin-bottom: 1.25rem;
+            text-align: center;
+            font-size: 0.95rem;
+        }
     </style>
 </head>
 <body>
@@ -74,10 +82,12 @@ SPDX-License-Identifier: Apache-2.0
 
     <main class="container">
         <div class="login-wrapper">
-            <div class="login-card">
-                <h2>Admin Login</h2>
+            <div class="login-card" id="login-card">
+                <h2 id="card-title">Admin Login</h2>
                 <div id="login-error" class="login-error"></div>
-                <form id="login-form">
+
+                <!-- Login form (default) -->
+                <form id="login-form" method="POST">
                     <div class="form-group">
                         <label for="username">Username</label>
                         <input
@@ -101,6 +111,52 @@ SPDX-License-Identifier: Apache-2.0
                     </div>
                     <button type="submit" class="btn btn-primary">Login</button>
                 </form>
+
+                <!-- Setup form (first-run only) -->
+                <form id="setup-form" method="POST" style="display:none;">
+                    <p class="setup-hint">No admin account exists yet. Create one to get started.</p>
+                    <div class="form-group">
+                        <label for="setup-username">Username</label>
+                        <input
+                            type="text"
+                            id="setup-username"
+                            name="username"
+                            required
+                            autocomplete="username"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-email">Email</label>
+                        <input
+                            type="email"
+                            id="setup-email"
+                            name="email"
+                            required
+                            autocomplete="email"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-password">Password</label>
+                        <input
+                            type="password"
+                            id="setup-password"
+                            name="password"
+                            required
+                            autocomplete="new-password"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="setup-confirm">Confirm Password</label>
+                        <input
+                            type="password"
+                            id="setup-confirm"
+                            name="confirm_password"
+                            required
+                            autocomplete="new-password"
+                        >
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Admin Account</button>
+                </form>
             </div>
         </div>
     </main>
@@ -111,37 +167,6 @@ SPDX-License-Identifier: Apache-2.0
         </div>
     </footer>
 
-    <script>
-        const rootPath = '{{ rp }}';
-        const form = document.getElementById('login-form');
-        const errorDiv = document.getElementById('login-error');
-
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            errorDiv.style.display = 'none';
-
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-
-            try {
-                const resp = await fetch(rootPath + '/api/admin/auth/login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({username, password}),
-                });
-
-                if (resp.ok) {
-                    window.location.href = rootPath + '/admin/portal-settings/';
-                } else {
-                    const data = await resp.json();
-                    errorDiv.textContent = data.detail || 'Invalid username or password';
-                    errorDiv.style.display = 'block';
-                }
-            } catch (err) {
-                errorDiv.textContent = 'Unable to connect. Please try again.';
-                errorDiv.style.display = 'block';
-            }
-        });
-    </script>
+    <script src="{{ rp }}/static/themes/default/admin-login.js"></script>
 </body>
 </html>

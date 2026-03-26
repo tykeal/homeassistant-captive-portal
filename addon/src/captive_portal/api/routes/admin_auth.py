@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Admin authentication routes (login, logout, bootstrap).
+Admin authentication routes (login, logout, bootstrap, status).
 
 Implements:
+- Auth status check (first-run detection)
 - Admin login with session creation
 - Admin logout with session destruction
 - Bootstrap initial admin account (first-run only)
@@ -24,6 +25,28 @@ from captive_portal.security.password_hashing import hash_password, verify_passw
 from captive_portal.services.audit_service import AuditService
 
 router = APIRouter(prefix="/api/admin/auth", tags=["admin-auth"])
+
+
+class AuthStatusResponse(BaseModel):
+    """Auth status response indicating whether initial setup is needed."""
+
+    needs_setup: bool
+
+
+@router.get("/status", response_model=AuthStatusResponse)
+async def auth_status(
+    db: Session = Depends(get_session),
+) -> AuthStatusResponse:
+    """
+    Check whether initial admin setup is needed.
+
+    Returns ``needs_setup: true`` when no admin accounts exist, signalling
+    that the login page should present the first-run setup form instead.
+    This endpoint is public (no authentication required).
+    """
+    stmt: Any = select(AdminUser)
+    existing_admin = cast(Optional[AdminUser], db.exec(stmt).first())
+    return AuthStatusResponse(needs_setup=existing_admin is None)
 
 
 class LoginRequest(BaseModel):

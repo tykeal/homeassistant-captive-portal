@@ -52,6 +52,7 @@ module = [
     "tests.integration.test_admin_list_filters",
     "tests.integration.test_admin_session_csrf",
     "tests.integration.test_admin_session_timeout",
+    "tests.integration.test_auth_status_onboarding",
     "tests.integration.test_initial_admin_bootstrap",
 ]
 disallow_untyped_calls = false
