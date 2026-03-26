@@ -1,0 +1,24 @@
+#!/command/with-contenv bashio
+# SPDX-FileCopyrightText: 2026 Andrew Grimberg
+# SPDX-License-Identifier: Apache-2.0
+# shellcheck shell=bash
+# s6-overlay run script for the guest captive portal listener.
+
+declare guest_external_url
+guest_external_url=$(bashio::config 'guest_external_url' '')
+export CP_GUEST_EXTERNAL_URL="${guest_external_url}"
+
+bashio::log.info "Starting guest captive portal listener on port 8099..."
+if [ -n "${guest_external_url}" ]; then
+    bashio::log.info "Guest external URL: ${guest_external_url}"
+else
+    bashio::log.warning \
+        "guest_external_url is not configured. " \
+        "Captive detection redirects will use relative paths."
+fi
+
+exec python -m uvicorn \
+    captive_portal.guest_app:create_guest_app \
+    --factory \
+    --host 0.0.0.0 \
+    --port 8099

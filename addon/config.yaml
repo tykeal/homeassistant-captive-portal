@@ -22,9 +22,12 @@ ingress_stream: false
 auth_api: true
 ports:
   "8080/tcp": null  # Not exposed on host; admin UI accessed via Ingress
+  "8099/tcp": 8099  # Guest portal — default host port 8099
 ports_description:
   "8080/tcp": Web interface (not needed with Ingress)
+  "8099/tcp": Guest captive portal (configure WiFi controller to redirect here)
 schema:
   log_level: "list(trace|debug|info|notice|warning|error|fatal)?"
   session_idle_timeout: "int(1,)?"
   session_max_duration: "int(1,)?"
+  guest_external_url: "url?"
