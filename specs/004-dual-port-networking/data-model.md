@@ -62,7 +62,6 @@ Mounts **all** routers.  This is the backward-compatible behavior.
 | `integrations_ui.router` | `/admin/integrations` | Admin |
 | `captive_detect.router` | `/generate_204`, etc. | Guest/Detection |
 | `guest_portal.router` | `/guest` | Guest |
-| `booking_authorize.router` | `/api/guest` | Guest |
 | `health.router` | `/api` | System |
 | root redirect (`/`) | `/` → `/admin/portal-settings/` | Admin |
 
