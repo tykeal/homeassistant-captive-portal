@@ -10,6 +10,7 @@ automatically covers any new admin routers.
 
 import re
 from collections.abc import Generator
+from functools import lru_cache
 
 import pytest
 from fastapi import FastAPI
@@ -23,8 +24,12 @@ from captive_portal.guest_app import create_guest_app
 _PLACEHOLDER = "00000000-0000-0000-0000-000000000000"
 
 
-def _admin_only_get_paths() -> list[str]:
-    """Return GET paths present on admin app but not guest app."""
+@lru_cache(maxsize=1)
+def _admin_only_get_paths() -> tuple[str, ...]:
+    """Return GET paths present on admin app but not guest app.
+
+    Cached so the apps are only built once per process.
+    """
     settings = AppSettings(db_path=":memory:", guest_external_url="http://test.local:8099")
     admin_app = create_app(settings=settings)
     guest_app = create_guest_app(settings=settings)
@@ -38,10 +43,14 @@ def _admin_only_get_paths() -> list[str]:
                 paths.add(concrete)
         return paths
 
-    return sorted(_get_paths(admin_app) - _get_paths(guest_app))
+    return tuple(sorted(_get_paths(admin_app) - _get_paths(guest_app)))
 
 
-ADMIN_ROUTES = _admin_only_get_paths()
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    """Dynamically parametrize admin route tests at generation time."""
+    if "admin_path" in metafunc.fixturenames:
+        metafunc.parametrize("admin_path", list(_admin_only_get_paths()))
+
 
 # Guest routes: should exist on both
 GUEST_ROUTES = [
@@ -86,20 +95,20 @@ def guest_client(guest_app: FastAPI) -> Generator[TestClient, None, None]:
 class TestDualPortAdminIsolation:
     """Test admin routes exist on ingress but not on guest."""
 
-    @pytest.mark.parametrize("path", ADMIN_ROUTES)
-    def test_admin_route_exists_on_ingress(self, ingress_client: TestClient, path: str) -> None:
+    def test_admin_route_exists_on_ingress(
+        self, ingress_client: TestClient, admin_path: str
+    ) -> None:
         """Admin route returns non-404 on ingress app."""
-        response = ingress_client.get(path)
+        response = ingress_client.get(admin_path)
         assert response.status_code != 404, (
-            f"Expected non-404 for GET {path} on ingress, got {response.status_code}"
+            f"Expected non-404 for GET {admin_path} on ingress, got {response.status_code}"
         )
 
-    @pytest.mark.parametrize("path", ADMIN_ROUTES)
-    def test_admin_route_404_on_guest(self, guest_client: TestClient, path: str) -> None:
+    def test_admin_route_404_on_guest(self, guest_client: TestClient, admin_path: str) -> None:
         """Admin route returns 404 on guest app."""
-        response = guest_client.get(path)
+        response = guest_client.get(admin_path)
         assert response.status_code == 404, (
-            f"Expected 404 for GET {path} on guest, got {response.status_code}"
+            f"Expected 404 for GET {admin_path} on guest, got {response.status_code}"
         )
 
 

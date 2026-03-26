@@ -8,6 +8,7 @@ suite automatically covers any new admin routers added in the future.
 
 import re
 from collections.abc import Generator
+from functools import lru_cache
 
 import pytest
 from fastapi import FastAPI
@@ -21,11 +22,13 @@ from captive_portal.guest_app import create_guest_app
 _PLACEHOLDER = "00000000-0000-0000-0000-000000000000"
 
 
-def _admin_only_routes() -> list[tuple[str, str]]:
+@lru_cache(maxsize=1)
+def _admin_only_routes() -> tuple[tuple[str, str], ...]:
     """Return (method, path) pairs present on admin app but not guest app.
 
     Parameterised path segments (e.g. ``{grant_id}``) are replaced with a
     placeholder value so that the test client can issue a real request.
+    Cached so the apps are only built once per process.
     """
     settings = AppSettings(db_path=":memory:", guest_external_url="http://test.local:8099")
     admin_app = create_app(settings=settings)
@@ -48,11 +51,15 @@ def _admin_only_routes() -> list[tuple[str, str]]:
     for method, path in admin_only:
         concrete = re.sub(r"\{[^}]+\}", _PLACEHOLDER, path)
         result.append((method, concrete))
-    return result
+    return tuple(result)
 
 
-ADMIN_ONLY_ROUTES = _admin_only_routes()
-ADMIN_ONLY_IDS = [f"{m} {p}" for m, p in ADMIN_ONLY_ROUTES]
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    """Dynamically parametrize admin route tests at generation time."""
+    if "admin_method" in metafunc.fixturenames and "admin_path" in metafunc.fixturenames:
+        routes = _admin_only_routes()
+        ids = [f"{m} {p}" for m, p in routes]
+        metafunc.parametrize(("admin_method", "admin_path"), list(routes), ids=ids)
 
 
 @pytest.fixture
@@ -71,14 +78,15 @@ def guest_client(guest_app: FastAPI) -> Generator[TestClient, None, None]:
 class TestAdminRoutesReturn404OnGuest:
     """Verify every admin-only route returns 404 Not Found on guest listener."""
 
-    @pytest.mark.parametrize(("method", "path"), ADMIN_ONLY_ROUTES, ids=ADMIN_ONLY_IDS)
     def test_admin_route_returns_404(
-        self, guest_client: TestClient, method: str, path: str
+        self, guest_client: TestClient, admin_method: str, admin_path: str
     ) -> None:
         """Admin route returns 404 (not 401/403) on guest app."""
-        response = guest_client.request(method, path, json={} if method != "GET" else None)
+        response = guest_client.request(
+            admin_method, admin_path, json={} if admin_method != "GET" else None
+        )
         assert response.status_code == 404, (
-            f"Expected 404 for {method} {path}, got {response.status_code}"
+            f"Expected 404 for {admin_method} {admin_path}, got {response.status_code}"
         )
 
 
