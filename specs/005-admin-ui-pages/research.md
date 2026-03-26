@@ -16,7 +16,7 @@ The existing logout endpoint at `/api/admin/auth/logout` returns a JSON response
 The HTML logout handler will:
 1. Read `session_id` from `request.state` (set by `SessionMiddleware`)
 2. Call `session_store.delete(session_id)` to destroy the session
-3. Delete the session cookie via `response.delete_cookie()`
+3. Delete the session cookie via `response.delete_cookie(session_config.cookie_name)`
 4. Redirect to `{root_path}/admin/login` with HTTP 303
 
 This is safe to implement without CSRF because logout is idempotent and cannot be exploited for state changes beyond ending the user's own session.
@@ -88,8 +88,8 @@ Create a `DashboardService` class in `services/dashboard_service.py` that aggreg
 - **Active grants count**: `SELECT COUNT(*) FROM accessgrant WHERE status != 'revoked' AND start_utc <= now AND end_utc > now`
 - **Pending grants count**: `SELECT COUNT(*) FROM accessgrant WHERE status != 'revoked' AND start_utc > now`
 - **Available vouchers count**: `SELECT COUNT(*) FROM voucher WHERE status = 'unused' AND (created_utc + INTERVAL '1 minute' * duration_minutes) > now` (expiry is computed in SQL from `created_utc` and `duration_minutes`; `Voucher.expires_utc` is a Pydantic computed property, not a DB column)
-- **Integrations count**: `SELECT COUNT(*) FROM haintegrationconfig`
-- **Recent activity**: `SELECT * FROM auditlog ORDER BY timestamp_utc DESC LIMIT 20`
+- **Integrations count**: `SELECT COUNT(*) FROM ha_integration_config`
+- **Recent activity**: `SELECT * FROM audit_log ORDER BY timestamp_utc DESC LIMIT 20`
 
 ### Rationale
 The dashboard requires aggregated statistics (FR-002) and a recent activity feed (FR-003) from data that already exists in the database. The `AuditLog` table records all admin actions with timestamp, action type, target, and actor — exactly what the activity feed needs. Grant and voucher counts come from their respective tables.

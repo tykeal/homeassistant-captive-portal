@@ -79,7 +79,7 @@ if redeemed_count > 0  → "Redeemed"
 
 ### AuditLog
 
-**Table**: `auditlog` | **Module**: `captive_portal.models.audit_log`
+**Table**: `audit_log` | **Module**: `captive_portal.models.audit_log`
 
 | Field | Type | UI Column (Dashboard) | Notes |
 |-------|------|----------------------|-------|
@@ -93,9 +93,9 @@ if redeemed_count > 0  → "Redeemed"
 
 ### HAIntegrationConfig
 
-**Table**: `haintegrationconfig` | **Module**: `captive_portal.models.ha_integration_config`
+**Table**: `ha_integration_config` | **Module**: `captive_portal.models.ha_integration_config`
 
-Used only for Dashboard integrations count: `SELECT COUNT(*) FROM haintegrationconfig`
+Used only for Dashboard integrations count: `SELECT COUNT(*) FROM ha_integration_config`
 
 ---
 
