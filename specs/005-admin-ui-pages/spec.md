@@ -133,6 +133,7 @@ As a portal administrator, I want to log out of the admin interface so that my s
 - **FR-025**: All JavaScript MUST be loaded from external files; no inline scripts are permitted.
 - **FR-026**: All new pages MUST follow the same visual design and navigation pattern as the existing Settings and Integrations pages.
 - **FR-027**: All new source files MUST include the required SPDX license headers.
+- **FR-028**: All admin page responses and the Logout response MUST include HTTP headers that prevent browser caching of sensitive admin content (for example, `Cache-Control: no-store, no-cache, must-revalidate`, `Pragma: no-cache`, and `Expires: 0`).
 
 ### Key Entities
 
