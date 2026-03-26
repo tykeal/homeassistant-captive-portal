@@ -114,14 +114,14 @@ As a portal administrator, I want to log out of the admin interface so that my s
 
 - **FR-013**: System MUST serve the Vouchers management page to authenticated administrators at the `/admin/vouchers` path.
 - **FR-014**: Vouchers page MUST display a list of all vouchers showing code, duration, status, creation date, and redemption details.
-- **FR-015**: Vouchers page MUST provide a form to create a new voucher by specifying at minimum the access duration in minutes.
+- **FR-015**: Vouchers page MUST provide a form to create a new voucher by specifying at minimum the access duration in minutes, using an HTML form submission with `method="POST"` and CSRF protection as the primary mechanism that works when JavaScript is disabled, with optional progressive enhancement for a smoother experience.
 - **FR-016**: Voucher creation form MUST support optional fields for booking reference.
 - **FR-017**: After creating a voucher, the system MUST display the generated voucher code prominently so the administrator can copy or share it.
 - **FR-018**: Vouchers page MUST show the redemption status of each voucher (unredeemed, redeemed) and link to the associated grant if redeemed.
 
 #### Logout
 
-- **FR-019**: The Logout button in the navigation bar MUST terminate the administrator's session when clicked. The logout endpoint is intentionally CSRF-exempt as a documented exception to **FR-023**.
+- **FR-019**: The Logout button in the navigation bar MUST be implemented as an HTML `<form>` that submits an HTTP `POST` request to the `/admin/logout` path. The `/admin/logout` handler MUST terminate the administrator's session (for example, by clearing any server-side session and authentication cookies) and MAY internally call the existing `/api/admin/auth/logout` API. The logout endpoint at `/admin/logout` is intentionally CSRF-exempt as a documented exception to **FR-023**.
 - **FR-020**: After logout, the system MUST redirect the administrator to the login page.
 - **FR-021**: After logout, attempts to access any admin page MUST redirect to the login page.
 
