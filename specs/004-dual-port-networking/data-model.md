@@ -47,22 +47,21 @@ which `APIRouter` instances are mounted in each FastAPI app.
 
 ### Ingress App (`create_app()` — existing, unchanged)
 
-Mounts **all** routers.  This is the backward-compatible behavior.
+Mounts the following routers.  This is the backward-compatible behavior.
 
 | Router | Prefix | Category |
 |--------|--------|----------|
 | `admin_accounts.router` | `/api/admin/accounts` | Admin |
 | `admin_auth.router` | `/api/admin/auth` | Admin |
-| `audit_config.router` | `/api/audit` | Admin |
+| `audit_config.router` | `/api/admin/audit` | Admin |
 | `docs.router` | `/admin/docs`, `/admin/redoc` | Admin |
 | `grants.router` | `/api/grants` | Admin |
-| `portal_config.router` | `/api/portal` | Admin |
+| `portal_config.router` | `/api/admin/portal-config` | Admin |
 | `portal_settings_ui.router` | `/admin/portal-settings` | Admin |
 | `vouchers.router` | `/api/vouchers` | Admin |
 | `integrations_ui.router` | `/admin/integrations` | Admin |
 | `captive_detect.router` | `/generate_204`, etc. | Guest/Detection |
 | `guest_portal.router` | `/guest` | Guest |
-| `booking_authorize.router` | `/api/guest` | Guest |
 | `health.router` | `/api` | System |
 | root redirect (`/`) | `/` → `/admin/portal-settings/` | Admin |
 
