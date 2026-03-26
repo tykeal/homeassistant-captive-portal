@@ -139,7 +139,7 @@ An operations team or monitoring system checks the health of the captive portal 
 - **FR-014**: The system MUST start and stop both listeners as part of the addon lifecycle — both must start when the addon starts and stop when the addon stops.
 - **FR-015**: If one listener fails to start or crashes, the system MUST log the failure clearly and attempt to recover independently without affecting the other listener.
 - **FR-016**: All existing tests MUST continue to pass without modification (backward compatibility).
-- **FR-017**: All new files MUST include SPDX license headers (`SPDX-FileCopyrightText: 2026 Andrew Grimberg`, `SPDX-License-Identifier: Apache-2.0`).
+- **FR-017**: All new files MUST include valid SPDX license headers, including `SPDX-FileCopyrightText: <YEAR OR YEARS> Andrew Grimberg` and `SPDX-License-Identifier: Apache-2.0`.
 
 ### Key Entities
 
