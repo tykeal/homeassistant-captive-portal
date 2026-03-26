@@ -52,7 +52,8 @@ FR-028 and User Story 4 (SC-3) require that after logout, the browser's back but
 ### Implementation
 In `SecurityHeadersMiddleware.dispatch()`, add a path check:
 ```python
-if request.url.path.startswith("/admin"):
+path = request.scope.get("path", request.url.path)
+if path.startswith("/admin"):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"

@@ -230,7 +230,8 @@ All admin HTML routes use the shared `require_admin` dependency (wired via `Sess
 This contract describes the externally observable behavior (unauthenticated `GET /admin/*` requests are redirected with `303` to the login page), while allowing the implementation to centralize the low-level `401` behavior in `require_admin` and a shared exception handler.
 
 ### Cache-Control Headers (FR-028)
-Applied by `SecurityHeadersMiddleware` to all responses where `request.url.path.startswith("/admin")`:
+Applied by `SecurityHeadersMiddleware` to all responses where the logical application path
+(e.g. `request.scope.get("path", request.url.path)`) starts with `"/admin"`:
 ```
 Cache-Control: no-store, no-cache, must-revalidate
 Pragma: no-cache
