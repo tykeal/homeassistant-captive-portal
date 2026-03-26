@@ -20,7 +20,7 @@ As a portal administrator, I want to view all current access grants and be able 
 
 **Acceptance Scenarios**:
 
-1. **Given** an authenticated admin, **When** they navigate to the Grants page, **Then** they see a table of all access grants showing MAC address, status, booking reference, start time, end time, and available actions.
+1. **Given** an authenticated admin, **When** they navigate to the Grants page, **Then** they see a table of all access grants showing MAC address, status, booking reference, voucher code, start time, end time, and available actions.
 2. **Given** an authenticated admin viewing the Grants page, **When** they select a status filter (e.g., "Active"), **Then** the table updates to show only grants matching that status.
 3. **Given** an authenticated admin viewing an active grant, **When** they choose to extend it and specify a duration, **Then** the grant's end time is updated and the page confirms the change.
 4. **Given** an authenticated admin viewing an active or pending grant, **When** they choose to revoke it, **Then** the grant status changes to "Revoked" and the page confirms the action.
@@ -75,6 +75,7 @@ As a portal administrator, I want to log out of the admin interface so that my s
 1. **Given** an authenticated admin on any admin page, **When** they click the Logout button, **Then** their session is terminated and they are redirected to the login page.
 2. **Given** a user who has just logged out, **When** they attempt to navigate directly to any admin page (e.g., Dashboard, Grants), **Then** they are redirected to the login page.
 3. **Given** a user who has just logged out, **When** they press the browser's back button, **Then** they do not see cached admin content and are redirected to the login page.
+4. **Given** any authenticated admin page or the Logout response, **When** the HTTP response is sent to the browser, **Then** it includes headers (or equivalent configuration) that prevent caching of admin content (for example, `Cache-Control: no-store, no-cache, must-revalidate`, `Pragma: no-cache`, and `Expires: 0`), so that after logout the browser back button cannot display stale admin content and this behavior can be verified by inspecting the response headers.
 
 ---
 
@@ -160,6 +161,6 @@ As a portal administrator, I want to log out of the admin interface so that my s
 - No voucher template currently exists; a new `vouchers.html` template will need to be created.
 - The existing `admin.css` stylesheet provides sufficient styling classes (tables, badges, forms, buttons) for the new pages; only minor CSS additions may be needed.
 - New external JavaScript files will be created for pages that need dynamic behavior (e.g., API fetching, progressive enhancement).
-- The logout mechanism targets the existing `/api/admin/auth/logout` endpoint (or `/api/admin/logout` as referenced in the nav); the correct endpoint path will be confirmed during implementation.
+- The logout mechanism MUST call the `/api/admin/auth/logout` endpoint; if the backend currently exposes a different path (e.g., `/api/admin/logout`), this is a requirements gap that MUST be resolved by aligning the backend to this contract or updating this spec before implementation begins.
 - Activity log data for the Dashboard's recent activity feed is available from an existing service or can be derived from existing data.
 - The admin interface is used by a small number of administrators (typically 1-5), so high-concurrency optimization is not a concern.
