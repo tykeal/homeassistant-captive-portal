@@ -3,6 +3,10 @@
 """Captive portal detection routes.
 
 Handles common captive portal detection URLs and redirects to authorization form.
+Both the ingress and guest listeners mount this router.  When running on the
+guest listener, ``request.app.state.guest_external_url`` provides the external
+redirect base; on the ingress listener that attribute is absent and the ingress
+``root_path`` is used instead.
 """
 
 from fastapi import APIRouter, Request
@@ -22,6 +26,25 @@ DETECTION_URLS = [
 ]
 
 
+def _resolve_redirect_base(request: Request) -> str:
+    """Determine the redirect base URL for captive detection.
+
+    On the guest listener, ``request.app.state.guest_external_url``
+    carries the administrator-configured external URL.  On the ingress
+    listener, the ASGI ``root_path`` (set by HA ingress proxy) is used.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Returns:
+        Base URL string to prepend to ``/guest/authorize``.
+    """
+    guest_url: str = getattr(request.app.state, "guest_external_url", "")
+    if guest_url:
+        return guest_url
+    return request.scope.get("root_path", "") or ""
+
+
 @router.get("/generate_204")
 @router.get("/gen_204")
 async def android_captive_detect(request: Request) -> Response:
@@ -33,8 +56,8 @@ async def android_captive_detect(request: Request) -> Response:
     Returns:
         RedirectResponse: Redirect to authorization form (triggers captive portal UI)
     """
-    root = request.scope.get("root_path", "")
-    return RedirectResponse(url=f"{root}/guest/authorize", status_code=302)
+    base = _resolve_redirect_base(request)
+    return RedirectResponse(url=f"{base}/guest/authorize", status_code=302)
 
 
 @router.get("/connecttest.txt")
@@ -48,8 +71,8 @@ async def windows_captive_detect(request: Request) -> Response:
     Returns:
         RedirectResponse: Redirect to authorization form
     """
-    root = request.scope.get("root_path", "")
-    return RedirectResponse(url=f"{root}/guest/authorize", status_code=302)
+    base = _resolve_redirect_base(request)
+    return RedirectResponse(url=f"{base}/guest/authorize", status_code=302)
 
 
 @router.get("/hotspot-detect.html")
@@ -63,8 +86,8 @@ async def apple_captive_detect(request: Request) -> Response:
     Returns:
         RedirectResponse: Redirect to authorization form
     """
-    root = request.scope.get("root_path", "")
-    return RedirectResponse(url=f"{root}/guest/authorize", status_code=302)
+    base = _resolve_redirect_base(request)
+    return RedirectResponse(url=f"{base}/guest/authorize", status_code=302)
 
 
 @router.get("/success.txt")
@@ -77,5 +100,5 @@ async def firefox_captive_detect(request: Request) -> Response:
     Returns:
         RedirectResponse: Redirect to authorization form
     """
-    root = request.scope.get("root_path", "")
-    return RedirectResponse(url=f"{root}/guest/authorize", status_code=302)
+    base = _resolve_redirect_base(request)
+    return RedirectResponse(url=f"{base}/guest/authorize", status_code=302)

@@ -14,6 +14,11 @@ SPDX-License-Identifier = "Apache-2.0"
 SPDX-FileCopyrightText = "2025 Andrew Grimberg <tykeal@bardicgrove.org>"
 
 [[annotations]]
+path = ["addon/rootfs/etc/s6-overlay/s6-rc.d/captive-portal-guest/type", "addon/rootfs/etc/s6-overlay/s6-rc.d/captive-portal-guest/dependencies.d/**", "addon/rootfs/etc/s6-overlay/s6-rc.d/user/contents.d/captive-portal-guest"]
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileCopyrightText = "2026 Andrew Grimberg <tykeal@bardicgrove.org>"
+
+[[annotations]]
 path = [".specify/**", ".github/*/speckit.**", ".vscode/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Andrew Grimberg <tykeal@bardicgrove.org>"

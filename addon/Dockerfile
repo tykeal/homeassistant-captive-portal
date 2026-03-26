@@ -24,6 +24,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 # s6-overlay service definitions and rootfs overlay
 COPY rootfs /
-RUN chmod +x /etc/s6-overlay/s6-rc.d/captive-portal/run
+RUN chmod +x /etc/s6-overlay/s6-rc.d/captive-portal/run && \
+    chmod +x /etc/s6-overlay/s6-rc.d/captive-portal-guest/run
 
 EXPOSE 8080
+EXPOSE 8099

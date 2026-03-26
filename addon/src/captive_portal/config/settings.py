@@ -42,6 +42,7 @@ _ADDON_OPTION_MAP: dict[str, str] = {
     "log_level": "log_level",
     "session_idle_timeout": "session_idle_minutes",
     "session_max_duration": "session_max_hours",
+    "guest_external_url": "guest_external_url",
 }
 
 # Mapping from env var names to AppSettings field names
@@ -50,12 +51,60 @@ _ENV_VAR_MAP: dict[str, str] = {
     "CP_DB_PATH": "db_path",
     "CP_SESSION_IDLE_TIMEOUT": "session_idle_minutes",
     "CP_SESSION_MAX_DURATION": "session_max_hours",
+    "CP_GUEST_EXTERNAL_URL": "guest_external_url",
 }
 
 
 # Reverse maps: field name → addon option key / env var name
 _FIELD_TO_ADDON_KEY: dict[str, str] = {v: k for k, v in _ADDON_OPTION_MAP.items()}
 _FIELD_TO_ENV_KEY: dict[str, str] = {v: k for k, v in _ENV_VAR_MAP.items()}
+
+
+def _validate_positive_int(value: Any) -> bool:
+    """Check if *value* is a positive integer (or string representation).
+
+    Args:
+        value: Candidate value.
+
+    Returns:
+        True if the value is a positive integer.
+    """
+    if type(value) is int:
+        return value >= 1
+    if isinstance(value, str) and value.isdigit():
+        return int(value) >= 1
+    return False
+
+
+def _validate_guest_url(value: Any) -> bool:
+    """Check if *value* is a valid guest external URL or empty string.
+
+    Args:
+        value: Candidate value.
+
+    Returns:
+        True if the value is a valid guest external URL.
+    """
+    if not isinstance(value, str):
+        return False
+    stripped = value.strip()
+    if stripped == "":
+        return True
+
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(stripped)
+    if parts.scheme not in ("http", "https"):
+        return False
+    if not parts.netloc:
+        return False
+    if parts.query or parts.fragment:
+        return False
+    if parts.path and parts.path != "/":
+        return False
+    if stripped.endswith("/"):
+        return False
+    return True
 
 
 def _validate_field(field: str, value: Any) -> bool:
@@ -72,18 +121,10 @@ def _validate_field(field: str, value: Any) -> bool:
         return isinstance(value, str) and value.lower() in _VALID_LOG_LEVELS
     if field == "db_path":
         return isinstance(value, str) and len(value) > 0
-    if field == "session_idle_minutes":
-        if type(value) is int:
-            return value >= 1
-        if isinstance(value, str) and value.isdigit():
-            return int(value) >= 1
-        return False
-    if field == "session_max_hours":
-        if type(value) is int:
-            return value >= 1
-        if isinstance(value, str) and value.isdigit():
-            return int(value) >= 1
-        return False
+    if field in ("session_idle_minutes", "session_max_hours"):
+        return _validate_positive_int(value)
+    if field == "guest_external_url":
+        return _validate_guest_url(value)
     return False
 
 
@@ -101,6 +142,8 @@ def _coerce_field(field: str, value: Any) -> Any:
         return int(value)
     if field == "log_level":
         return str(value).lower()
+    if field == "guest_external_url":
+        return str(value).strip()
     return value
 
 
@@ -111,6 +154,7 @@ class AppSettings(BaseModel):
     db_path: str = "/data/captive_portal.db"
     session_idle_minutes: int = 30
     session_max_hours: int = 8
+    guest_external_url: str = ""
 
     @classmethod
     def load(cls, options_path: str = "/data/options.json") -> AppSettings:
@@ -140,7 +184,13 @@ class AppSettings(BaseModel):
         defaults = cls()
         resolved: dict[str, Any] = {}
 
-        for field_name in ("log_level", "db_path", "session_idle_minutes", "session_max_hours"):
+        for field_name in (
+            "log_level",
+            "db_path",
+            "session_idle_minutes",
+            "session_max_hours",
+            "guest_external_url",
+        ):
             # --- Try addon option ---
             addon_key = _FIELD_TO_ADDON_KEY.get(field_name)
             if addon_key and addon_key in addon_options:
@@ -203,6 +253,7 @@ class AppSettings(BaseModel):
         log.info("  db_path = %s", self.db_path)
         log.info("  session_idle_minutes = %d", self.session_idle_minutes)
         log.info("  session_max_hours = %d", self.session_max_hours)
+        log.info("  guest_external_url = %s", self.guest_external_url or "(not configured)")
 
     def validate_db_path(self) -> None:
         """Validate that the database path's parent directory exists and is writable.
