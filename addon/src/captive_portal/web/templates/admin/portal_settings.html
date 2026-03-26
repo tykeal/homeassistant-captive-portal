@@ -154,24 +154,6 @@ SPDX-License-Identifier: Apache-2.0
         </div>
     </footer>
 
-    <script>
-        // Client-side validation
-        document.getElementById('portal-config-form').addEventListener('submit', function(e) {
-            const attempts = parseInt(document.getElementById('rate_limit_attempts').value);
-            const window = parseInt(document.getElementById('rate_limit_window_seconds').value);
-
-            if (attempts < 1 || attempts > 1000) {
-                e.preventDefault();
-                alert('Rate limit attempts must be between 1 and 1000');
-                return false;
-            }
-
-            if (window < 1 || window > 3600) {
-                e.preventDefault();
-                alert('Rate limit window must be between 1 and 3600 seconds');
-                return false;
-            }
-        });
-    </script>
+    <script src="{{ rp }}/static/themes/default/admin-portal-settings.js"></script>
 </body>
 </html>
