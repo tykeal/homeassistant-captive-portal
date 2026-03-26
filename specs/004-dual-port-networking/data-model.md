@@ -47,7 +47,7 @@ which `APIRouter` instances are mounted in each FastAPI app.
 
 ### Ingress App (`create_app()` — existing, unchanged)
 
-Mounts **all** routers.  This is the backward-compatible behavior.
+Mounts the following routers.  This is the backward-compatible behavior.
 
 | Router | Prefix | Category |
 |--------|--------|----------|

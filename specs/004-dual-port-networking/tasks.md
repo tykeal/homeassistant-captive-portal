@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 **Input**: Design documents from `/specs/004-dual-port-networking/`
 **Prerequisites**: plan.md (required), spec.md (required), research.md, data-model.md, contracts/guest-api.md, quickstart.md
 
-**Tests**: TDD is a NON-NEGOTIABLE constitution principle for this project. Tests are written FIRST (RED), implementation makes them pass (GREEN), then refactor.
+**Tests**: TDD is a NON-NEGOTIABLE constitutional principle for this project. Tests are written FIRST (RED), implementation makes them pass (GREEN), then refactor.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -236,7 +236,8 @@ SPDX-License-Identifier: Apache-2.0
     - `GET /admin/docs` → 404
     - `GET /admin/redoc` → 404
     - `GET /admin/integrations` → 404
-    - `POST /api/admin/auth/login` → 404 (or 405 from method mismatch, but path must not exist)
+    - `POST /api/admin/auth/login` → 404
+    - `GET /api/admin/auth/login` → 404
     - `GET /api/admin/accounts` → 404
     - `GET /api/grants` → 404
     - `GET /api/grants/` → 404
@@ -519,4 +520,4 @@ Task T017: "Write guest listener health integration tests (US6)"
 - Commit after each task or logical group with DCO sign-off and Conventional Commits
 - Stop at any checkpoint to validate independently
 - The ingress app (`create_app()`) is NEVER modified — only `captive_detect.py`, `settings.py`, and `security_headers.py` are updated
-- Reference `rentalsync-bridge` repo at `/home/tykeal/repos/personal/homeassistant/rentalsync-bridge` for s6-overlay multi-service patterns
+- Reference the `rentalsync-bridge` repository for s6-overlay multi-service patterns
