@@ -63,7 +63,7 @@ A malicious actor or curious guest discovers the guest portal's external URL and
 
 ### User Story 4 — Addon Administrator Configures Guest Port (Priority: P3)
 
-An addon administrator installs or updates the captive portal addon. In the addon configuration, they can set the guest portal's external port number. They configure the Omada controller to redirect captive portal clients to this port on the Home Assistant host's IP address. The addon starts both listeners successfully.
+An addon administrator installs or updates the captive portal addon. In the addon configuration, they can adjust the guest portal's host-mapped port via the Home Assistant addon `ports` mapping in the HA UI. They configure the Omada controller to redirect captive portal clients to this port on the Home Assistant host's IP address. The addon starts both listeners successfully.
 
 **Why this priority**: Configuration flexibility is important but secondary to core functionality. The port must be configurable since network environments vary, but a sensible default allows the feature to work out of the box.
 
@@ -71,9 +71,9 @@ An addon administrator installs or updates the captive portal addon. In the addo
 
 **Acceptance Scenarios**:
 
-1. **Given** the addon is installed with default configuration, **When** the addon starts, **Then** both the ingress listener (port 8080) and the guest listener (port 8099, the default guest port) start successfully.
-2. **Given** the addon configuration specifies a custom guest port number, **When** the addon starts, **Then** the guest listener binds to the configured port.
-3. **Given** the addon is running with a configured guest port, **When** the administrator updates the port number and restarts the addon, **Then** the guest listener starts on the new port.
+1. **Given** the addon is installed with default configuration, **When** the addon starts, **Then** both the ingress listener (port 8080) and the guest listener (container port 8099, the default guest port) start successfully.
+2. **Given** the addon's `ports` mapping has been changed to map a custom host port to the guest listener's container port, **When** the addon starts, **Then** the guest portal is reachable on the custom host-mapped port.
+3. **Given** the addon is running with a custom host-mapped guest port, **When** the administrator updates the host port in the HA addon `ports` mapping and restarts the addon, **Then** the guest portal is reachable on the new host port while the container bind port remains fixed.
 4. **Given** the addon configuration, **When** the administrator views the port mapping settings, **Then** the guest port is clearly labeled and its purpose is described.
 
 ---
@@ -144,7 +144,7 @@ An operations team or monitoring system checks the health of the captive portal 
 ### Key Entities
 
 - **Ingress Listener**: The network listener bound to port 8080, served behind the Home Assistant ingress proxy. Carries all admin routes and (for backward compatibility) guest routes. Authenticated through HA's auth proxy.
-- **Guest Listener**: The network listener bound to a configurable port (default 8099), directly accessible on the local network. Carries only guest-facing routes (authorization, captive detection, guest API). No HA authentication required.
+- **Guest Listener**: The network listener bound to a fixed container port (`8099`), with the host-mapped port configurable via the HA addon `ports` mapping. Directly accessible on the local network. Carries only guest-facing routes (authorization, captive detection, guest API). No HA authentication required.
 - **Route Policy**: The mapping that determines which routes are available on which listener. Admin routes are exclusively on the ingress listener; guest routes are on both; health endpoints are on both.
 - **External URL Configuration**: The addon setting that specifies the guest portal's externally reachable address (host/IP and port), used for generating correct redirect URLs in captive portal flows.
 - **Captive Detection Endpoint**: A set of well-known URLs that operating systems probe to detect captive portals. These must redirect to the guest authorization page and be available on the guest listener.
