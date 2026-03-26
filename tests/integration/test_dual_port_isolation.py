@@ -3,18 +3,54 @@
 """Integration tests for complete dual-port route isolation.
 
 Verifies that admin routes exist on the ingress app but return 404 on
-the guest app, and that guest routes exist on both listeners.
+the guest app, and that guest routes exist on both listeners.  Admin
+routes are derived dynamically from the ingress app so the test suite
+automatically covers any new admin routers.
 """
 
 from collections.abc import Generator
 
 import pytest
 from fastapi import FastAPI
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from captive_portal.app import create_app
 from captive_portal.config.settings import AppSettings
 from captive_portal.guest_app import create_guest_app
+
+
+def _admin_only_get_paths() -> list[str]:
+    """Return GET paths present on admin app but not guest app."""
+    settings = AppSettings(db_path=":memory:")
+    admin_app = create_app(settings=settings)
+    guest_app = create_guest_app(settings=settings)
+
+    def _get_paths(app: FastAPI) -> set[str]:
+        """Extract concrete GET paths from an app's routes."""
+        paths: set[str] = set()
+        for route in app.routes:
+            if isinstance(route, APIRoute) and "GET" in (route.methods or set()):
+                concrete = route.path.replace("{grant_id}", "00000000-0000-0000-0000-000000000000")
+                concrete = concrete.replace("{admin_id}", "00000000-0000-0000-0000-000000000000")
+                concrete = concrete.replace(
+                    "{integration_id}", "00000000-0000-0000-0000-000000000000"
+                )
+                concrete = concrete.replace("{config_id}", "00000000-0000-0000-0000-000000000000")
+                paths.add(concrete)
+        return paths
+
+    return sorted(_get_paths(admin_app) - _get_paths(guest_app))
+
+
+ADMIN_ROUTES = _admin_only_get_paths()
+
+# Guest routes: should exist on both
+GUEST_ROUTES = [
+    "/guest/authorize",
+    "/generate_204",
+    "/api/health",
+]
 
 
 @pytest.fixture
@@ -47,22 +83,6 @@ def guest_client(guest_app: FastAPI) -> Generator[TestClient, None, None]:
     """Test client for guest app (with lifespan)."""
     with TestClient(guest_app) as client:
         yield client
-
-
-# Admin routes: should exist on ingress, 404 on guest
-ADMIN_ROUTES = [
-    "/admin/portal-settings/",
-    "/api/admin/auth/login",
-    "/api/grants",
-    "/api/vouchers",
-]
-
-# Guest routes: should exist on both
-GUEST_ROUTES = [
-    "/guest/authorize",
-    "/generate_204",
-    "/api/health",
-]
 
 
 class TestDualPortAdminIsolation:
@@ -110,6 +130,6 @@ class TestDualPortResponseFormat:
 
     def test_guest_404_is_standard_json(self, guest_client: TestClient) -> None:
         """Guest app 404 for admin route returns standard FastAPI JSON."""
-        response = guest_client.get("/api/grants")
+        response = guest_client.get("/api/grants/")
         assert response.status_code == 404
         assert response.json() == {"detail": "Not Found"}

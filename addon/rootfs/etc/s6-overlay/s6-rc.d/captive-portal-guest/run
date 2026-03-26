@@ -11,10 +11,6 @@ export CP_GUEST_EXTERNAL_URL="${guest_external_url}"
 bashio::log.info "Starting guest captive portal listener on port 8099..."
 if [ -n "${guest_external_url}" ]; then
     bashio::log.info "Guest external URL: ${guest_external_url}"
-else
-    bashio::log.warning \
-        "guest_external_url is not configured. " \
-        "Captive detection redirects will use relative paths."
 fi
 
 exec python -m uvicorn \

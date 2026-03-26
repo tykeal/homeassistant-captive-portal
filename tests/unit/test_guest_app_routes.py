@@ -1,15 +1,58 @@
 # SPDX-FileCopyrightText: 2026 Andrew Grimberg
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests verifying all admin routes return 404 on guest app."""
+"""Unit tests verifying all admin routes return 404 on guest app.
+
+Admin routes are derived dynamically from create_app() so the test
+suite automatically covers any new admin routers added in the future.
+"""
 
 from collections.abc import Generator
 
 import pytest
 from fastapi import FastAPI
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
+from captive_portal.app import create_app
 from captive_portal.config.settings import AppSettings
 from captive_portal.guest_app import create_guest_app
+
+
+def _admin_only_routes() -> list[tuple[str, str]]:
+    """Return (method, path) pairs present on admin app but not guest app.
+
+    Parameterised path segments (e.g. ``{grant_id}``) are replaced with a
+    placeholder value so that the test client can issue a real request.
+    """
+    settings = AppSettings(db_path=":memory:")
+    admin_app = create_app(settings=settings)
+    guest_app = create_guest_app(settings=settings)
+
+    def _route_set(app: FastAPI) -> set[tuple[str, str]]:
+        """Extract (method, path) pairs from an app's routes."""
+        routes: set[tuple[str, str]] = set()
+        for route in app.routes:
+            if isinstance(route, APIRoute):
+                for method in route.methods or []:
+                    routes.add((method.upper(), route.path))
+        return routes
+
+    admin_routes = _route_set(admin_app)
+    guest_routes = _route_set(guest_app)
+    admin_only = sorted(admin_routes - guest_routes)
+
+    result: list[tuple[str, str]] = []
+    for method, path in admin_only:
+        concrete = path.replace("{grant_id}", "00000000-0000-0000-0000-000000000000")
+        concrete = concrete.replace("{admin_id}", "00000000-0000-0000-0000-000000000000")
+        concrete = concrete.replace("{integration_id}", "00000000-0000-0000-0000-000000000000")
+        concrete = concrete.replace("{config_id}", "00000000-0000-0000-0000-000000000000")
+        result.append((method, concrete))
+    return result
+
+
+ADMIN_ONLY_ROUTES = _admin_only_routes()
+ADMIN_ONLY_IDS = [f"{m} {p}" for m, p in ADMIN_ONLY_ROUTES]
 
 
 @pytest.fixture
@@ -25,67 +68,27 @@ def guest_client(guest_app: FastAPI) -> Generator[TestClient, None, None]:
         yield client
 
 
-# All admin routes that MUST return 404 on the guest app
-ADMIN_GET_ROUTES = [
-    "/admin/portal-settings/",
-    "/admin/docs",
-    "/admin/redoc",
-    "/admin/integrations/",
-    "/admin/login",
-    "/api/admin/auth/login",
-    "/api/admin/auth/status",
-    "/api/admin/accounts",
-    "/api/admin/portal-config",
-    "/api/admin/audit/config",
-    "/api/grants/",
-    "/api/vouchers",
-    "/api/integrations",
-]
-
-ADMIN_POST_ROUTES = [
-    "/api/admin/auth/login",
-    "/api/admin/auth/bootstrap",
-    "/api/vouchers/",
-]
-
-ADMIN_PUT_ROUTES = [
-    "/api/admin/portal-config",
-    "/api/admin/audit/config",
-]
-
-
 class TestAdminRoutesReturn404OnGuest:
-    """Verify all admin routes return 404 Not Found on guest listener."""
+    """Verify every admin-only route returns 404 Not Found on guest listener."""
 
-    @pytest.mark.parametrize("path", ADMIN_GET_ROUTES)
-    def test_admin_get_route_returns_404(self, guest_client: TestClient, path: str) -> None:
-        """Admin GET route returns 404 (not 401/403) on guest app."""
-        response = guest_client.get(path)
+    @pytest.mark.parametrize(("method", "path"), ADMIN_ONLY_ROUTES, ids=ADMIN_ONLY_IDS)
+    def test_admin_route_returns_404(
+        self, guest_client: TestClient, method: str, path: str
+    ) -> None:
+        """Admin route returns 404 (not 401/403) on guest app."""
+        response = guest_client.request(method, path, json={} if method != "GET" else None)
         assert response.status_code == 404, (
-            f"Expected 404 for GET {path}, got {response.status_code}"
-        )
-
-    @pytest.mark.parametrize("path", ADMIN_POST_ROUTES)
-    def test_admin_post_route_returns_404(self, guest_client: TestClient, path: str) -> None:
-        """Admin POST route returns 404 (not 401/403) on guest app."""
-        response = guest_client.post(path, json={})
-        assert response.status_code == 404, (
-            f"Expected 404 for POST {path}, got {response.status_code}"
-        )
-
-    @pytest.mark.parametrize("path", ADMIN_PUT_ROUTES)
-    def test_admin_put_route_returns_404(self, guest_client: TestClient, path: str) -> None:
-        """Admin PUT route returns 404 (not 401/403) on guest app."""
-        response = guest_client.put(path, json={})
-        assert response.status_code == 404, (
-            f"Expected 404 for PUT {path}, got {response.status_code}"
+            f"Expected 404 for {method} {path}, got {response.status_code}"
         )
 
 
 class TestAdminRouteResponseBodies:
     """Verify 404 responses do not contain authentication-related content."""
 
-    @pytest.mark.parametrize("path", ADMIN_GET_ROUTES[:3])
+    @pytest.mark.parametrize(
+        "path",
+        ["/admin/portal-settings/", "/admin/docs", "/admin/redoc"],
+    )
     def test_no_auth_content_in_404(self, guest_client: TestClient, path: str) -> None:
         """404 response body does not contain login/auth prompts."""
         response = guest_client.get(path)
