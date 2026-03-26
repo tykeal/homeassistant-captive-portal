@@ -193,10 +193,9 @@ Each voucher in the list shows:
 None required (CSRF-exempt). The form in the nav bar submits with no hidden fields.
 
 ### Behavior
-1. Read `session_id` from `request.state`
-2. If session exists: destroy session via `session_store.delete()`, delete session cookie
-3. If no session: no-op (safe)
-4. Redirect to `/admin/login`
+1. Invoke the existing JSON logout handler (`POST {root_path}/api/admin/auth/logout`) using the current request context (including cookies/session)
+2. Treat both "session destroyed" and "no active session" responses from the JSON endpoint as successful; do not surface errors to the user
+3. Regardless of the JSON endpoint result, redirect with `303 See Other` to `{root_path}/admin/login`
 
 ### Response
 

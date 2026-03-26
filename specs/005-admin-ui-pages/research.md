@@ -8,16 +8,15 @@ SPDX-License-Identifier: Apache-2.0
 ## R1: Logout Route Architecture — `/admin/logout` vs `/api/admin/auth/logout`
 
 ### Decision
-Create a dedicated `/admin/logout` HTML route (`admin_logout_ui.py`) that internally calls the existing session store to destroy the session, then issues a `303 See Other` redirect to `/admin/login`. This route is CSRF-exempt per FR-019.
+Create a dedicated `/admin/logout` HTML route (`admin_logout_ui.py`) that invokes the existing `/api/admin/auth/logout` endpoint to terminate the session, then issues a `303 See Other` redirect to `/admin/login`. This route is CSRF-exempt per FR-019.
 
 ### Rationale
-The existing logout endpoint at `/api/admin/auth/logout` returns a JSON response (`{"message": "Logged out successfully"}`). This works for API consumers but fails for browser-based HTML form submissions — the user sees raw JSON instead of being redirected to the login page. The spec requires (FR-019) that the nav bar logout form submits a POST to `/admin/logout`, not directly to the API.
+The existing logout endpoint at `/api/admin/auth/logout` returns a JSON response (`{"message": "Logged out successfully"}`). This works for API consumers but fails for browser-based HTML form submissions — the user sees raw JSON instead of being redirected to the login page. The spec requires (FR-019) that the nav bar logout form submits a POST to `/admin/logout`, not directly to the API. The spec also requires (line 166) that the HTML logout handler MUST invoke the existing `/api/admin/auth/logout` endpoint to keep logout behavior centralized.
 
 The HTML logout handler will:
-1. Read `session_id` from `request.state` (set by `SessionMiddleware`)
-2. Call `session_store.delete(session_id)` to destroy the session
-3. Delete the session cookie via `response.delete_cookie(session_config.cookie_name)`
-4. Redirect to `{root_path}/admin/login` with HTTP 303
+1. Invoke the existing JSON logout handler (`POST /api/admin/auth/logout`) using the current request context
+2. Treat both "session destroyed" and "no active session" responses as successful
+3. Redirect to `{root_path}/admin/login` with HTTP 303
 
 This is safe to implement without CSRF because logout is idempotent and cannot be exploited for state changes beyond ending the user's own session.
 

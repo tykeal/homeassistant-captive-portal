@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Summary
 
-Build three admin UI pages — Dashboard, Grants, Vouchers — and wire up proper Logout, completing the admin interface. All pages use server-side rendered Jinja2 templates with HTML form POST actions (CSRF-protected) as the primary interaction mechanism, with optional progressive-enhancement JavaScript. Templates follow the established nav/layout pattern from the existing Settings and Integrations pages. A new `/admin/logout` HTML route performs logout by deleting the current session from `SessionStore`, clearing the auth cookie, and issuing a browser-friendly redirect, without calling the `/api/admin/auth/logout` API. Cache-control headers are added to all admin responses to prevent post-logout back-button content leakage.
+Build three admin UI pages — Dashboard, Grants, Vouchers — and wire up proper Logout, completing the admin interface. All pages use server-side rendered Jinja2 templates with HTML form POST actions (CSRF-protected) as the primary interaction mechanism, with optional progressive-enhancement JavaScript. Templates follow the established nav/layout pattern from the existing Settings and Integrations pages. A new `/admin/logout` HTML route invokes the existing `/api/admin/auth/logout` API endpoint and issues a browser-friendly redirect to the login page. Cache-control headers are added to all admin responses to prevent post-logout back-button content leakage.
 
 ## Technical Context
 
