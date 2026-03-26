@@ -167,31 +167,39 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         admin_accounts,
         admin_auth,
         admin_login_ui,
+        admin_logout_ui,
         audit_config,
         captive_detect,
+        dashboard_ui,
         docs,
         grants,
+        grants_ui,
         guest_portal,
         health,
         integrations_ui,
         portal_config,
         portal_settings_ui,
         vouchers,
+        vouchers_ui,
     )
     from captive_portal import middleware
 
     app.include_router(admin_accounts.router)
     app.include_router(admin_auth.router)
     app.include_router(admin_login_ui.router)
+    app.include_router(admin_logout_ui.router)
     app.include_router(audit_config.router)
     app.include_router(captive_detect.router)
+    app.include_router(dashboard_ui.router)
     app.include_router(docs.router)
     app.include_router(grants.router)
+    app.include_router(grants_ui.router)
     app.include_router(guest_portal.router)
     app.include_router(health.router)
     app.include_router(portal_config.router)
     app.include_router(portal_settings_ui.router)
     app.include_router(vouchers.router)
+    app.include_router(vouchers_ui.router)
     app.include_router(integrations_ui.router)
 
     # HA ingress opens "/" — redirect to the admin login page so

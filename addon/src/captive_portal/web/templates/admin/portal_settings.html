@@ -21,8 +21,7 @@ SPDX-License-Identifier: Apache-2.0
                 <a href="{{ rp }}/admin/vouchers" class="nav-link">Vouchers</a>
                 <a href="{{ rp }}/admin/integrations" class="nav-link">Integrations</a>
                 <a href="{{ rp }}/admin/portal-settings" class="nav-link active">Settings</a>
-                <form action="{{ rp }}/api/admin/logout" method="POST" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <form action="{{ rp }}/admin/logout" method="POST" style="display: inline;">
                     <button type="submit" class="btn-link">Logout</button>
                 </form>
             </nav>

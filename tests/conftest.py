@@ -90,23 +90,31 @@ def app(db_engine: Engine) -> FastAPI:
     from captive_portal.api.routes import (
         admin_accounts,
         admin_auth,
+        admin_logout_ui,
+        dashboard_ui,
         docs,
         grants,
+        grants_ui,
         guest_portal,
         health,
         integrations_ui,
         portal_config,
         vouchers,
+        vouchers_ui,
     )
 
     test_app.include_router(admin_accounts.router)
     test_app.include_router(admin_auth.router)
+    test_app.include_router(admin_logout_ui.router)
+    test_app.include_router(dashboard_ui.router)
     test_app.include_router(docs.router)
     test_app.include_router(grants.router)
+    test_app.include_router(grants_ui.router)
     test_app.include_router(guest_portal.router)
     test_app.include_router(health.router)
     test_app.include_router(portal_config.router)
     test_app.include_router(vouchers.router)
+    test_app.include_router(vouchers_ui.router)
     test_app.include_router(integrations_ui.router)
 
     # Override the get_session dependency to use the test database

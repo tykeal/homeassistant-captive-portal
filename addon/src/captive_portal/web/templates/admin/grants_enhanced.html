@@ -21,8 +21,7 @@ SPDX-License-Identifier: Apache-2.0
                 <a href="{{ rp }}/admin/vouchers" class="nav-link">Vouchers</a>
                 <a href="{{ rp }}/admin/integrations" class="nav-link">Integrations</a>
                 <a href="{{ rp }}/admin/portal-settings" class="nav-link">Settings</a>
-                <form action="{{ rp }}/api/admin/logout" method="POST" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <form action="{{ rp }}/admin/logout" method="POST" style="display: inline;">
                     <button type="submit" class="btn-link">Logout</button>
                 </form>
             </nav>
@@ -31,6 +30,18 @@ SPDX-License-Identifier: Apache-2.0
 
     <main class="container">
         <h2>Access Grants</h2>
+
+        {% if success_message %}
+        <div class="alert alert-success">
+            {{ success_message }}
+        </div>
+        {% endif %}
+
+        {% if error_message %}
+        <div class="alert alert-error">
+            {{ error_message }}
+        </div>
+        {% endif %}
 
         <section class="filters">
             <form method="GET" action="{{ rp }}/admin/grants" style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
@@ -66,6 +77,7 @@ SPDX-License-Identifier: Apache-2.0
                     </tr>
                 </thead>
                 <tbody>
+                    {% if grants %}
                     {% for grant in grants %}
                     <tr>
                         <td><code>{{ grant.mac }}</code></td>
@@ -98,7 +110,7 @@ SPDX-License-Identifier: Apache-2.0
                         <td>{{ grant.start_utc.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>{{ grant.end_utc.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>
-                            {% if grant.grace_minutes %}
+                            {% if grant.grace_minutes is defined and grant.grace_minutes %}
                                 {{ grant.grace_minutes }} min
                             {% else %}
                                 <em>-</em>
@@ -121,6 +133,11 @@ SPDX-License-Identifier: Apache-2.0
                         </td>
                     </tr>
                     {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="empty-state">No grants found for the selected filter.</td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </section>
@@ -162,5 +179,7 @@ SPDX-License-Identifier: Apache-2.0
             color: #383d41;
         }
     </style>
+
+    <script src="{{ rp }}/static/themes/default/admin-grants.js"></script>
 </body>
 </html>
