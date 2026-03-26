@@ -10,7 +10,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, status
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from captive_portal.config.settings import AppSettings
@@ -190,6 +191,27 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(portal_settings_ui.router)
     app.include_router(vouchers.router)
     app.include_router(integrations_ui.router)
+
+    # HA ingress opens "/" — redirect to the admin portal-settings page.
+    @app.get("/")
+    async def root_redirect(request: Request) -> RedirectResponse:
+        """Redirect the root path to the admin portal-settings page.
+
+        Home Assistant ingress opens the sidebar panel at ``/`` which has
+        no handler.  This redirect sends the user to the admin
+        portal-settings page, respecting the ingress ``root_path``.
+
+        Args:
+            request: Incoming HTTP request.
+
+        Returns:
+            303 redirect to the admin portal-settings page.
+        """
+        root = request.scope.get("root_path", "")
+        return RedirectResponse(
+            url=f"{root}/admin/portal-settings/",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     # Example protected listing endpoint placeholder (no real data yet)
 
