@@ -182,6 +182,58 @@ class TestGuestExternalUrlValidation:
         finally:
             os.unlink(path)
 
+    def test_invalid_url_no_host_falls_to_default(self, caplog: pytest.LogCaptureFixture) -> None:
+        """URL with no host (e.g. http://) is rejected."""
+        options: dict[str, Any] = {"guest_external_url": "http://"}
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(options, f)
+            f.flush()
+            path = f.name
+        try:
+            with patch.dict(os.environ, {}, clear=True):
+                with caplog.at_level(logging.WARNING, logger="captive_portal.config"):
+                    settings = AppSettings.load(options_path=path)
+            assert settings.guest_external_url == ""
+            assert "guest_external_url" in caplog.text
+        finally:
+            os.unlink(path)
+
+    def test_invalid_url_with_query_falls_to_default(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """URL with query string is rejected."""
+        options: dict[str, Any] = {"guest_external_url": "http://example.com?x=1"}
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(options, f)
+            f.flush()
+            path = f.name
+        try:
+            with patch.dict(os.environ, {}, clear=True):
+                with caplog.at_level(logging.WARNING, logger="captive_portal.config"):
+                    settings = AppSettings.load(options_path=path)
+            assert settings.guest_external_url == ""
+            assert "guest_external_url" in caplog.text
+        finally:
+            os.unlink(path)
+
+    def test_invalid_url_with_fragment_falls_to_default(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """URL with fragment is rejected."""
+        options: dict[str, Any] = {"guest_external_url": "http://example.com#frag"}
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(options, f)
+            f.flush()
+            path = f.name
+        try:
+            with patch.dict(os.environ, {}, clear=True):
+                with caplog.at_level(logging.WARNING, logger="captive_portal.config"):
+                    settings = AppSettings.load(options_path=path)
+            assert settings.guest_external_url == ""
+            assert "guest_external_url" in caplog.text
+        finally:
+            os.unlink(path)
+
 
 class TestGuestExternalUrlLogEffective:
     """Test that log_effective includes guest_external_url."""

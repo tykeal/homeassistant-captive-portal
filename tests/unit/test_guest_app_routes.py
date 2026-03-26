@@ -6,6 +6,7 @@ Admin routes are derived dynamically from create_app() so the test
 suite automatically covers any new admin routers added in the future.
 """
 
+import re
 from collections.abc import Generator
 
 import pytest
@@ -17,6 +18,8 @@ from captive_portal.app import create_app
 from captive_portal.config.settings import AppSettings
 from captive_portal.guest_app import create_guest_app
 
+_PLACEHOLDER = "00000000-0000-0000-0000-000000000000"
+
 
 def _admin_only_routes() -> list[tuple[str, str]]:
     """Return (method, path) pairs present on admin app but not guest app.
@@ -24,7 +27,7 @@ def _admin_only_routes() -> list[tuple[str, str]]:
     Parameterised path segments (e.g. ``{grant_id}``) are replaced with a
     placeholder value so that the test client can issue a real request.
     """
-    settings = AppSettings(db_path=":memory:")
+    settings = AppSettings(db_path=":memory:", guest_external_url="http://test.local:8099")
     admin_app = create_app(settings=settings)
     guest_app = create_guest_app(settings=settings)
 
@@ -43,10 +46,7 @@ def _admin_only_routes() -> list[tuple[str, str]]:
 
     result: list[tuple[str, str]] = []
     for method, path in admin_only:
-        concrete = path.replace("{grant_id}", "00000000-0000-0000-0000-000000000000")
-        concrete = concrete.replace("{admin_id}", "00000000-0000-0000-0000-000000000000")
-        concrete = concrete.replace("{integration_id}", "00000000-0000-0000-0000-000000000000")
-        concrete = concrete.replace("{config_id}", "00000000-0000-0000-0000-000000000000")
+        concrete = re.sub(r"\{[^}]+\}", _PLACEHOLDER, path)
         result.append((method, concrete))
     return result
 

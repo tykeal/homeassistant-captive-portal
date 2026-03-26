@@ -90,7 +90,15 @@ def _validate_guest_url(value: Any) -> bool:
     stripped = value.strip()
     if stripped == "":
         return True
-    if not (stripped.startswith("http://") or stripped.startswith("https://")):
+
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(stripped)
+    if parts.scheme not in ("http", "https"):
+        return False
+    if not parts.netloc:
+        return False
+    if parts.query or parts.fragment:
         return False
     if stripped.endswith("/"):
         return False
