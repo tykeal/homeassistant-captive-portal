@@ -113,11 +113,11 @@ As a portal administrator, I want to log out of the admin interface so that my s
 #### Vouchers
 
 - **FR-013**: System MUST serve the Vouchers management page to authenticated administrators at the `/admin/vouchers` path.
-- **FR-014**: Vouchers page MUST display a list of all vouchers showing code, duration, status, creation date, and redemption details.
+- **FR-014**: Vouchers page MUST display a list of all vouchers showing code, duration, status (the backend `VoucherStatus` value, e.g., `unused`, `active`, `expired`, `revoked`), creation date, and redemption details.
 - **FR-015**: Vouchers page MUST provide a form to create a new voucher by specifying at minimum the access duration in minutes, using an HTML form submission with `method="POST"` and CSRF protection as the primary mechanism that works when JavaScript is disabled, with optional progressive enhancement for a smoother experience.
 - **FR-016**: Voucher creation form MUST support optional fields for booking reference.
 - **FR-017**: After creating a voucher, the system MUST display the generated voucher code prominently so the administrator can copy or share it.
-- **FR-018**: Vouchers page MUST show the redemption status of each voucher (unredeemed, redeemed) and link to the associated grant if redeemed.
+- **FR-018**: Vouchers page MUST display a derived redemption status for each voucher, computed from the existing voucher model, and link to the associated grant if redeemed. For UI purposes, a voucher MUST be shown as **Unredeemed** when its `redeemed_count` is `0`, and **Redeemed** when its `redeemed_count` is greater than `0`. The UI MAY additionally display the raw `VoucherStatus` value alongside the derived redemption status.
 
 #### Logout
 
@@ -138,7 +138,7 @@ As a portal administrator, I want to log out of the admin interface so that my s
 ### Key Entities
 
 - **Grant**: Represents an active network access authorization for a specific device. Key attributes: device identifier (MAC address), status (Pending, Active, Expired, Revoked), time window (start and end), optional booking reference, optional voucher code association, optional integration association.
-- **Voucher**: Represents a pre-generated code that can be redeemed by a guest to create a grant. Key attributes: unique code, access duration, status (unredeemed, redeemed), creation timestamp, optional booking reference, redemption details.
+- **Voucher**: Represents a pre-generated code that can be redeemed by a guest to create a grant. Key attributes: unique code, access duration, status (`VoucherStatus`: unused, active, expired, revoked), creation timestamp, optional booking reference, redemption details (redeemed_count, last_redeemed_utc).
 - **Admin Session**: Represents an authenticated administrator's active login session. Key attributes: session identifier, associated admin identity, creation time.
 - **Activity Log Entry**: Represents a recorded administrative action. Key attributes: timestamp, action type, target entity type and identifier, acting administrator.
 
