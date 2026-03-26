@@ -112,6 +112,7 @@ Expires: 0
 |----------|--------|----------|
 | Success | 303 | `/admin/grants?success=Grant+revoked+successfully` |
 | Already revoked | 303 | `/admin/grants?success=Grant+revoked+successfully` (idempotent) |
+| Expired grant | 303 | `/admin/grants?success=Grant+revoked+successfully` (idempotent-like, transitions to REVOKED) |
 | Grant not found | 303 | `/admin/grants?error=Grant+not+found` |
 | Invalid CSRF | 303 | `/admin/grants?error=Invalid+CSRF+token` |
 

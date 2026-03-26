@@ -81,7 +81,7 @@ As a portal administrator, I want to log out of the admin interface so that my s
 
 ### Edge Cases
 
-- What happens when an admin tries to revoke a grant that has already expired? The system should display a clear message that the grant is already expired and cannot be revoked.
+- What happens when an admin tries to revoke a grant that has already expired? Revoking an expired grant succeeds (idempotent-like, transitions to REVOKED).
 - What happens when an admin tries to extend a revoked grant? The system should reject the extension and display an appropriate error message.
 - What happens when the backend API is unreachable while the admin is on the Dashboard? The page should display an error state rather than crashing, showing a message like "Unable to load data."
 - What happens when an admin creates a voucher while another admin simultaneously creates one? Each voucher should receive a unique code without conflicts.
@@ -121,7 +121,7 @@ As a portal administrator, I want to log out of the admin interface so that my s
 
 #### Logout
 
-- **FR-019**: The Logout button in the navigation bar MUST be implemented as an HTML `<form>` that submits an HTTP `POST` request to the `/admin/logout` path. The `/admin/logout` handler MUST terminate the administrator's session (for example, by clearing any server-side session and authentication cookies) and MAY internally call the existing `/api/admin/auth/logout` API. The logout endpoint at `/admin/logout` is intentionally CSRF-exempt as a documented exception to **FR-023**.
+- **FR-019**: The Logout button in the navigation bar MUST be implemented as an HTML `<form>` that submits an HTTP `POST` request to the `/admin/logout` path. The `/admin/logout` handler MUST terminate the administrator's session (for example, by clearing any server-side session and authentication cookies) and MUST internally call the existing `/api/admin/auth/logout` API. The logout endpoint at `/admin/logout` is intentionally CSRF-exempt as a documented exception to **FR-023**.
 - **FR-020**: After logout, the system MUST redirect the administrator to the login page.
 - **FR-021**: After logout, attempts to access any admin page MUST redirect to the login page.
 

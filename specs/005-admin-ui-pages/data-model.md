@@ -43,6 +43,7 @@ else → ACTIVE
 ```
 PENDING → REVOKED  (via revoke action)
 ACTIVE  → REVOKED  (via revoke action)
+EXPIRED → REVOKED  (via revoke action — idempotent-like)
 ACTIVE  → ACTIVE   (via extend action — end_utc increased)
 EXPIRED → ACTIVE   (via extend action — reactivated)
 REVOKED → (none)   (extend and revoke buttons disabled)
