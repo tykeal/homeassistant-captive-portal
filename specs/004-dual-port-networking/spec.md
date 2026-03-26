@@ -171,4 +171,4 @@ An operations team or monitoring system checks the health of the captive portal 
 - The default guest port of 8099 does not conflict with commonly used ports in typical Home Assistant deployments.
 - Rate limiting defaults for authorization submissions (for example, 5 requests per 60 seconds per client identifier such as MAC, not per shared egress IP) are sufficient for legitimate guest traffic in typical property sizes (up to ~50 simultaneous guests), and captive portal detection endpoints are either exempt from this limit or configured with significantly higher thresholds so legitimate bursts are not blocked.
 - The external URL for the guest portal is a static configuration (set once by the administrator) rather than dynamically discovered, since the HA host's network address is generally stable.
-- The s6-overlay service management framework used by HA addons supports running multiple long-running services with independent lifecycle management.
+- The process supervision mechanism used by Home Assistant addons supports running multiple long-running services with independent lifecycle management.

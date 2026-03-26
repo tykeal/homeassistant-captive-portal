@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
-- [x] No implementation details leak into specification
+- [x] Any necessary implementation details (e.g., specific ports, runtime tooling) are explicitly documented as constraints/assumptions, and core requirements remain technology-agnostic
 
 ## Notes
 
