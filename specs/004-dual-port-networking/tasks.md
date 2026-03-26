@@ -85,7 +85,7 @@ SPDX-License-Identifier: Apache-2.0
   - Default behavior (no args) MUST be identical to current behavior — existing tests must not break
   - Guest app will call: `SecurityHeadersMiddleware(frame_options="DENY", csp="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'")`
 
-- [ ] T006 Add guest_external_url field, validation, and port conflict check to AppSettings in addon/src/captive_portal/config/settings.py
+- [ ] T006 Add guest_external_url field and validation to AppSettings in addon/src/captive_portal/config/settings.py
   - Add `guest_external_url: str = ""` field to `AppSettings` class
   - Add `"guest_external_url": "guest_external_url"` to `_ADDON_OPTION_MAP`
   - Add `"CP_GUEST_EXTERNAL_URL": "guest_external_url"` to `_ENV_VAR_MAP`

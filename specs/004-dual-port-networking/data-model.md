@@ -53,10 +53,10 @@ Mounts the following routers.  This is the backward-compatible behavior.
 |--------|--------|----------|
 | `admin_accounts.router` | `/api/admin/accounts` | Admin |
 | `admin_auth.router` | `/api/admin/auth` | Admin |
-| `audit_config.router` | `/api/audit` | Admin |
+| `audit_config.router` | `/api/admin/audit` | Admin |
 | `docs.router` | `/admin/docs`, `/admin/redoc` | Admin |
 | `grants.router` | `/api/grants` | Admin |
-| `portal_config.router` | `/api/portal` | Admin |
+| `portal_config.router` | `/api/admin/portal-config` | Admin |
 | `portal_settings_ui.router` | `/admin/portal-settings` | Admin |
 | `vouchers.router` | `/api/vouchers` | Admin |
 | `integrations_ui.router` | `/admin/integrations` | Admin |
