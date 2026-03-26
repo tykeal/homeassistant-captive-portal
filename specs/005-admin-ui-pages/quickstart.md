@@ -61,8 +61,9 @@ uv run ruff format --check addon/src/ tests/
 # Type check
 uv run mypy addon/src/
 
-# Docstring coverage (100% required)
-uv run interrogate addon/src/ -v
+# Docstring coverage (100% required, runs via pre-commit)
+# interrogate is not in dev deps; use pre-commit or uv tool:
+uv tool run interrogate addon/src/ -v
 ```
 
 ## Run Locally (for manual testing)
