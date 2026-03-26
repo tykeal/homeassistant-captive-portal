@@ -73,7 +73,7 @@ SPDX-License-Identifier: Apache-2.0
   - Test validation: non-empty value must not end with trailing `/`
   - Test invalid `guest_external_url` falls through to default with warning log
   - Test `log_effective()` includes `guest_external_url` in output
-  - Test port conflict: validate that guest port (8099) is logged/checked against ingress port (8080) — reject if same value provided via env override
+  - Test port conflict: validate that guest port (8099) differs from ingress port (8080) at startup — log a clear error and fail fast if s6 run scripts are misconfigured with the same port
   - All tests should use `AppSettings.load()` with test fixtures (temp options files, env var patching)
 
 - [ ] T005 [P] Parameterize SecurityHeadersMiddleware for configurable frame policy and CSP in addon/src/captive_portal/web/middleware/security_headers.py
@@ -83,7 +83,7 @@ SPDX-License-Identifier: Apache-2.0
   - In `dispatch()`, if `self.csp` is provided, always set/override the `Content-Security-Policy` response header to `self.csp` (even if a route/view has already set CSP)
   - In `dispatch()`, if `self.csp` is not provided (`None`), preserve the existing behavior: only set the default CSP string when the response does not already have a `Content-Security-Policy` header
   - Default behavior (no args) MUST be identical to current behavior — existing tests must not break
-  - Guest app will call: `SecurityHeadersMiddleware(frame_options="DENY", csp="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; object-src 'none'")`
+  - Guest app will call: `SecurityHeadersMiddleware(frame_options="DENY", csp="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'")`
 
 - [ ] T006 Add guest_external_url field, validation, and port conflict check to AppSettings in addon/src/captive_portal/config/settings.py
   - Add `guest_external_url: str = ""` field to `AppSettings` class
