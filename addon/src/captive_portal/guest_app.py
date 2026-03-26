@@ -175,14 +175,19 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
     async def guest_root_redirect(request: Request) -> RedirectResponse:
         """Redirect root to guest authorization page.
 
+        Uses the configured guest_external_url when available so the
+        redirect works correctly even behind DNS interception.
+
         Args:
             request: Incoming HTTP request.
 
         Returns:
             303 redirect to the guest authorization page.
         """
+        guest_url: str = getattr(request.app.state, "guest_external_url", "")
+        base = guest_url if guest_url else ""
         return RedirectResponse(
-            url="/guest/authorize",
+            url=f"{base}/guest/authorize",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
