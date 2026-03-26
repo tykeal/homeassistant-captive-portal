@@ -121,7 +121,7 @@ def _add_security_headers(response: HTMLResponse) -> HTMLResponse:
         "base-uri 'self'; "
         "form-action 'self'"
     )
-    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
@@ -177,7 +177,7 @@ async def show_authorize_form(
         request=request,
         name="guest/authorize.html",
         context={
-            "continue_url": continue_url or "/guest/welcome",
+            "continue_url": continue_url or f"{request.scope.get('root_path', '')}/guest/welcome",
             "csrf_token": csrf_token,
         },
     )
@@ -544,7 +544,7 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     if continue_url and redirect_validator.is_safe(continue_url):
         redirect_url = continue_url
     else:
-        redirect_url = "/guest/welcome"
+        redirect_url = f"{request.scope.get('root_path', '')}/guest/welcome"
 
     # Success - redirect with grant ID in session/cookie for controller integration
     response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)

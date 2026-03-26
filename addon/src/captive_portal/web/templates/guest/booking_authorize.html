@@ -1,3 +1,4 @@
+{% set rp = request.scope.root_path %}
 <!--
 SPDX-FileCopyrightText: 2025 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
@@ -175,7 +176,7 @@ SPDX-License-Identifier: Apache-2.0
             <p><small>Your booking code can be found in your reservation confirmation.</small></p>
         </div>
 
-        <form method="POST" action="/guest/booking/authorize">
+        <form method="POST" action="{{ rp }}/guest/booking/authorize">
             <div class="form-group">
                 <label for="booking_code" class="form-label">Booking Code</label>
                 <input type="text"
@@ -194,7 +195,7 @@ SPDX-License-Identifier: Apache-2.0
         </form>
 
         <div class="back-link">
-            <a href="/guest">&larr; Back to main page</a>
+            <a href="{{ rp }}/guest">&larr; Back to main page</a>
         </div>
         {% endif %}
     </div>

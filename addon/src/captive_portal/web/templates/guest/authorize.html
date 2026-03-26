@@ -1,3 +1,4 @@
+{% set rp = request.scope.root_path %}
 <!--
 SPDX-FileCopyrightText: 2025 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
@@ -124,7 +125,7 @@ SPDX-License-Identifier: Apache-2.0
         <div class="error">{{ error_message }}</div>
         {% endif %}
 
-        <form method="post" action="/guest/authorize">
+        <form method="post" action="{{ rp }}/guest/authorize">
             <input type="hidden" name="continue" value="{{ continue_url }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 

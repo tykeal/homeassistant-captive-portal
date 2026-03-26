@@ -171,7 +171,10 @@ async def save_integration(
             target_id=str(integration.id),
         )
 
-    return RedirectResponse(url="/admin/integrations", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url=f"{request.scope.get('root_path', '')}/admin/integrations",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/delete/{integration_id}")
@@ -214,4 +217,7 @@ async def delete_integration(
         target_id=str(integration_id),
     )
 
-    return RedirectResponse(url="/admin/integrations", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url=f"{request.scope.get('root_path', '')}/admin/integrations",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )

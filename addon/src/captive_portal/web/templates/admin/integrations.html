@@ -1,3 +1,4 @@
+{% set rp = request.scope.root_path %}
 <!--
 SPDX-FileCopyrightText: 2025 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
@@ -8,19 +9,19 @@ SPDX-License-Identifier: Apache-2.0
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HA Integrations - Admin</title>
-    <link rel="stylesheet" href="/static/themes/default/admin.css">
+    <link rel="stylesheet" href="{{ rp }}/static/themes/default/admin.css">
 </head>
 <body>
     <header class="header">
         <div class="container">
             <h1>Captive Portal Admin</h1>
             <nav>
-                <a href="/admin/dashboard" class="nav-link">Dashboard</a>
-                <a href="/admin/grants" class="nav-link">Grants</a>
-                <a href="/admin/vouchers" class="nav-link">Vouchers</a>
-                <a href="/admin/integrations" class="nav-link active">Integrations</a>
-                <a href="/admin/portal-settings" class="nav-link">Settings</a>
-                <form action="/api/admin/logout" method="POST" style="display: inline;">
+                <a href="{{ rp }}/admin/dashboard" class="nav-link">Dashboard</a>
+                <a href="{{ rp }}/admin/grants" class="nav-link">Grants</a>
+                <a href="{{ rp }}/admin/vouchers" class="nav-link">Vouchers</a>
+                <a href="{{ rp }}/admin/integrations" class="nav-link active">Integrations</a>
+                <a href="{{ rp }}/admin/portal-settings" class="nav-link">Settings</a>
+                <form action="{{ rp }}/api/admin/logout" method="POST" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn-link">Logout</button>
                 </form>
@@ -33,7 +34,7 @@ SPDX-License-Identifier: Apache-2.0
 
         <section class="integration-form">
             <h3>{% if integration %}Edit{% else %}Add{% endif %} Integration</h3>
-            <form method="POST" action="/admin/integrations/save">
+            <form method="POST" action="{{ rp }}/admin/integrations/save">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 {% if integration %}
                 <input type="hidden" name="id" value="{{ integration.id }}">
@@ -88,7 +89,7 @@ SPDX-License-Identifier: Apache-2.0
                         {% if integration %}Update{% else %}Add{% endif %} Integration
                     </button>
                     {% if integration %}
-                    <a href="/admin/integrations" class="btn">Cancel</a>
+                    <a href="{{ rp }}/admin/integrations" class="btn">Cancel</a>
                     {% endif %}
                 </div>
             </form>
@@ -112,8 +113,8 @@ SPDX-License-Identifier: Apache-2.0
                         <td>{{ int.auth_attribute }}</td>
                         <td>{{ int.checkout_grace_minutes }} min</td>
                         <td>
-                            <a href="/admin/integrations/edit/{{ int.id }}" class="btn btn-primary">Edit</a>
-                            <form method="POST" action="/admin/integrations/delete/{{ int.id }}" style="display: inline;">
+                            <a href="{{ rp }}/admin/integrations/edit/{{ int.id }}" class="btn btn-primary">Edit</a>
+                            <form method="POST" action="{{ rp }}/admin/integrations/delete/{{ int.id }}" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this integration?')">
                                     Delete

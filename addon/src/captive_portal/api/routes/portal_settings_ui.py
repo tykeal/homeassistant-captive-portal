@@ -131,8 +131,9 @@ async def update_portal_settings(
     """
     # Only admins can update configuration
     if current_user.role != "admin":
+        root = request.scope.get("root_path", "")
         return RedirectResponse(
-            url="/admin/portal-settings?error=Only+administrators+can+modify+portal+configuration",
+            url=f"{root}/admin/portal-settings?error=Only+administrators+can+modify+portal+configuration",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -140,27 +141,31 @@ async def update_portal_settings(
     try:
         await csrf.validate_token(request)
     except HTTPException:
+        root = request.scope.get("root_path", "")
         return RedirectResponse(
-            url="/admin/portal-settings?error=Invalid+CSRF+token",
+            url=f"{root}/admin/portal-settings?error=Invalid+CSRF+token",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
     # Validate input ranges
     if rate_limit_attempts < 1 or rate_limit_attempts > 1000:
+        root = request.scope.get("root_path", "")
         return RedirectResponse(
-            url="/admin/portal-settings?error=Rate+limit+attempts+must+be+between+1+and+1000",
+            url=f"{root}/admin/portal-settings?error=Rate+limit+attempts+must+be+between+1+and+1000",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
     if rate_limit_window_seconds < 1 or rate_limit_window_seconds > 3600:
+        root = request.scope.get("root_path", "")
         return RedirectResponse(
-            url="/admin/portal-settings?error=Rate+limit+window+must+be+between+1+and+3600+seconds",
+            url=f"{root}/admin/portal-settings?error=Rate+limit+window+must+be+between+1+and+3600+seconds",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
     if len(success_redirect_url) > 2048:
+        root = request.scope.get("root_path", "")
         return RedirectResponse(
-            url="/admin/portal-settings?error=Redirect+URL+too+long+(max+2048+characters)",
+            url=f"{root}/admin/portal-settings?error=Redirect+URL+too+long+(max+2048+characters)",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -197,6 +202,6 @@ async def update_portal_settings(
     )
 
     return RedirectResponse(
-        url="/admin/portal-settings?success=Portal+configuration+updated+successfully",
+        url=f"{request.scope.get('root_path', '')}/admin/portal-settings?success=Portal+configuration+updated+successfully",
         status_code=status.HTTP_303_SEE_OTHER,
     )

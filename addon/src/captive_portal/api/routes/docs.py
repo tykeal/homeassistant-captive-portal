@@ -20,7 +20,7 @@ _DOCS_CSP = (
     "img-src 'self' data: https://cdn.jsdelivr.net; "
     "font-src 'self' https://cdn.jsdelivr.net; "
     "connect-src 'self'; "
-    "frame-ancestors 'none'"
+    "frame-ancestors 'self'"
 )
 
 

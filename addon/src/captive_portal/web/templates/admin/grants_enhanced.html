@@ -1,3 +1,4 @@
+{% set rp = request.scope.root_path %}
 <!--
 SPDX-FileCopyrightText: 2025 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
@@ -8,19 +9,19 @@ SPDX-License-Identifier: Apache-2.0
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Access Grants - Admin</title>
-    <link rel="stylesheet" href="/static/themes/default/admin.css">
+    <link rel="stylesheet" href="{{ rp }}/static/themes/default/admin.css">
 </head>
 <body>
     <header class="header">
         <div class="container">
             <h1>Captive Portal Admin</h1>
             <nav>
-                <a href="/admin/dashboard" class="nav-link">Dashboard</a>
-                <a href="/admin/grants" class="nav-link active">Grants</a>
-                <a href="/admin/vouchers" class="nav-link">Vouchers</a>
-                <a href="/admin/integrations" class="nav-link">Integrations</a>
-                <a href="/admin/portal-settings" class="nav-link">Settings</a>
-                <form action="/api/admin/logout" method="POST" style="display: inline;">
+                <a href="{{ rp }}/admin/dashboard" class="nav-link">Dashboard</a>
+                <a href="{{ rp }}/admin/grants" class="nav-link active">Grants</a>
+                <a href="{{ rp }}/admin/vouchers" class="nav-link">Vouchers</a>
+                <a href="{{ rp }}/admin/integrations" class="nav-link">Integrations</a>
+                <a href="{{ rp }}/admin/portal-settings" class="nav-link">Settings</a>
+                <form action="{{ rp }}/api/admin/logout" method="POST" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn-link">Logout</button>
                 </form>
@@ -32,7 +33,7 @@ SPDX-License-Identifier: Apache-2.0
         <h2>Access Grants</h2>
 
         <section class="filters">
-            <form method="GET" action="/admin/grants" style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
+            <form method="GET" action="{{ rp }}/admin/grants" style="display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap;">
                 <div class="form-group" style="margin: 0;">
                     <label for="status" class="form-label">Status</label>
                     <select id="status" name="status" class="form-control">
@@ -104,14 +105,14 @@ SPDX-License-Identifier: Apache-2.0
                             {% endif %}
                         </td>
                         <td>
-                            <form method="POST" action="/admin/grants/extend/{{ grant.id }}" style="display: inline;">
+                            <form method="POST" action="{{ rp }}/admin/grants/extend/{{ grant.id }}" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <input type="number" name="minutes" min="1" max="1440" value="60" style="width: 60px;">
                                 <button type="submit" class="btn btn-success" {% if grant.status == 'revoked' %}disabled{% endif %}>
                                     Extend
                                 </button>
                             </form>
-                            <form method="POST" action="/admin/grants/revoke/{{ grant.id }}" style="display: inline;">
+                            <form method="POST" action="{{ rp }}/admin/grants/revoke/{{ grant.id }}" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <button type="submit" class="btn btn-danger" {% if grant.status == 'revoked' %}disabled{% endif %}>
                                     Revoke
