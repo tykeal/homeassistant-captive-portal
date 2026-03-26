@@ -1,7 +1,5 @@
-<!--
 SPDX-FileCopyrightText: 2026 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
--->
 
 # Feature Specification: Dual-Port Networking
 
@@ -159,7 +157,7 @@ An operations team or monitoring system checks the health of the captive portal 
 - **SC-002**: 100% of admin route requests to the guest listener return "not found" responses — zero admin endpoints are reachable on the guest port.
 - **SC-003**: All captive portal detection endpoints (Android, iOS, macOS, Windows, Firefox) respond with correct redirects within 1 second on the guest listener.
 - **SC-004**: The admin UI continues to function identically through the HA sidebar panel — zero regressions in admin workflows.
-- **SC-005**: All existing tests (442+) pass without modification after the dual-port feature is implemented.
+- **SC-005**: All existing tests pass without modification after the dual-port feature is implemented.
 - **SC-006**: Both listeners start successfully within 10 seconds of addon startup under normal conditions.
 - **SC-007**: The guest listener sustains at least 50 concurrent captive detection requests without degradation (supporting a property with many simultaneous guest arrivals).
 - **SC-008**: When one listener fails, the other continues operating — the system does not require both listeners to be healthy for either to function.
