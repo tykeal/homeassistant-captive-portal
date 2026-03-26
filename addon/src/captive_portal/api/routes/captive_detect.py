@@ -33,7 +33,8 @@ async def android_captive_detect(request: Request) -> Response:
     Returns:
         RedirectResponse: Redirect to authorization form (triggers captive portal UI)
     """
-    return RedirectResponse(url="/guest/authorize", status_code=302)
+    root = request.scope.get("root_path", "")
+    return RedirectResponse(url=f"{root}/guest/authorize", status_code=302)
 
 
 @router.get("/connecttest.txt")
@@ -47,7 +48,8 @@ async def windows_captive_detect(request: Request) -> Response:
     Returns:
         RedirectResponse: Redirect to authorization form
     """
-    return RedirectResponse(url="/guest/authorize", status_code=302)
+    root = request.scope.get("root_path", "")
+    return RedirectResponse(url=f"{root}/guest/authorize", status_code=302)
 
 
 @router.get("/hotspot-detect.html")
@@ -61,7 +63,8 @@ async def apple_captive_detect(request: Request) -> Response:
     Returns:
         RedirectResponse: Redirect to authorization form
     """
-    return RedirectResponse(url="/guest/authorize", status_code=302)
+    root = request.scope.get("root_path", "")
+    return RedirectResponse(url=f"{root}/guest/authorize", status_code=302)
 
 
 @router.get("/success.txt")
@@ -74,4 +77,5 @@ async def firefox_captive_detect(request: Request) -> Response:
     Returns:
         RedirectResponse: Redirect to authorization form
     """
-    return RedirectResponse(url="/guest/authorize", status_code=302)
+    root = request.scope.get("root_path", "")
+    return RedirectResponse(url=f"{root}/guest/authorize", status_code=302)

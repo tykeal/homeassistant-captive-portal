@@ -15,8 +15,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         """Process request and add security headers to response."""
         response: Response = await call_next(request)
 
-        # Prevent clickjacking
-        response.headers["X-Frame-Options"] = "DENY"
+        # Prevent clickjacking — allow framing by same origin for HA ingress
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
 
         # Prevent MIME type sniffing
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -35,7 +35,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "img-src 'self' data:; "
                 "font-src 'self'; "
                 "connect-src 'self'; "
-                "frame-ancestors 'none'"
+                "frame-ancestors 'self'"
             )
             response.headers["Content-Security-Policy"] = csp
 

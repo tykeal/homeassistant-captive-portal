@@ -65,9 +65,9 @@ class TestSecurityHeaders:
             assert f"{feature}=()" in pp, f"{feature} not disabled in Permissions-Policy"
 
     def test_x_frame_options(self, secure_client: TestClient) -> None:
-        """X-Frame-Options must be DENY."""
+        """X-Frame-Options must be SAMEORIGIN for HA ingress support."""
         resp = secure_client.get("/api/health")
-        assert resp.headers["X-Frame-Options"] == "DENY"
+        assert resp.headers["X-Frame-Options"] == "SAMEORIGIN"
 
     def test_x_content_type_options(self, secure_client: TestClient) -> None:
         """X-Content-Type-Options must be nosniff."""

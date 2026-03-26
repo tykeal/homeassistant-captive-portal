@@ -34,7 +34,7 @@ A production-ready captive portal solution for guest Wi-Fi networks, integrated 
 1. Add repository: `https://github.com/tykeal/homeassistant-captive-portal`
 2. Install "Captive Portal" from Add-on Store
 3. Configure with your Omada controller credentials
-4. Start and access admin UI at `http://<ha-ip>:8080/admin`
+4. Start and access admin UI via the Home Assistant sidebar
 
 See [Quickstart Guide](docs/quickstart.md) for detailed setup instructions.
 
@@ -87,7 +87,7 @@ See [Architecture Overview](docs/architecture_overview.md) for detailed componen
 - **[HA Integration Guide](docs/ha_integration_guide.md)**: Rental Control setup and troubleshooting
 - **[Architecture Overview](docs/architecture_overview.md)**: System design and component interaction
 - **[Troubleshooting](docs/troubleshooting.md)**: Common issues and diagnostics
-- **[API Documentation](http://localhost:8080/admin/docs)**: OpenAPI interactive docs (admin-only, when running)
+- **API Documentation**: OpenAPI interactive docs (admin-only, when running) at `/admin/docs` on your deployed instance
 
 ## Configuration
 
@@ -143,7 +143,8 @@ cp .env.example .env
 uv run captive-portal
 ```
 
-Access admin UI at `http://localhost:8080/admin`
+Access admin UI at `http://localhost:8080/admin` (standalone) or via the
+Home Assistant sidebar (add-on with Ingress).
 
 ## Contributing
 

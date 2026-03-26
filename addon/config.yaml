@@ -13,13 +13,17 @@ arch:
 startup: services
 init: false
 panel_admin: true
+panel_icon: mdi:wifi-lock
+panel_title: Captive Portal
 homeassistant_api: true
-ingress: false
-webui: "http://[HOST]:[PORT:8080]"
+ingress: true
+ingress_port: 8080
+ingress_stream: false
+auth_api: true
 ports:
-  "8080/tcp": 8080
+  "8080/tcp": null  # Not exposed on host; admin UI accessed via Ingress
 ports_description:
-  "8080/tcp": Web admin & portal
+  "8080/tcp": Web interface (not needed with Ingress)
 schema:
   log_level: "list(trace|debug|info|notice|warning|error|fatal)?"
   session_idle_timeout: "int(1,)?"

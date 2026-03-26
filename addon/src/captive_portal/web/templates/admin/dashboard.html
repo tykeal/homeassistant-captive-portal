@@ -1,3 +1,4 @@
+{% set rp = request.scope.root_path %}
 <!--
 SPDX-FileCopyrightText: 2025 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
@@ -8,19 +9,19 @@ SPDX-License-Identifier: Apache-2.0
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Captive Portal</title>
-    <link rel="stylesheet" href="/static/themes/default/admin.css">
+    <link rel="stylesheet" href="{{ rp }}/static/themes/default/admin.css">
 </head>
 <body>
     <header class="header">
         <div class="container">
             <h1>Captive Portal Admin</h1>
             <nav>
-                <a href="/admin/dashboard" class="nav-link active">Dashboard</a>
-                <a href="/admin/grants" class="nav-link">Grants</a>
-                <a href="/admin/vouchers" class="nav-link">Vouchers</a>
-                <a href="/admin/integrations" class="nav-link">Integrations</a>
-                <a href="/admin/portal-settings" class="nav-link">Settings</a>
-                <form action="/api/admin/logout" method="POST" style="display: inline;">
+                <a href="{{ rp }}/admin/dashboard" class="nav-link active">Dashboard</a>
+                <a href="{{ rp }}/admin/grants" class="nav-link">Grants</a>
+                <a href="{{ rp }}/admin/vouchers" class="nav-link">Vouchers</a>
+                <a href="{{ rp }}/admin/integrations" class="nav-link">Integrations</a>
+                <a href="{{ rp }}/admin/portal-settings" class="nav-link">Settings</a>
+                <form action="{{ rp }}/api/admin/logout" method="POST" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn-link">Logout</button>
                 </form>

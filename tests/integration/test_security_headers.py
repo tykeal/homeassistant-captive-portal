@@ -23,11 +23,11 @@ def test_security_headers_on_health_endpoint(client: TestClient) -> None:
     assert response.status_code == 200
 
     # Check required security headers
-    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["X-Frame-Options"] == "SAMEORIGIN"
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert response.headers["X-XSS-Protection"] == "1; mode=block"
     assert "Content-Security-Policy" in response.headers
-    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
+    assert "frame-ancestors 'self'" in response.headers["Content-Security-Policy"]
 
 
 def test_security_headers_on_404(client: TestClient) -> None:
@@ -36,7 +36,7 @@ def test_security_headers_on_404(client: TestClient) -> None:
     assert response.status_code == 404
 
     # Headers should still be present on error responses
-    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["X-Frame-Options"] == "SAMEORIGIN"
     assert response.headers["X-Content-Type-Options"] == "nosniff"
 
 

@@ -25,7 +25,7 @@ def test_authorize_page_has_security_headers(client: TestClient) -> None:
     assert "object-src 'none'" in csp
 
     # Clickjacking protection
-    assert response.headers.get("X-Frame-Options") == "DENY"
+    assert response.headers.get("X-Frame-Options") == "SAMEORIGIN"
 
     # MIME-sniffing protection
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
@@ -41,7 +41,7 @@ def test_welcome_page_has_security_headers(client: TestClient) -> None:
     assert response.status_code == 200
 
     assert "Content-Security-Policy" in response.headers
-    assert response.headers.get("X-Frame-Options") == "DENY"
+    assert response.headers.get("X-Frame-Options") == "SAMEORIGIN"
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
 
 
@@ -52,7 +52,7 @@ def test_error_page_has_security_headers(client: TestClient) -> None:
     assert response.status_code == 200
 
     assert "Content-Security-Policy" in response.headers
-    assert response.headers.get("X-Frame-Options") == "DENY"
+    assert response.headers.get("X-Frame-Options") == "SAMEORIGIN"
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
 
 
