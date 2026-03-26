@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Andrew Grimberg
 # SPDX-License-Identifier: Apache-2.0
-"""Unit tests for guest_external_url settings and port conflict validation."""
+"""Unit tests for guest_external_url settings and validation."""
 
 from __future__ import annotations
 
@@ -196,13 +196,10 @@ class TestGuestExternalUrlLogEffective:
         assert "http://192.168.1.100:8099" in caplog.text
 
 
-class TestPortConflictValidation:
-    """Test port conflict validation between ingress (8080) and guest (8099)."""
+class TestGuestPortDefaults:
+    """Test guest port defaults are sensible."""
 
-    def test_default_ports_no_conflict(self) -> None:
-        """Default ports (8080 ingress, 8099 guest) do not conflict."""
-        # This is a sanity check — the ports are hardcoded in s6 run scripts.
-        # The validation exists to catch misconfiguration.
+    def test_default_guest_external_url_is_empty(self) -> None:
+        """Default guest_external_url is empty (not yet configured)."""
         settings = AppSettings()
         assert settings.guest_external_url == ""
-        # No error raised — no explicit port fields to conflict

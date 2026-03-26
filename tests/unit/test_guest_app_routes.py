@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Unit tests verifying all admin routes return 404 on guest app."""
 
+from collections.abc import Generator
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -17,9 +19,10 @@ def guest_app() -> FastAPI:
 
 
 @pytest.fixture
-def guest_client(guest_app: FastAPI) -> TestClient:
+def guest_client(guest_app: FastAPI) -> Generator[TestClient, None, None]:
     """Create test client for the guest app (no lifespan needed for 404 checks)."""
-    return TestClient(guest_app, raise_server_exceptions=False)
+    with TestClient(guest_app, raise_server_exceptions=False) as client:
+        yield client
 
 
 # All admin routes that MUST return 404 on the guest app
@@ -27,25 +30,27 @@ ADMIN_GET_ROUTES = [
     "/admin/portal-settings/",
     "/admin/docs",
     "/admin/redoc",
-    "/admin/integrations",
+    "/admin/integrations/",
+    "/admin/login",
     "/api/admin/auth/login",
+    "/api/admin/auth/status",
     "/api/admin/accounts",
-    "/api/grants",
+    "/api/admin/portal-config",
+    "/api/admin/audit/config",
     "/api/grants/",
     "/api/vouchers",
-    "/api/portal/config",
-    "/api/audit/config",
     "/api/integrations",
-    "/grants",
 ]
 
 ADMIN_POST_ROUTES = [
     "/api/admin/auth/login",
-    "/api/vouchers",
+    "/api/admin/auth/bootstrap",
+    "/api/vouchers/",
 ]
 
 ADMIN_PUT_ROUTES = [
-    "/api/portal/config",
+    "/api/admin/portal-config",
+    "/api/admin/audit/config",
 ]
 
 
