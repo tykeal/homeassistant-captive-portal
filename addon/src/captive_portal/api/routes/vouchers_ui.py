@@ -269,8 +269,9 @@ async def revoke_voucher(
     await audit_service.log_admin_action(
         admin_id=admin_id, action="voucher.revoke", target_type="voucher", target_id=code
     )
+    success_message = urllib.parse.quote_plus(f"Voucher {code} revoked successfully")
     return RedirectResponse(
-        url=f"{root}/admin/vouchers/?success=Voucher+{code}+revoked+successfully",
+        url=f"{root}/admin/vouchers/?success={success_message}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -318,8 +319,9 @@ async def delete_voucher(
         target_id=code,
         metadata=meta,
     )
+    success_message = urllib.parse.quote_plus(f"Voucher {code} deleted successfully")
     return RedirectResponse(
-        url=f"{root}/admin/vouchers/?success=Voucher+{code}+deleted+successfully",
+        url=f"{root}/admin/vouchers/?success={success_message}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -350,10 +352,10 @@ async def bulk_revoke_vouchers(
         )
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     audit_service = AuditService(session)
+    voucher_repo = voucher_service.voucher_repo
     result = BulkResult(action="revoked")
     for code_val in codes:
         code = str(code_val)
-        voucher_repo = VoucherRepository(session)
         existing = voucher_repo.get_by_code(code)
         if existing and existing.status == VoucherStatus.REVOKED:
             result.skip_reasons["already revoked"] = (

@@ -28,6 +28,12 @@
             return;
         }
 
+        // Guard against duplicate listener attachment on AJAX refresh
+        if (select.dataset.enhanced) {
+            return;
+        }
+        select.dataset.enhanced = "true";
+
         var form = select.closest("form");
         if (!form) {
             return;
