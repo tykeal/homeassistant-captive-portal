@@ -124,7 +124,7 @@ def delete(self, code: str) -> bool:
             Voucher.redeemed_count == 0,
         )
     )
-    result = self.session.execute(stmt)
+    result = self.session.exec(stmt)
     deleted = result.rowcount == 1
     if deleted:
         self.session.flush()
