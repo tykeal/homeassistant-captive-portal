@@ -54,31 +54,16 @@ SPDX-License-Identifier: Apache-2.0
             <h3>Create Voucher</h3>
             <form method="POST" action="{{ rp }}/admin/vouchers/create">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
                 <div class="form-group">
                     <label for="duration_minutes" class="form-label">Duration (minutes) *</label>
-                    <input type="number"
-                           id="duration_minutes"
-                           name="duration_minutes"
-                           class="form-control"
-                           min="1"
-                           max="43200"
-                           required
-                           placeholder="60">
-                    <small>Access duration in minutes (1–43200, i.e., up to 30 days)</small>
+                    <input type="number" id="duration_minutes" name="duration_minutes" class="form-control" min="1" max="43200" required placeholder="60">
+                    <small>Access duration in minutes (1-43200, i.e., up to 30 days)</small>
                 </div>
-
                 <div class="form-group">
                     <label for="booking_ref" class="form-label">Booking Reference (optional)</label>
-                    <input type="text"
-                           id="booking_ref"
-                           name="booking_ref"
-                           class="form-control"
-                           maxlength="128"
-                           placeholder="e.g., BOOKING-001">
+                    <input type="text" id="booking_ref" name="booking_ref" class="form-control" maxlength="128" placeholder="e.g., BOOKING-001">
                     <small>Optional reference to associate with this voucher</small>
                 </div>
-
                 <div class="form-group">
                     <button type="submit" class="btn btn-primary">Create Voucher</button>
                 </div>
@@ -87,55 +72,79 @@ SPDX-License-Identifier: Apache-2.0
 
         <section class="vouchers-list">
             <h3>All Vouchers</h3>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Code</th>
-                        <th>Duration</th>
-                        <th>Status</th>
-                        <th>Redemption</th>
-                        <th>Booking Ref</th>
-                        <th>Created</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if vouchers %}
-                    {% for voucher in vouchers %}
-                    <tr{% if new_code and voucher.code == new_code %} class="row-highlight"{% endif %}>
-                        <td><code>{{ voucher.code }}</code></td>
-                        <td>{{ voucher.duration_minutes }} min</td>
-                        <td>
-                            <span class="status-badge status-{{ voucher.status.value }}">
-                                {{ voucher.status.value }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if voucher.redeemed_count > 0 %}
-                                Redeemed
-                                {% if voucher.last_redeemed_utc %}
-                                    ({{ voucher.last_redeemed_utc.strftime('%Y-%m-%d %H:%M') }})
+            <form id="bulk-form" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="bulk-action-bar">
+                    <button type="submit" formaction="{{ rp }}/admin/vouchers/bulk-revoke" class="btn btn-primary">Revoke Selected</button>
+                    <button type="submit" formaction="{{ rp }}/admin/vouchers/bulk-delete" class="btn btn-danger">Delete Selected</button>
+                </div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all" aria-label="Select all vouchers"></th>
+                            <th>Code</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th>Redemption</th>
+                            <th>Booking Ref</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if vouchers %}
+                        {% for voucher in vouchers %}
+                        <tr{% if new_code and voucher.code == new_code %} class="row-highlight"{% endif %}>
+                            <td><input type="checkbox" name="codes" value="{{ voucher.code }}" aria-label="Select {{ voucher.code }}"></td>
+                            <td><code>{{ voucher.code }}</code></td>
+                            <td>{{ voucher.duration_minutes }} min</td>
+                            <td>
+                                <span class="status-badge status-{{ voucher.status.value }}">
+                                    {{ voucher.status.value }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if voucher.redeemed_count > 0 %}
+                                    Redeemed
+                                    {% if voucher.last_redeemed_utc %}
+                                        ({{ voucher.last_redeemed_utc.strftime('%Y-%m-%d %H:%M') }})
+                                    {% endif %}
+                                {% else %}
+                                    Unredeemed
                                 {% endif %}
-                            {% else %}
-                                Unredeemed
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if voucher.booking_ref %}
-                                {{ voucher.booking_ref }}
-                            {% else %}
-                                <em>-</em>
-                            {% endif %}
-                        </td>
-                        <td>{{ voucher.created_utc.strftime('%Y-%m-%d %H:%M') }}</td>
-                    </tr>
-                    {% endfor %}
-                    {% else %}
-                    <tr>
-                        <td colspan="6" class="empty-state">No vouchers found. Create one using the form above.</td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
+                            </td>
+                            <td>
+                                {% if voucher.booking_ref %}
+                                    {{ voucher.booking_ref }}
+                                {% else %}
+                                    <em>-</em>
+                                {% endif %}
+                            </td>
+                            <td>{{ voucher.created_utc.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                <button type="submit"
+                                        formaction="{{ rp }}/admin/vouchers/revoke/{{ voucher.code }}"
+                                        class="btn btn-primary"
+                                        {% if not voucher_actions[voucher.code].can_revoke %}disabled{% endif %}>
+                                    Revoke
+                                </button>
+                                <button type="submit"
+                                        formaction="{{ rp }}/admin/vouchers/delete/{{ voucher.code }}"
+                                        class="btn btn-danger"
+                                        {% if not voucher_actions[voucher.code].can_delete %}disabled{% endif %}>
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="empty-state">No vouchers found. Create one using the form above.</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </form>
         </section>
     </main>
 
@@ -146,5 +155,6 @@ SPDX-License-Identifier: Apache-2.0
     </footer>
 
 
+    <script src="{{ rp }}/static/themes/default/admin-vouchers.js"></script>
 </body>
 </html>

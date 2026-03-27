@@ -93,6 +93,29 @@ class VoucherRepository(BaseRepository[Voucher]):
         results: list[Voucher] = list(self.session.exec(statement).all())
         return results
 
+    def delete(self, code: str) -> bool:
+        """Delete a voucher by code if it has never been redeemed.
+
+        Uses a predicate-based delete to guard against race conditions:
+        only deletes if redeemed_count == 0.
+
+        Args:
+            code: Voucher code (PK)
+
+        Returns:
+            True if the row was deleted, False otherwise.
+        """
+        from sqlalchemy import delete as sa_delete
+
+        stmt: Any = (
+            sa_delete(Voucher)
+            .where(Voucher.code == code)
+            .where(Voucher.redeemed_count == 0)
+        )
+        result = self.session.execute(stmt)
+        self.session.flush()
+        return bool(result.rowcount > 0)
+
 
 class AccessGrantRepository(BaseRepository[AccessGrant]):
     """Repository for AccessGrant entities."""
