@@ -171,7 +171,7 @@ HTML checkboxes with `name="codes"` submit as a list of values in form data. Thi
         <td><input type="checkbox" name="codes" value="{{ voucher.code }}" aria-label="Select voucher {{ voucher.code }}"></td>
         ...existing columns...
         <td>
-          <!-- Individual action forms remain separate for single-voucher ops -->
+          <!-- Individual action buttons use formaction to target single-voucher endpoints (see R7) -->
         </td>
       </tr>
       {% endfor %}
@@ -189,33 +189,29 @@ Using `formaction` on the submit buttons allows two different POST targets withi
 
 ---
 
-## R7: Individual Action Forms — Inline POST Within Table Rows
+## R7: Individual Action Buttons — `formaction` Within the Bulk Form
 
 ### Decision
-Add per-row action forms for revoke and delete, following the exact pattern from `grants_enhanced.html`:
+Add per-row action buttons for revoke and delete that use `formaction` attributes to target single-operation endpoints. These buttons live inside the single bulk `<form>` element (from R6), avoiding nested `<form>` tags which are invalid HTML:
 ```html
 <td>
-  <form method="POST" action="{{ rp }}/admin/vouchers/revoke/{{ voucher.code }}" style="display: inline;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit" class="btn btn-warning"
-            {% if not voucher_actions[voucher.code].can_revoke %}disabled{% endif %}>
-      Revoke
-    </button>
-  </form>
-  <form method="POST" action="{{ rp }}/admin/vouchers/delete/{{ voucher.code }}" style="display: inline;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <button type="submit" class="btn btn-danger"
-            {% if not voucher_actions[voucher.code].can_delete %}disabled{% endif %}>
-      Delete
-    </button>
-  </form>
+  <button type="submit"
+          formaction="{{ rp }}/admin/vouchers/revoke/{{ voucher.code }}"
+          class="btn btn-warning"
+          {% if not voucher_actions[voucher.code].can_revoke %}disabled{% endif %}>
+    Revoke
+  </button>
+  <button type="submit"
+          formaction="{{ rp }}/admin/vouchers/delete/{{ voucher.code }}"
+          class="btn btn-danger"
+          {% if not voucher_actions[voucher.code].can_delete %}disabled{% endif %}>
+    Delete
+  </button>
 </td>
 ```
 
 ### Rationale
-The grants page already demonstrates this pattern for extend/revoke buttons. Per-row forms are self-contained with their own CSRF token. Buttons are disabled based on eligibility:
-- **Revoke disabled when**: status is `revoked` or `expired`
-- **Delete disabled when**: `redeemed_count > 0`
+The grants page uses separate per-row `<form>` elements for extend/revoke buttons. However, vouchers introduce a bulk `<form>` wrapping the entire table (R6). Nesting per-row `<form>` elements inside the bulk form would produce invalid HTML — the HTML spec forbids nested `<form>` tags and browser behavior is undefined. Instead, we use `formaction` on each button to override the form's submission target. The CSRF token hidden input from the outer form is automatically submitted with any button click. The `formaction` attribute is widely supported (HTML5) and already used by the bulk action buttons in R6.
 
 ### Eligibility Computation
 The route handler computes a `voucher_actions` dict (keyed by code) at render time, similar to `grant_statuses` on the grants page. For each voucher:

@@ -125,7 +125,9 @@ Follow constitution-mandated TDD:
 > **Note**: `specs/007-voucher-management/tasks.md` is the authoritative execution
 > order. The summary below is a simplified overview.
 
-1. **Phase 1 — Revoke (P1, MVP)**: `VoucherService.revoke()` + `POST /admin/vouchers/revoke/{code}` + template action buttons + tests
-2. **Phase 2 — Delete (P2)**: `VoucherRepository.delete()` + `VoucherService.delete()` + `POST /admin/vouchers/delete/{code}` + template + tests
-3. **Phase 3 — Bulk Operations (P3)**: Checkbox UI + `POST bulk-revoke` + `POST bulk-delete` + summary messages + select-all JS + tests
-4. **Phase 4 — Polish**: Performance benchmarks, edge case hardening, full test sweep
+1. **Phase 1 — Setup**: Feature branch creation and workspace preparation
+2. **Phase 2 — Foundational**: Error types + `VoucherActions` context (blocks all user stories)
+3. **Phase 3 — Revoke (P1, MVP)**: `VoucherService.revoke()` + `POST /admin/vouchers/revoke/{code}` + template action buttons + tests
+4. **Phase 4 — Delete (P2)**: `VoucherRepository.delete()` + `VoucherService.delete()` + `POST /admin/vouchers/delete/{code}` + template + tests
+5. **Phase 5 — Bulk Operations (P3)**: Checkbox UI + `POST bulk-revoke` + `POST bulk-delete` + summary messages + select-all JS + tests
+6. **Phase 6 — Polish**: Performance benchmarks, lint/type/docstring compliance, full test sweep, manual validation
