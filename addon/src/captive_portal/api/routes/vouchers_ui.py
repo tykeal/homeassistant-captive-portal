@@ -115,9 +115,7 @@ async def get_vouchers(
         expires = voucher.expires_utc
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
-        can_revoke = (
-            voucher.status not in {VoucherStatus.REVOKED, VoucherStatus.EXPIRED} and now <= expires
-        )
+        can_revoke = voucher.status is not VoucherStatus.REVOKED and now <= expires
         can_delete = voucher.redeemed_count == 0
         voucher_actions[voucher.code] = VoucherActions(can_revoke=can_revoke, can_delete=can_delete)
 

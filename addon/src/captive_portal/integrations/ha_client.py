@@ -101,7 +101,13 @@ class HAClient:
                 )
 
             response.raise_for_status()
-            result: List[Dict[str, Any]] = response.json()
+            try:
+                result: List[Dict[str, Any]] = response.json()
+            except (ValueError, TypeError) as exc:
+                raise HAServerError(
+                    user_message="Home Assistant returned an invalid response",
+                    detail=f"JSON decode error from {url}: {exc}",
+                ) from exc
             return result
 
         except (
