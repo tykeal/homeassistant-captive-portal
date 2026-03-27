@@ -78,7 +78,7 @@ For each voucher, the `voucher_actions` dict provides:
 - `action`: `"voucher.revoke"`
 - `target_type`: `"voucher"`
 - `target_id`: voucher code
-- Logged only on success (including idempotent no-op)
+- Audit logged by route handler after any non-error service return (including idempotent revoke), following the `grants_ui.py` pattern where audit logging lives in the route handler, not the service layer
 
 ---
 
@@ -116,6 +116,7 @@ For each voucher, the `voucher_actions` dict provides:
 - `target_id`: voucher code
 - `meta`: `{"status_at_delete": "<status>", "booking_ref": "<ref or null>"}`
 - Implementation note: snapshot `status_at_delete` and `booking_ref`, perform the predicate-based hard delete, then log this entry **after** a successful delete using the snapshot values.
+- Audit logged by route handler (not the service layer) after successful service return, following the `grants_ui.py` pattern.
 
 ---
 
