@@ -131,7 +131,7 @@ class TestEdgeCaseSaveIntegration:
         client: TestClient,
         admin_user: Any,
     ) -> None:
-        """Invalid identifier_attr value returns 422."""
+        """Invalid identifier_attr value redirects with error message."""
         csrf = _login(client)
         resp = client.post(
             "/admin/integrations/save",
@@ -143,14 +143,16 @@ class TestEdgeCaseSaveIntegration:
             },
             follow_redirects=False,
         )
-        assert resp.status_code == 422
+        assert resp.status_code == 303
+        assert "error=" in resp.headers["location"]
+        assert "Invalid" in resp.headers["location"]
 
     def test_save_with_neither_attr_field_returns_422(
         self,
         client: TestClient,
         admin_user: Any,
     ) -> None:
-        """Missing both identifier_attr and auth_attribute returns 422."""
+        """Missing both identifier_attr and auth_attribute redirects with error."""
         csrf = _login(client)
         resp = client.post(
             "/admin/integrations/save",
@@ -161,7 +163,9 @@ class TestEdgeCaseSaveIntegration:
             },
             follow_redirects=False,
         )
-        assert resp.status_code == 422
+        assert resp.status_code == 303
+        assert "error=" in resp.headers["location"]
+        assert "required" in resp.headers["location"]
 
 
 class TestEdgeCaseErrorCategories:

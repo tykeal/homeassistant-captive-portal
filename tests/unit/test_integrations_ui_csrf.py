@@ -132,3 +132,29 @@ class TestEditIntegrationCsrfCookie:
         assert "csrftoken" not in resp.cookies, (
             "GET /admin/integrations/edit/ overwrote an existing csrftoken cookie"
         )
+
+
+class TestListIntegrationsFeedbackBanners:
+    """GET /admin/integrations/ must render success/error query-param banners."""
+
+    def test_success_message_displayed(
+        self,
+        client: TestClient,
+        admin_user: Any,
+    ) -> None:
+        """Success query param should be reflected in the rendered HTML."""
+        _login(client)
+        resp = client.get("/admin/integrations/?success=Integration+saved+successfully")
+        assert resp.status_code == 200
+        assert "Integration saved successfully" in resp.text
+
+    def test_error_message_displayed(
+        self,
+        client: TestClient,
+        admin_user: Any,
+    ) -> None:
+        """Error query param should be reflected in the rendered HTML."""
+        _login(client)
+        resp = client.get("/admin/integrations/?error=Integration+not+found")
+        assert resp.status_code == 200
+        assert "Integration not found" in resp.text
