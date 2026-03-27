@@ -32,6 +32,33 @@ class VoucherRedemptionError(Exception):
     pass
 
 
+class VoucherNotFoundError(Exception):
+    """Raised when a voucher code cannot be found."""
+
+    def __init__(self, code: str) -> None:
+        """Initialize with the voucher code that was not found."""
+        self.code = code
+        super().__init__(f"Voucher not found: {code}")
+
+
+class VoucherExpiredError(Exception):
+    """Raised when an operation targets an expired voucher."""
+
+    def __init__(self, code: str) -> None:
+        """Initialize with the expired voucher code."""
+        self.code = code
+        super().__init__(f"Voucher expired: {code}")
+
+
+class VoucherRedeemedError(Exception):
+    """Raised when an operation is disallowed because the voucher was redeemed."""
+
+    def __init__(self, code: str) -> None:
+        """Initialize with the redeemed voucher code."""
+        self.code = code
+        super().__init__(f"Voucher already redeemed: {code}")
+
+
 class VoucherService:
     """Service for voucher lifecycle operations."""
 
@@ -194,3 +221,67 @@ class VoucherService:
         self.voucher_repo.commit()  # Commits both voucher update and grant insert
 
         return grant
+
+    async def revoke(self, code: str, current_time: Optional[datetime] = None) -> Voucher:
+        """Revoke a voucher (idempotent for already-revoked).
+
+        Args:
+            code: Voucher code to revoke.
+            current_time: Optional current time (defaults to now UTC).
+
+        Returns:
+            Updated voucher with REVOKED status.
+
+        Raises:
+            VoucherNotFoundError: If voucher code not found.
+            VoucherExpiredError: If voucher has expired.
+        """
+        if current_time is None:
+            current_time = datetime.now(timezone.utc)
+
+        voucher = self.voucher_repo.get_by_code(code)
+        if not voucher:
+            raise VoucherNotFoundError(code)
+
+        if voucher.status == VoucherStatus.REVOKED:
+            return voucher
+
+        if current_time > voucher.expires_utc:
+            raise VoucherExpiredError(code)
+
+        voucher.status = VoucherStatus.REVOKED
+        self.voucher_repo.commit()
+        return voucher
+
+    async def delete(self, code: str) -> dict[str, str | None]:
+        """Hard-delete a voucher that has never been redeemed.
+
+        Args:
+            code: Voucher code to delete.
+
+        Returns:
+            Metadata dict with 'status_at_delete' and 'booking_ref'
+            for audit logging by the caller.
+
+        Raises:
+            VoucherNotFoundError: If voucher code not found.
+            VoucherRedeemedError: If voucher has been redeemed.
+        """
+        voucher = self.voucher_repo.get_by_code(code)
+        if not voucher:
+            raise VoucherNotFoundError(code)
+
+        if voucher.redeemed_count > 0:
+            raise VoucherRedeemedError(code)
+
+        meta: dict[str, str | None] = {
+            "status_at_delete": voucher.status.value,
+            "booking_ref": voucher.booking_ref,
+        }
+
+        deleted = self.voucher_repo.delete(code)
+        if not deleted:
+            raise VoucherRedeemedError(code)
+
+        self.voucher_repo.commit()
+        return meta

@@ -12,8 +12,10 @@ These are TDD tests written before implementation.
 from __future__ import annotations
 
 import logging
+import re
+import urllib.parse
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
@@ -31,6 +33,8 @@ from captive_portal.security.session_middleware import (
     SessionMiddleware,
     SessionStore,
 )
+
+from captive_portal.api.routes.vouchers_ui import BulkResult, format_bulk_message
 
 
 # ---------------------------------------------------------------------------
@@ -460,3 +464,604 @@ class TestCreateVoucher:
             or "voucher" in r.getMessage().lower()
         ]
         assert len(collision_logs) >= 1
+
+
+# ---------------------------------------------------------------------------
+# T003 – Voucher actions context (can_revoke / can_delete buttons)
+# ---------------------------------------------------------------------------
+
+
+class TestVoucherActionsContext:
+    """T003: GET /admin/vouchers/ returns per-voucher action buttons."""
+
+    def test_unused_voucher_buttons_enabled(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Unused voucher: revoke enabled, delete enabled."""
+        client, _csrf = authenticated_client
+        v = _make_voucher(db_session, code="ACTUNUSED1")
+
+        resp = client.get("/admin/vouchers/")
+        assert resp.status_code == 200
+
+        revoke_btn = re.search(r'formaction="[^"]*revoke/ACTUNUSED1"[^>]*>', resp.text)
+        assert revoke_btn is not None
+        assert "disabled" not in revoke_btn.group()
+
+        delete_btn = re.search(r'formaction="[^"]*delete/ACTUNUSED1"[^>]*>', resp.text)
+        assert delete_btn is not None
+        assert "disabled" not in delete_btn.group()
+
+        db_session.delete(v)
+        db_session.commit()
+
+    def test_expired_voucher_revoke_disabled(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Expired voucher: revoke disabled, delete enabled (unredeemed)."""
+        client, _csrf = authenticated_client
+        v = Voucher(
+            code="ACTEXPRD01",
+            duration_minutes=1,
+            created_utc=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+        db_session.add(v)
+        db_session.commit()
+        db_session.refresh(v)
+
+        resp = client.get("/admin/vouchers/")
+        assert resp.status_code == 200
+
+        revoke_btn = re.search(r'formaction="[^"]*revoke/ACTEXPRD01"[^>]*>', resp.text)
+        assert revoke_btn is not None
+        assert "disabled" in revoke_btn.group()
+
+        delete_btn = re.search(r'formaction="[^"]*delete/ACTEXPRD01"[^>]*>', resp.text)
+        assert delete_btn is not None
+        assert "disabled" not in delete_btn.group()
+
+        db_session.delete(v)
+        db_session.commit()
+
+    def test_revoked_voucher_revoke_disabled(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Revoked voucher: revoke disabled, delete enabled (unredeemed)."""
+        client, _csrf = authenticated_client
+        v = _make_voucher(db_session, code="ACTREVKD01", status=VoucherStatus.REVOKED)
+
+        resp = client.get("/admin/vouchers/")
+        assert resp.status_code == 200
+
+        revoke_btn = re.search(r'formaction="[^"]*revoke/ACTREVKD01"[^>]*>', resp.text)
+        assert revoke_btn is not None
+        assert "disabled" in revoke_btn.group()
+
+        delete_btn = re.search(r'formaction="[^"]*delete/ACTREVKD01"[^>]*>', resp.text)
+        assert delete_btn is not None
+        assert "disabled" not in delete_btn.group()
+
+        db_session.delete(v)
+        db_session.commit()
+
+    def test_redeemed_voucher_delete_disabled(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Active+redeemed voucher: revoke enabled, delete disabled."""
+        client, _csrf = authenticated_client
+        v = _make_voucher(
+            db_session,
+            code="ACTREDMD01",
+            status=VoucherStatus.ACTIVE,
+            redeemed_count=1,
+        )
+
+        resp = client.get("/admin/vouchers/")
+        assert resp.status_code == 200
+
+        revoke_btn = re.search(r'formaction="[^"]*revoke/ACTREDMD01"[^>]*>', resp.text)
+        assert revoke_btn is not None
+        assert "disabled" not in revoke_btn.group()
+
+        delete_btn = re.search(r'formaction="[^"]*delete/ACTREDMD01"[^>]*>', resp.text)
+        assert delete_btn is not None
+        assert "disabled" in delete_btn.group()
+
+        db_session.delete(v)
+        db_session.commit()
+
+
+# ---------------------------------------------------------------------------
+# T007 – POST /admin/vouchers/revoke/{code}
+# ---------------------------------------------------------------------------
+
+
+class TestRevokeVoucher:
+    """T007: POST /admin/vouchers/revoke/{code} — revoke voucher."""
+
+    def test_successful_revoke(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Valid revoke request should 303 redirect with success message."""
+        client, csrf_token = authenticated_client
+        v = _make_voucher(db_session, code="REVOKEU001")
+
+        resp = client.post(
+            "/admin/vouchers/revoke/REVOKEU001",
+            data={"csrf_token": csrf_token},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "success=" in location
+        assert "revoked" in location.lower()
+
+        db_session.delete(v)
+        db_session.commit()
+
+    def test_revoke_already_revoked_idempotent(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Revoking already-revoked voucher should succeed (idempotent FR-004)."""
+        client, csrf_token = authenticated_client
+        v = _make_voucher(db_session, code="REVOKEI001", status=VoucherStatus.REVOKED)
+
+        resp = client.post(
+            "/admin/vouchers/revoke/REVOKEI001",
+            data={"csrf_token": csrf_token},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "success=" in location
+
+        db_session.delete(v)
+        db_session.commit()
+
+    def test_revoke_not_found(
+        self,
+        authenticated_client: tuple[TestClient, str],
+    ) -> None:
+        """Revoking non-existent voucher should redirect with error."""
+        client, csrf_token = authenticated_client
+
+        resp = client.post(
+            "/admin/vouchers/revoke/NOEXIST001",
+            data={"csrf_token": csrf_token},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+        assert "not+found" in location.lower() or "not found" in location.lower()
+
+    def test_revoke_expired_voucher(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Revoking an expired voucher should redirect with error."""
+        client, csrf_token = authenticated_client
+        v = Voucher(
+            code="REVOKEEXP1",
+            duration_minutes=1,
+            created_utc=datetime.now(timezone.utc) - timedelta(hours=24),
+        )
+        db_session.add(v)
+        db_session.commit()
+        db_session.refresh(v)
+
+        resp = client.post(
+            "/admin/vouchers/revoke/REVOKEEXP1",
+            data={"csrf_token": csrf_token},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+        assert "expired" in location.lower()
+
+        db_session.delete(v)
+        db_session.commit()
+
+    def test_revoke_invalid_csrf(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Invalid CSRF token should redirect with error."""
+        client, _csrf = authenticated_client
+        v = _make_voucher(db_session, code="REVOKECSR1")
+
+        resp = client.post(
+            "/admin/vouchers/revoke/REVOKECSR1",
+            data={"csrf_token": "wrong-token-value"},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+        assert "csrf" in location.lower() or "CSRF" in location
+
+        db_session.delete(v)
+        db_session.commit()
+
+
+# ---------------------------------------------------------------------------
+# T013 – POST /admin/vouchers/delete/{code}
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteVoucher:
+    """T013: POST /admin/vouchers/delete/{code} — delete voucher."""
+
+    def test_successful_delete(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Valid delete request should 303 redirect with success message."""
+        client, csrf_token = authenticated_client
+        _make_voucher(db_session, code="DELETEU001")
+
+        resp = client.post(
+            "/admin/vouchers/delete/DELETEU001",
+            data={"csrf_token": csrf_token},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "success=" in location
+        assert "deleted" in location.lower()
+
+    def test_delete_redeemed_voucher(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Deleting a redeemed voucher should redirect with error."""
+        client, csrf_token = authenticated_client
+        v = _make_voucher(
+            db_session,
+            code="DELETERD01",
+            status=VoucherStatus.ACTIVE,
+            redeemed_count=2,
+        )
+
+        resp = client.post(
+            "/admin/vouchers/delete/DELETERD01",
+            data={"csrf_token": csrf_token},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+        assert "redeemed" in location.lower()
+
+        db_session.delete(v)
+        db_session.commit()
+
+    def test_delete_not_found(
+        self,
+        authenticated_client: tuple[TestClient, str],
+    ) -> None:
+        """Deleting non-existent voucher should redirect with error."""
+        client, csrf_token = authenticated_client
+
+        resp = client.post(
+            "/admin/vouchers/delete/NOEXIST002",
+            data={"csrf_token": csrf_token},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+        assert "not+found" in location.lower() or "not found" in location.lower()
+
+    def test_delete_invalid_csrf(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Invalid CSRF token should redirect with error."""
+        client, _csrf = authenticated_client
+        v = _make_voucher(db_session, code="DELETECSR1")
+
+        resp = client.post(
+            "/admin/vouchers/delete/DELETECSR1",
+            data={"csrf_token": "wrong-token-value"},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+        assert "csrf" in location.lower() or "CSRF" in location
+
+        db_session.delete(v)
+        db_session.commit()
+
+
+# ---------------------------------------------------------------------------
+# T019 – BulkResult + format_bulk_message
+# ---------------------------------------------------------------------------
+
+
+class TestBulkResultFormatting:
+    """T019: BulkResult dataclass and format_bulk_message helper."""
+
+    def test_all_success_revoke(self) -> None:
+        """All-success message for revoke."""
+        result = BulkResult(action="revoked", success_count=5)
+        msg, key = format_bulk_message(result)
+        assert "5 vouchers" in msg.lower()
+        assert "successfully" in msg.lower()
+        assert key == "success"
+
+    def test_partial_success_revoke(self) -> None:
+        """Partial success with skips."""
+        result = BulkResult(
+            action="revoked",
+            success_count=3,
+            skip_reasons={"expired": 1, "already revoked": 1},
+        )
+        msg, key = format_bulk_message(result)
+        assert "3 vouchers" in msg.lower()
+        assert "skipped" in msg.lower()
+        assert key == "success"
+
+    def test_all_skipped(self) -> None:
+        """All vouchers skipped."""
+        result = BulkResult(
+            action="revoked",
+            success_count=0,
+            skip_reasons={"expired": 2, "already revoked": 1},
+        )
+        msg, key = format_bulk_message(result)
+        assert "skipped" in msg.lower()
+        assert key == "error"
+
+    def test_all_success_delete(self) -> None:
+        """All-success message for delete variant."""
+        result = BulkResult(action="deleted", success_count=4)
+        msg, key = format_bulk_message(result)
+        assert "4 vouchers" in msg.lower()
+        assert "successfully" in msg.lower()
+        assert key == "success"
+
+
+# ---------------------------------------------------------------------------
+# T020 – POST /admin/vouchers/bulk-revoke
+# ---------------------------------------------------------------------------
+
+
+class TestBulkRevokeVouchers:
+    """T020: POST /admin/vouchers/bulk-revoke — bulk revoke."""
+
+    def test_bulk_revoke_all_success(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """All selected vouchers revoked -> success redirect."""
+        client, csrf = authenticated_client
+        codes = ["BULKREV001", "BULKREV002", "BULKREV003"]
+        for c in codes:
+            _make_voucher(db_session, code=c)
+
+        resp = client.post(
+            "/admin/vouchers/bulk-revoke",
+            data={"csrf_token": csrf, "codes": codes},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "success=" in location
+        decoded = urllib.parse.unquote_plus(location)
+        assert "3 vouchers" in decoded.lower()
+
+        for c in codes:
+            v = db_session.get(Voucher, c)
+            if v:
+                db_session.delete(v)
+        db_session.commit()
+
+    def test_bulk_revoke_partial_success(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Mixed eligibility -> success redirect with skipped summary."""
+        client, csrf = authenticated_client
+        codes = ["BULKRVP001", "BULKRVP002"]
+        _make_voucher(db_session, code="BULKRVP001")
+        _make_voucher(db_session, code="BULKRVP002", status=VoucherStatus.REVOKED)
+
+        resp = client.post(
+            "/admin/vouchers/bulk-revoke",
+            data={"csrf_token": csrf, "codes": codes},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "success=" in location
+        decoded = urllib.parse.unquote_plus(location)
+        assert "skipped" in decoded.lower()
+
+        for c in codes:
+            v = db_session.get(Voucher, c)
+            if v:
+                db_session.delete(v)
+        db_session.commit()
+
+    def test_bulk_revoke_all_skipped(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """All ineligible -> error redirect."""
+        client, csrf = authenticated_client
+        codes = ["BULKRVS001", "BULKRVS002"]
+        _make_voucher(db_session, code="BULKRVS001", status=VoucherStatus.REVOKED)
+        _make_voucher(db_session, code="BULKRVS002", status=VoucherStatus.REVOKED)
+
+        resp = client.post(
+            "/admin/vouchers/bulk-revoke",
+            data={"csrf_token": csrf, "codes": codes},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+
+        for c in codes:
+            v = db_session.get(Voucher, c)
+            if v:
+                db_session.delete(v)
+        db_session.commit()
+
+    def test_bulk_revoke_no_selection(
+        self,
+        authenticated_client: tuple[TestClient, str],
+    ) -> None:
+        """No vouchers selected -> error redirect."""
+        client, csrf = authenticated_client
+
+        resp = client.post(
+            "/admin/vouchers/bulk-revoke",
+            data={"csrf_token": csrf},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+        decoded = urllib.parse.unquote_plus(location)
+        assert "no" in decoded.lower() and "selected" in decoded.lower()
+
+
+# ---------------------------------------------------------------------------
+# T020 – POST /admin/vouchers/bulk-delete
+# ---------------------------------------------------------------------------
+
+
+class TestBulkDeleteVouchers:
+    """T020: POST /admin/vouchers/bulk-delete — bulk delete."""
+
+    def test_bulk_delete_all_success(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """All selected vouchers deleted -> success redirect."""
+        client, csrf = authenticated_client
+        codes = ["BULKDEL001", "BULKDEL002", "BULKDEL003"]
+        for c in codes:
+            _make_voucher(db_session, code=c)
+
+        resp = client.post(
+            "/admin/vouchers/bulk-delete",
+            data={"csrf_token": csrf, "codes": codes},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "success=" in location
+        decoded = urllib.parse.unquote_plus(location)
+        assert "3 vouchers" in decoded.lower()
+
+    def test_bulk_delete_partial_success(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Mixed eligibility -> success redirect with skipped summary."""
+        client, csrf = authenticated_client
+        codes = ["BULKDLP001", "BULKDLP002"]
+        _make_voucher(db_session, code="BULKDLP001")
+        _make_voucher(
+            db_session,
+            code="BULKDLP002",
+            status=VoucherStatus.ACTIVE,
+            redeemed_count=1,
+        )
+
+        resp = client.post(
+            "/admin/vouchers/bulk-delete",
+            data={"csrf_token": csrf, "codes": codes},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "success=" in location
+        decoded = urllib.parse.unquote_plus(location)
+        assert "skipped" in decoded.lower()
+
+        v = db_session.get(Voucher, "BULKDLP002")
+        if v:
+            db_session.delete(v)
+        db_session.commit()
+
+    def test_bulk_delete_all_skipped(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """All ineligible -> error redirect."""
+        client, csrf = authenticated_client
+        codes = ["BULKDLS001", "BULKDLS002"]
+        _make_voucher(
+            db_session,
+            code="BULKDLS001",
+            status=VoucherStatus.ACTIVE,
+            redeemed_count=1,
+        )
+        _make_voucher(
+            db_session,
+            code="BULKDLS002",
+            status=VoucherStatus.ACTIVE,
+            redeemed_count=2,
+        )
+
+        resp = client.post(
+            "/admin/vouchers/bulk-delete",
+            data={"csrf_token": csrf, "codes": codes},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+
+        for c in codes:
+            v = db_session.get(Voucher, c)
+            if v:
+                db_session.delete(v)
+        db_session.commit()
+
+    def test_bulk_delete_no_selection(
+        self,
+        authenticated_client: tuple[TestClient, str],
+    ) -> None:
+        """No vouchers selected -> error redirect."""
+        client, csrf = authenticated_client
+
+        resp = client.post(
+            "/admin/vouchers/bulk-delete",
+            data={"csrf_token": csrf},
+            follow_redirects=False,
+        )
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+        decoded = urllib.parse.unquote_plus(location)
+        assert "no" in decoded.lower() and "selected" in decoded.lower()
