@@ -137,10 +137,16 @@ class HADiscoveryService:
         integrations: list[DiscoveredIntegration] = []
         for entity in rental_entities:
             attrs = entity.get("attributes", {})
+            raw_friendly_name = attrs.get("friendly_name")
+            if isinstance(raw_friendly_name, str) and raw_friendly_name.strip():
+                friendly_name = raw_friendly_name
+            else:
+                friendly_name = entity["entity_id"]
+
             integrations.append(
                 DiscoveredIntegration(
                     entity_id=entity["entity_id"],
-                    friendly_name=attrs.get("friendly_name", entity["entity_id"]),
+                    friendly_name=friendly_name,
                     state=entity.get("state", "unknown"),
                     event_summary=attrs.get("message"),
                     event_start=attrs.get("start_time"),

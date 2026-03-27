@@ -3,8 +3,8 @@
 """Tests for enriched discovery fields (T024/T025).
 
 Verifies that DiscoveredIntegration includes:
-  - next_event_summary (from calendar message attribute)
-  - next_checkin_date (from calendar start_time attribute)
+  - event_summary (from calendar message attribute)
+  - event_start / event_end (from calendar start_time/end_time attributes)
   - state_display (human-readable state label)
   - state extraction from raw HA entity data
 """
