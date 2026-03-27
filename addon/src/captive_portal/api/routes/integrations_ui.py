@@ -76,6 +76,9 @@ async def list_integrations(
     need_csrf_cookie = existing_token is None
     csrf_token: str = existing_token if existing_token is not None else csrf.generate_token()
 
+    success_message = request.query_params.get("success")
+    error_message = request.query_params.get("error")
+
     statement: Any = select(HAIntegrationConfig)
     integrations = list(cast(list[HAIntegrationConfig], session.exec(statement).all()))
 
@@ -89,6 +92,8 @@ async def list_integrations(
             "integration": None,
             "csrf_token": csrf_token,
             "discovery_result": discovery_result,
+            "success_message": success_message,
+            "error_message": error_message,
         },
     )
     if need_csrf_cookie:
@@ -210,21 +215,41 @@ async def save_integration(
         csrf: CSRF protection
 
     Returns:
-        Redirect to integrations list
-
-    Raises:
-        HTTPException: 404 on missing integration, 409 on duplicate, 422 on invalid data
+        303 redirect to integrations page with success or error message.
     """
-    await csrf.validate_token(request)
+    root = request.scope.get("root_path", "")
+
+    try:
+        await csrf.validate_token(request)
+    except HTTPException:
+        logger.warning("CSRF validation failed for integration save")
+        return RedirectResponse(
+            url=f"{root}/admin/integrations/?error=Invalid+CSRF+token",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    try:
+        resolved_attr = _resolve_identifier_attr(identifier_attr, auth_attribute)
+    except HTTPException as exc:
+        from urllib.parse import quote_plus
+
+        msg = quote_plus(str(exc.detail))
+        logger.warning("Invalid identifier attribute for integration save: %s", exc.detail)
+        return RedirectResponse(
+            url=f"{root}/admin/integrations/?error={msg}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
     audit_service = AuditService(session)
-    resolved_attr = _resolve_identifier_attr(identifier_attr, auth_attribute)
 
     if id:
         # Update existing
         integration = session.get(HAIntegrationConfig, id)
         if not integration:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Integration not found"
+            logger.warning("Integration not found for update: %s", id)
+            return RedirectResponse(
+                url=f"{root}/admin/integrations/?error=Integration+not+found",
+                status_code=status.HTTP_303_SEE_OTHER,
             )
 
         integration.integration_id = integration_id
@@ -249,9 +274,10 @@ async def save_integration(
             Optional[HAIntegrationConfig], session.exec(dup_stmt).first()
         )
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Integration '{integration_id}' already exists",
+            logger.warning("Duplicate integration: %s", integration_id)
+            return RedirectResponse(
+                url=f"{root}/admin/integrations/?error=Integration+already+exists",
+                status_code=status.HTTP_303_SEE_OTHER,
             )
 
         # Create new
@@ -273,7 +299,7 @@ async def save_integration(
         )
 
     return RedirectResponse(
-        url=f"{request.scope.get('root_path', '')}/admin/integrations",
+        url=f"{root}/admin/integrations/?success=Integration+saved+successfully",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -296,16 +322,26 @@ async def delete_integration(
         csrf: CSRF protection
 
     Returns:
-        Redirect to integrations list
-
-    Raises:
-        404: Integration not found
+        303 redirect to integrations page with success or error message.
     """
-    await csrf.validate_token(request)
+    root = request.scope.get("root_path", "")
+
+    try:
+        await csrf.validate_token(request)
+    except HTTPException:
+        logger.warning("CSRF validation failed for integration delete %s", integration_id)
+        return RedirectResponse(
+            url=f"{root}/admin/integrations/?error=Invalid+CSRF+token",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     integration = session.get(HAIntegrationConfig, integration_id)
     if not integration:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Integration not found")
+        logger.warning("Integration not found for delete: %s", integration_id)
+        return RedirectResponse(
+            url=f"{root}/admin/integrations/?error=Integration+not+found",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     session.delete(integration)
     session.commit()
@@ -319,6 +355,6 @@ async def delete_integration(
     )
 
     return RedirectResponse(
-        url=f"{request.scope.get('root_path', '')}/admin/integrations",
+        url=f"{root}/admin/integrations/?success=Integration+deleted+successfully",
         status_code=status.HTTP_303_SEE_OTHER,
     )

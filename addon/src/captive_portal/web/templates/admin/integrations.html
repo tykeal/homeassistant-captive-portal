@@ -31,6 +31,18 @@ SPDX-License-Identifier: Apache-2.0
     <main class="container">
         <h2>Home Assistant Integrations</h2>
 
+        {% if success_message %}
+        <div class="alert alert-success">
+            {{ success_message }}
+        </div>
+        {% endif %}
+
+        {% if error_message %}
+        <div class="alert alert-error">
+            {{ error_message }}
+        </div>
+        {% endif %}
+
         {# ── Discovery status notification ─────────────────────── #}
         {% if discovery_result and not discovery_result.available %}
         <div class="alert alert-error discovery-notification">

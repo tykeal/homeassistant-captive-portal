@@ -127,7 +127,7 @@ class TestSaveDuplicateConflict:
         admin_user: Any,
         db_session: Session,
     ) -> None:
-        """Second create with same integration_id raises 409."""
+        """Second create with same integration_id redirects with error."""
         # Seed an existing integration
         existing = HAIntegrationConfig(
             integration_id="calendar.rental_control_dup_test",
@@ -149,7 +149,8 @@ class TestSaveDuplicateConflict:
             },
             follow_redirects=False,
         )
-        assert resp.status_code == 409, f"Expected 409 Conflict, got {resp.status_code}"
+        assert resp.status_code == 303, f"Expected 303 redirect, got {resp.status_code}"
+        assert "error=Integration+already+exists" in resp.headers["location"]
 
 
 # ── (d) identifier_attr field renamed ───────────────────────────────
