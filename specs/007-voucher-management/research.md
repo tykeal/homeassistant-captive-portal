@@ -57,14 +57,16 @@ Add `async VoucherService.delete(code: str) -> None`:
 1. Fetch voucher by code via `VoucherRepository.get_by_code()` (used for not-found handling and better error messaging).
 2. Raise `VoucherNotFoundError` if not found.
 3. Optionally, if `voucher.redeemed_count > 0` → raise `VoucherRedeemedError` (FR-008) for a clearer, pre-emptive error. This check is an optimization only and is **not** the concurrency guard.
-4. Call `VoucherRepository.delete(code)` which performs an atomic `DELETE FROM vouchers WHERE code = ? AND redeemed_count = 0` and returns `True` iff a row was deleted.
-5. If `VoucherRepository.delete(code)` returns `False` → raise `VoucherRedeemedError` (covers the FR-010 race where redemption occurs between the read in step 1 and the delete).
+4. Call `VoucherRepository.delete(code)` which performs an atomic `DELETE FROM voucher WHERE code = ? AND redeemed_count = 0` and returns `True` iff a row was deleted.
+5. If `VoucherRepository.delete(code)` returns `False`, perform a follow-up `VoucherRepository.get_by_code(code)` in the same transaction to disambiguate:
+   - If the voucher is no longer found → treat as concurrently deleted and raise `VoucherNotFoundError`.
+   - If the voucher is still present → raise `VoucherRedeemedError` (covers the FR-010 race where redemption occurs between the read in step 1 and the delete).
 6. Commit.
 
 Add `VoucherRepository.delete(code: str) -> bool` that issues the predicate delete (`WHERE redeemed_count = 0`) and returns `True` only when the voucher was never redeemed and has been removed.
 
 ### Rationale
-FR-006 requires deletion only for never-redeemed vouchers. FR-007 specifies permanent removal. FR-009 explicitly allows deletion of revoked-but-never-redeemed vouchers. The guard checks `redeemed_count == 0` at the database level via an atomic predicate delete, which covers all cases and prevents the FR-010 race:
+FR-006 requires deletion only for never-redeemed vouchers. FR-007 specifies permanent removal. FR-009 explicitly allows deletion of revoked-but-never-redeemed vouchers. The guard checks `redeemed_count == 0` at the database level via an atomic predicate delete, and the follow-up lookup in step 5 distinguishes between concurrent deletion (treated as not found) and late redemption (treated as redeemed). Together, these cover all cases and prevent the FR-010 race:
 - Unused (redeemed_count=0): deletable ✓
 - Revoked, never redeemed (redeemed_count=0): deletable ✓ (FR-009)
 - Active (redeemed_count>0): not deletable ✗
@@ -158,7 +160,7 @@ HTML checkboxes with `name="codes[]"` submit as a list of values in form data. T
   <table>
     <thead>
       <tr>
-        <th><input type="checkbox" id="select-all"></th>
+        <th><input type="checkbox" id="select-all" aria-label="Select all vouchers"></th>
         ...existing headers...
         <th>Actions</th>
       </tr>
@@ -166,7 +168,7 @@ HTML checkboxes with `name="codes[]"` submit as a list of values in form data. T
     <tbody>
       {% for voucher in vouchers %}
       <tr>
-        <td><input type="checkbox" name="codes[]" value="{{ voucher.code }}"></td>
+        <td><input type="checkbox" name="codes[]" value="{{ voucher.code }}" aria-label="Select voucher {{ voucher.code }}"></td>
         ...existing columns...
         <td>
           <!-- Individual action forms remain separate for single-voucher ops -->
