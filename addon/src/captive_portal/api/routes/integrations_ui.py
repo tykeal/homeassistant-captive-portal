@@ -72,14 +72,16 @@ async def list_integrations(
     Returns:
         HTML response with integrations template
     """
-    csrf_token = csrf.generate_token()
+    existing_token = csrf.get_token_from_request(request)
+    need_csrf_cookie = existing_token is None
+    csrf_token: str = existing_token if existing_token is not None else csrf.generate_token()
 
     statement: Any = select(HAIntegrationConfig)
     integrations = list(cast(list[HAIntegrationConfig], session.exec(statement).all()))
 
     discovery_result = await _run_discovery(request, session)
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="admin/integrations.html",
         context={
@@ -89,6 +91,9 @@ async def list_integrations(
             "discovery_result": discovery_result,
         },
     )
+    if need_csrf_cookie:
+        csrf.set_csrf_cookie(response, csrf_token)
+    return response
 
 
 @router.get("/edit/{integration_id}", response_class=HTMLResponse)
@@ -118,14 +123,16 @@ async def edit_integration(
     if not integration:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Integration not found")
 
-    csrf_token = csrf.generate_token()
+    existing_token = csrf.get_token_from_request(request)
+    need_csrf_cookie = existing_token is None
+    csrf_token: str = existing_token if existing_token is not None else csrf.generate_token()
 
     statement: Any = select(HAIntegrationConfig)
     integrations = list(cast(list[HAIntegrationConfig], session.exec(statement).all()))
 
     discovery_result = await _run_discovery(request, session)
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="admin/integrations.html",
         context={
@@ -135,6 +142,9 @@ async def edit_integration(
             "discovery_result": discovery_result,
         },
     )
+    if need_csrf_cookie:
+        csrf.set_csrf_cookie(response, csrf_token)
+    return response
 
 
 def _resolve_identifier_attr(
