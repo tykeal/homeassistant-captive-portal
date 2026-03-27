@@ -15,6 +15,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from captive_portal.config.settings import AppSettings
+from captive_portal.integrations.ha_client import HAClient
 from captive_portal.persistence.database import (
     create_db_engine,
     dispose_engine,
@@ -73,9 +74,16 @@ def _make_lifespan(
             dispose_engine()
             raise
 
+        # Create HA client for API communication
+        ha_client = HAClient(settings.ha_base_url, settings.ha_token)
+        app.state.ha_client = ha_client
+        logger.info("HAClient initialized for %s", settings.ha_base_url)
+
         yield
 
         # --- Shutdown ---
+        await app.state.ha_client.close()
+        logger.info("HAClient closed.")
         dispose_engine()
         logger.info("Database connections closed.")
 

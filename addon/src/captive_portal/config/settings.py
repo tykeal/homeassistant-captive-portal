@@ -43,6 +43,7 @@ _ADDON_OPTION_MAP: dict[str, str] = {
     "session_idle_timeout": "session_idle_minutes",
     "session_max_duration": "session_max_hours",
     "guest_external_url": "guest_external_url",
+    "ha_base_url": "ha_base_url",
 }
 
 # Mapping from env var names to AppSettings field names
@@ -52,6 +53,8 @@ _ENV_VAR_MAP: dict[str, str] = {
     "CP_SESSION_IDLE_TIMEOUT": "session_idle_minutes",
     "CP_SESSION_MAX_DURATION": "session_max_hours",
     "CP_GUEST_EXTERNAL_URL": "guest_external_url",
+    "CP_HA_BASE_URL": "ha_base_url",
+    "CP_HA_TOKEN": "ha_token",
 }
 
 
@@ -107,6 +110,26 @@ def _validate_guest_url(value: Any) -> bool:
     return True
 
 
+def _validate_ha_url(value: Any) -> bool:
+    """Check if *value* is a valid Home Assistant API URL.
+
+    Args:
+        value: Candidate value.
+
+    Returns:
+        True if the value is a valid HA base URL.
+    """
+    if not isinstance(value, str):
+        return False
+    stripped = value.strip()
+    if not stripped:
+        return False
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(stripped)
+    return parts.scheme in ("http", "https") and bool(parts.netloc)
+
+
 def _validate_field(field: str, value: Any) -> bool:
     """Validate a single field value.
 
@@ -125,6 +148,10 @@ def _validate_field(field: str, value: Any) -> bool:
         return _validate_positive_int(value)
     if field == "guest_external_url":
         return _validate_guest_url(value)
+    if field == "ha_base_url":
+        return _validate_ha_url(value)
+    if field == "ha_token":
+        return isinstance(value, str) and len(value.strip()) > 0
     return False
 
 
@@ -144,6 +171,10 @@ def _coerce_field(field: str, value: Any) -> Any:
         return str(value).lower()
     if field == "guest_external_url":
         return str(value).strip()
+    if field == "ha_base_url":
+        return str(value).strip()
+    if field == "ha_token":
+        return str(value).strip()
     return value
 
 
@@ -155,6 +186,8 @@ class AppSettings(BaseModel):
     session_idle_minutes: int = 30
     session_max_hours: int = 8
     guest_external_url: str = ""
+    ha_base_url: str = "http://supervisor/core/api"
+    ha_token: str = ""
 
     @classmethod
     def load(cls, options_path: str = "/data/options.json") -> AppSettings:
@@ -190,6 +223,8 @@ class AppSettings(BaseModel):
             "session_idle_minutes",
             "session_max_hours",
             "guest_external_url",
+            "ha_base_url",
+            "ha_token",
         ):
             # --- Try addon option ---
             addon_key = _FIELD_TO_ADDON_KEY.get(field_name)
@@ -207,6 +242,13 @@ class AppSettings(BaseModel):
                 )
 
             # --- Try environment variable ---
+            # ha_token has a special primary source: SUPERVISOR_TOKEN
+            if field_name == "ha_token":
+                sv_token = os.environ.get("SUPERVISOR_TOKEN")
+                if sv_token is not None and _validate_field(field_name, sv_token):
+                    resolved[field_name] = _coerce_field(field_name, sv_token)
+                    continue
+
             env_key = _FIELD_TO_ENV_KEY.get(field_name)
             if env_key:
                 env_val = os.environ.get(env_key)
@@ -254,6 +296,8 @@ class AppSettings(BaseModel):
         log.info("  session_idle_minutes = %d", self.session_idle_minutes)
         log.info("  session_max_hours = %d", self.session_max_hours)
         log.info("  guest_external_url = %s", self.guest_external_url or "(not configured)")
+        log.info("  ha_base_url = %s", self.ha_base_url)
+        log.info("  ha_token = %s", "(set)" if self.ha_token else "(not set)")
 
     def validate_db_path(self) -> None:
         """Validate that the database path's parent directory exists and is writable.
