@@ -52,7 +52,10 @@ async def get_dashboard(
     Returns:
         HTML response with dashboard template.
     """
-    csrf_token = csrf.get_token_from_request(request)
+    existing_token = csrf.get_token_from_request(request)
+    need_csrf_cookie = existing_token is None
+    csrf_token: str = existing_token if existing_token is not None else csrf.generate_token()
+
     service = DashboardService(session)
 
     try:
@@ -72,7 +75,7 @@ async def get_dashboard(
         logger.exception("Failed to load recent activity")
         recent_logs = []
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="admin/dashboard.html",
         context={
@@ -81,3 +84,6 @@ async def get_dashboard(
             "csrf_token": csrf_token,
         },
     )
+    if need_csrf_cookie:
+        csrf.set_csrf_cookie(response, csrf_token)
+    return response

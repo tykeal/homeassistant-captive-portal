@@ -52,7 +52,9 @@ async def get_vouchers(
     Returns:
         HTML response with vouchers template.
     """
-    csrf_token = csrf.get_token_from_request(request)
+    existing_token = csrf.get_token_from_request(request)
+    need_csrf_cookie = existing_token is None
+    csrf_token: str = existing_token if existing_token is not None else csrf.generate_token()
 
     new_code = request.query_params.get("new_code")
     success_message = request.query_params.get("success")
@@ -65,7 +67,7 @@ async def get_vouchers(
     )
     vouchers = list(cast(list[Voucher], session.exec(stmt).all()))
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="admin/vouchers.html",
         context={
@@ -76,6 +78,9 @@ async def get_vouchers(
             "error_message": error_message,
         },
     )
+    if need_csrf_cookie:
+        csrf.set_csrf_cookie(response, csrf_token)
+    return response
 
 
 @router.post("/create")

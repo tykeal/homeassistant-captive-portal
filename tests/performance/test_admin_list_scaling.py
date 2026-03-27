@@ -135,23 +135,22 @@ async def test_admin_vouchers_list_200_vouchers_p95(
         session.close()
 
     # WHEN: Measuring vouchers list latency
+    # Login once before benchmark to avoid session accumulation
+    login_response = await async_client.post(
+        "/api/admin/auth/login",
+        json={
+            "username": "voucher_list_admin",
+            "password": "benchmark_password",
+        },
+    )
+    assert login_response.status_code == 200
+
     async def fetch_vouchers_list() -> float:
         """Fetch vouchers list and return latency in milliseconds."""
-        client = async_client
-        login_response = await client.post(
-            "/api/admin/auth/login",
-            json={
-                "username": "voucher_list_admin",
-                "password": "benchmark_password",
-            },
-        )
-        assert login_response.status_code == 200
-
         start = time.perf_counter()
-        response = await client.get("/admin/vouchers/")
+        response = await async_client.get("/admin/vouchers/")
         assert response.status_code == 200
         elapsed = time.perf_counter() - start
-
         return elapsed * 1000
 
     # Run benchmark (20 samples)

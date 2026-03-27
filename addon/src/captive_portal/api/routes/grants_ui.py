@@ -82,7 +82,10 @@ async def get_grants(
     Returns:
         HTML response with grants list template.
     """
-    csrf_token = csrf.get_token_from_request(request)
+    existing_token = csrf.get_token_from_request(request)
+    need_csrf_cookie = existing_token is None
+    csrf_token: str = existing_token if existing_token is not None else csrf.generate_token()
+
     now = datetime.now(timezone.utc)
 
     status_filter = request.query_params.get("status", "")
@@ -102,7 +105,7 @@ async def get_grants(
             grants.append(grant)
             grant_statuses[str(grant.id)] = computed
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="admin/grants_enhanced.html",
         context={
@@ -114,6 +117,9 @@ async def get_grants(
             "error_message": error_message,
         },
     )
+    if need_csrf_cookie:
+        csrf.set_csrf_cookie(response, csrf_token)
+    return response
 
 
 @router.post("/extend/{grant_id}")
