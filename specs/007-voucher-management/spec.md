@@ -57,7 +57,7 @@ As an administrator managing a large number of vouchers (e.g., for a hotel or ev
 **Acceptance Scenarios**:
 
 1. **Given** multiple unused vouchers exist, **When** the admin selects three vouchers using checkboxes and clicks "Delete Selected", **Then** all three vouchers are permanently removed and a summary message indicates how many were deleted.
-2. **Given** multiple vouchers in various statuses exist, **When** the admin selects five vouchers and clicks "Revoke Selected", **Then** only the eligible vouchers (unused and active) are revoked, and a summary message indicates how many were revoked and how many were skipped.
+2. **Given** multiple vouchers in various statuses exist, **When** the admin selects five vouchers and clicks "Revoke Selected", **Then** only the eligible vouchers (unused or active and not expired / within their validity period) are revoked, expired vouchers are skipped, and a summary message indicates how many were revoked and how many were skipped.
 3. **Given** the admin selects a mix of unused and redeemed vouchers, **When** they click "Delete Selected", **Then** only the unused vouchers are deleted, the redeemed vouchers are skipped, and a summary message explains the outcome (e.g., "Deleted 2 vouchers, skipped 3 (already redeemed)").
 4. **Given** no vouchers are selected, **When** the admin clicks a bulk action button, **Then** the system displays a message asking the admin to select at least one voucher.
 5. **Given** the voucher list has a "select all" checkbox, **When** the admin clicks it, **Then** all visible vouchers are selected for bulk action.
@@ -133,7 +133,7 @@ As an administrator managing a large number of vouchers (e.g., for a hotel or ev
 
 - The existing admin authentication and authorization system (require_admin dependency) will be reused — no new permission model is needed for these actions.
 - The existing VoucherStatus enum already includes the "revoked" status, so no data model changes are needed for revocation.
-- The existing CSRF protection mechanism used by the vouchers create and grants extend/revoke actions will be reused.
+- The existing CSRF protection mechanism used by voucher creation and grants extend/revoke actions will be reused.
 - The existing audit logging service used by grants and voucher creation will be extended to cover revoke and delete actions.
 - Voucher deletion is a hard delete (permanent removal), not a soft delete. Audit logs capture the action, but the voucher record itself is removed.
 - The vouchers page already loads and displays vouchers — bulk operations add selection UI on top of the existing table without redesigning the page layout.
