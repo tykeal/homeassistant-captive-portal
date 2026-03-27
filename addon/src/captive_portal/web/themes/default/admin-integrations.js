@@ -63,11 +63,15 @@
                     // Override the dropdown: set select to blank and use manual value
                     select.value = "";
                     select.name = "";
+                    select.required = false;
                     manualInput.name = "integration_id";
+                    manualInput.required = true;
                 } else {
                     // Revert: dropdown is the source
                     select.name = "integration_id";
+                    select.required = true;
                     manualInput.name = "integration_id_manual";
+                    manualInput.required = false;
                 }
                 updateSubmitState();
             });
@@ -77,7 +81,9 @@
                 if (select.value) {
                     manualInput.value = "";
                     select.name = "integration_id";
+                    select.required = true;
                     manualInput.name = "integration_id_manual";
+                    manualInput.required = false;
                 }
                 updateSubmitState();
             });
@@ -140,7 +146,9 @@
             refreshBtn.textContent = "Refreshing…";
             refreshBtn.classList.add("refreshing");
 
-            fetch("/api/integrations/discover", {
+            var discoverUrl = refreshBtn.getAttribute("data-discover-url") || "/api/integrations/discover";
+
+            fetch(discoverUrl, {
                 method: "GET",
                 headers: { "Accept": "application/json" },
                 credentials: "same-origin"

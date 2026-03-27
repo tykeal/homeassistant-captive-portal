@@ -44,6 +44,7 @@ _ADDON_OPTION_MAP: dict[str, str] = {
     "session_max_duration": "session_max_hours",
     "guest_external_url": "guest_external_url",
     "ha_base_url": "ha_base_url",
+    "ha_token": "ha_token",
 }
 
 # Mapping from env var names to AppSettings field names

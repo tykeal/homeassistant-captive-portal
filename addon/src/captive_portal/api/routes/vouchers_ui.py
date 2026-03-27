@@ -306,8 +306,10 @@ async def delete_voucher(
         )
     except VoucherRedeemedError:
         logger.warning("Cannot delete redeemed voucher: %s", code)
+        error_message = f"Cannot delete voucher {code} — it has been redeemed"
+        encoded_error = urllib.parse.quote_plus(error_message)
         return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Cannot+delete+voucher+{code}+%E2%80%94+it+has+been+redeemed",
+            url=f"{root}/admin/vouchers/?error={encoded_error}",
             status_code=status.HTTP_303_SEE_OTHER,
         )
     audit_service = AuditService(session)
