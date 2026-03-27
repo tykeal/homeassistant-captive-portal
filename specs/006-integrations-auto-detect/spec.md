@@ -76,7 +76,7 @@ An admin has the integrations page open and realizes they need to add a Rental C
 ### Edge Cases
 
 - What happens when Home Assistant has zero Rental Control integrations? The system displays a helpful empty state message explaining that no Rental Control integrations were found and suggests the admin install one in Home Assistant first, while still offering the manual entry fallback.
-- What happens when the HA API responds but returns an error (e.g., 401 Unauthorized, 500 Internal Server Error)? The system treats this as "unavailable" and falls back to manual entry, displaying the specific error context in the notification message.
+- What happens when the HA API responds but returns an error (e.g., 401 Unauthorized, 500 Internal Server Error)? The system treats this as "unavailable" and falls back to manual entry, displaying a constrained error notification (for example, HTTP status code and a short, human-readable reason) while logging full error details server-side for troubleshooting. The UI MUST NOT expose sensitive information such as tokens, internal URLs, or raw response bodies.
 - What happens when a previously auto-detected integration is removed from Home Assistant after being added to the captive portal? The already-configured integration in the captive portal remains functional (it relies on polling, which will naturally detect staleness). The removed integration no longer appears in the pick-list for new additions.
 - What happens when the HA API is slow to respond (e.g., >5 seconds)? The page displays a loading indicator during detection. If the request exceeds a reasonable timeout (e.g., 10 seconds), the system falls back to manual entry with a timeout notification.
 - What happens when an admin has many Rental Control integrations (e.g., 20+)? The pick-list remains usable with a scrollable list. Entity state details help the admin quickly identify the correct integration.
@@ -92,7 +92,7 @@ An admin has the integrations page open and realizes they need to add a Rental C
 - **FR-005**: System MUST display relevant calendar attributes (e.g., next event summary, upcoming check-in date) for each discovered integration when available.
 - **FR-006**: System MUST visually indicate integrations that are already configured in the captive portal and prevent duplicate additions.
 - **FR-007**: System MUST fall back to a manual text entry field when the Home Assistant API is unreachable, returns an error, or times out.
-- **FR-008**: System MUST display a clear notification explaining why auto-detection is unavailable when falling back to manual entry, including the nature of the failure (e.g., timeout, authentication error, connection refused).
+- **FR-008**: System MUST display a clear, user-friendly notification explaining why auto-detection is unavailable when falling back to manual entry, including the nature of the failure (e.g., timeout, authentication error, connection refused), and MUST NOT expose secrets (such as tokens) or verbose stack traces; detailed diagnostic information MUST be written to logs instead of shown in the UI.
 - **FR-009**: System MUST provide a refresh control that re-queries Home Assistant for available integrations without requiring a full page reload.
 - **FR-010**: System MUST show a loading indicator while the integration discovery query is in progress.
 - **FR-011**: System MUST use the integration identifier discovered from Home Assistant as the stored `integration_id` value, ensuring consistency with the existing polling and event processing system.
@@ -116,7 +116,7 @@ An admin has the integrations page open and realizes they need to add a Rental C
 
 ## Assumptions
 
-- The Home Assistant Supervisor API token is automatically provided to the addon at runtime and does not require user configuration. This is guaranteed by the `homeassistant_api: true` setting in the addon's configuration.
+- The addon runs in a Home Assistant supervised environment where an authorization mechanism (for example, a Supervisor-provided API token) is made available to the addon at runtime and does not require user configuration. This assumption typically holds when the addon's configuration includes `homeassistant_api: true`, which permits access to the Home Assistant REST API.
 - Rental Control integrations expose calendar entities following a discoverable naming pattern (e.g., `calendar.rental_control_*`), which can be enumerated by querying Home Assistant for available entities.
 - The admin has already installed and configured at least one Rental Control integration in Home Assistant before using the auto-detection feature. If none exist, the system guides them appropriately.
 - The existing service layer for communicating with Home Assistant can be extended to support integration discovery without requiring new external dependencies.
