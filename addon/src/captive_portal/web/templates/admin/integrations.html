@@ -63,6 +63,7 @@ SPDX-License-Identifier: Apache-2.0
                             {{ disc.friendly_name }} ({{ disc.entity_id }})
                             {%- if disc.already_configured %} (already added){% endif %}
                             {%- if disc.state_display %} — {{ disc.state_display }}{% endif %}
+                            {%- if disc.event_summary %} | {{ disc.event_summary }}{% endif %}
                         </option>
                         {% endfor %}
                     </select>

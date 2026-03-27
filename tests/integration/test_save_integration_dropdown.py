@@ -66,8 +66,7 @@ class TestSaveFromDropdown:
         db_session.expire_all()
         row = db_session.exec(
             select(HAIntegrationConfig).where(
-                HAIntegrationConfig.integration_id
-                == "calendar.rental_control_cabin_a"
+                HAIntegrationConfig.integration_id == "calendar.rental_control_cabin_a"
             )
         ).first()
 
@@ -107,8 +106,7 @@ class TestSaveFromManualInput:
         db_session.expire_all()
         row = db_session.exec(
             select(HAIntegrationConfig).where(
-                HAIntegrationConfig.integration_id
-                == "calendar.rental_control_custom_unit"
+                HAIntegrationConfig.integration_id == "calendar.rental_control_custom_unit"
             )
         ).first()
 
@@ -151,9 +149,7 @@ class TestSaveDuplicateConflict:
             },
             follow_redirects=False,
         )
-        assert resp.status_code == 409, (
-            f"Expected 409 Conflict, got {resp.status_code}"
-        )
+        assert resp.status_code == 409, f"Expected 409 Conflict, got {resp.status_code}"
 
 
 # ── (d) identifier_attr field renamed ───────────────────────────────
@@ -197,8 +193,7 @@ class TestIdentifierAttrFieldRenamed:
         db_session.expire_all()
         row = db_session.exec(
             select(HAIntegrationConfig).where(
-                HAIntegrationConfig.integration_id
-                == f"calendar.rental_control_attr_{attr_value}"
+                HAIntegrationConfig.integration_id == f"calendar.rental_control_attr_{attr_value}"
             )
         ).first()
 
@@ -230,8 +225,7 @@ class TestIdentifierAttrFieldRenamed:
         db_session.expire_all()
         row = db_session.exec(
             select(HAIntegrationConfig).where(
-                HAIntegrationConfig.integration_id
-                == "calendar.rental_control_legacy_test"
+                HAIntegrationConfig.integration_id == "calendar.rental_control_legacy_test"
             )
         ).first()
 
