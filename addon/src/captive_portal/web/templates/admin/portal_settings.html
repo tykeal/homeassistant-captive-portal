@@ -16,11 +16,11 @@ SPDX-License-Identifier: Apache-2.0
         <div class="container">
             <h1>Captive Portal Admin</h1>
             <nav>
-                <a href="{{ rp }}/admin/dashboard" class="nav-link">Dashboard</a>
+                <a href="{{ rp }}/admin/dashboard/" class="nav-link">Dashboard</a>
                 <a href="{{ rp }}/admin/grants/" class="nav-link">Grants</a>
                 <a href="{{ rp }}/admin/vouchers/" class="nav-link">Vouchers</a>
-                <a href="{{ rp }}/admin/integrations" class="nav-link">Integrations</a>
-                <a href="{{ rp }}/admin/portal-settings" class="nav-link active">Settings</a>
+                <a href="{{ rp }}/admin/integrations/" class="nav-link">Integrations</a>
+                <a href="{{ rp }}/admin/portal-settings/" class="nav-link active">Settings</a>
                 <form action="{{ rp }}/admin/logout" method="POST" class="nav-inline-form">
                     <button type="submit" class="btn-link">Logout</button>
                 </form>
@@ -44,7 +44,7 @@ SPDX-License-Identifier: Apache-2.0
             </div>
             {% endif %}
 
-            <form id="portal-config-form" method="POST" action="{{ rp }}/admin/portal-settings">
+            <form id="portal-config-form" method="POST" action="{{ rp }}/admin/portal-settings/">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                 <div class="form-section">
@@ -137,7 +137,7 @@ SPDX-License-Identifier: Apache-2.0
                 </li>
                 <li>
                     <strong>Grace Periods:</strong> Checkout grace periods are configured per integration
-                    in the <a href="{{ rp }}/admin/integrations">Integrations</a> page.
+                    in the <a href="{{ rp }}/admin/integrations/">Integrations</a> page.
                 </li>
                 <li>
                     <strong>Admin Role Required:</strong> Only users with the "admin" role can modify
