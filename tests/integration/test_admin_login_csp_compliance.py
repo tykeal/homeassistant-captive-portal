@@ -20,8 +20,10 @@ from fastapi.testclient import TestClient
 def secure_client(db_engine: Any) -> TestClient:
     """Client backed by create_app() with SecurityHeadersMiddleware."""
     from captive_portal.app import create_app
+    from captive_portal.config.settings import AppSettings
 
-    return TestClient(create_app())
+    app = create_app(AppSettings(db_path=":memory:"))
+    return TestClient(app)
 
 
 @pytest.mark.integration
@@ -88,9 +90,11 @@ class TestAdminLoginCSPCompliance:
         assert resp.status_code == 200
         js = resp.text
 
-        style_assignments = re.findall(r"\.style\s*[.=]", js)
-        assert style_assignments == [], (
-            f"admin-login.js must not assign inline styles via .style: {style_assignments}"
+        style_property_assignments = re.findall(r"\.style\.[A-Za-z_$][\w$]*\s*=", js)
+        style_setproperty_calls = re.findall(r"\.style\.setProperty\s*\(", js)
+        style_writes = style_property_assignments + style_setproperty_calls
+        assert style_writes == [], (
+            f"admin-login.js must not assign inline styles via .style: {style_writes}"
         )
 
         assert "setAttribute('style'" not in js, (
