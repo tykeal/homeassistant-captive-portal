@@ -17,6 +17,7 @@ dev = [
     "mypy",
     "types-PyYAML",
     "pytest-asyncio>=1.2.0",
+    "tbump>=6.11.0",
 ]
 
 [tool.ruff]
