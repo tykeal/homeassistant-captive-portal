@@ -138,6 +138,10 @@ async def create_voucher(
 
     # Trim and validate booking_ref length
     if booking_ref and len(booking_ref) > 128:
+        logger.warning(
+            "Booking reference too long (%d chars) for voucher create",
+            len(booking_ref),
+        )
         return RedirectResponse(
             url=f"{root}/admin/vouchers/?error=Booking+reference+must+be+128+characters+or+less",
             status_code=status.HTTP_303_SEE_OTHER,
