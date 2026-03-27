@@ -73,7 +73,7 @@ For each discovered `calendar.rental_control_*` entity, extract and display:
 4. **Next event dates**: From `attributes.start_time` and `attributes.end_time` when available
 5. **Active booking indicator**: Derived from state (`"on"` = active, `"off"` = idle)
 
-Active booking count is not directly available from the calendar entity state (HA exposes only the current/next event, not a count). The pick-list will show "Active booking" or "No active bookings" as a binary indicator, which satisfies FR-004's intent of showing "current state (active/idle) and active booking count."
+Active booking **count** is not directly available from the calendar entity state (HA exposes only the current/next event, not a numeric count of overlapping bookings). For this feature, we interpret "active booking count" in FR-004 as a binary value derived from the calendar state: `state == "on"` implies "at least one active booking" (count ≥ 1), and `state == "off"` implies "0 active bookings". The pick-list will therefore display "Active booking" or "No active bookings" as this binary indicator. FR-004 and its acceptance criteria will be updated so that any references to an "active booking count" or examples like "two active bookings" refer to this 0/≥1 representation rather than a precise numeric count per integration.
 
 ### Rationale
 The calendar entity state in HA provides a snapshot of the current/next event. This is the same data the existing `HAPoller` uses for event processing. Extracting these fields gives admins enough context to identify the correct integration without leaving the page (User Story 2).

@@ -130,7 +130,7 @@ ELSE (discovery_result.available == false):
 ```
 
 ### Timeout Behavior
-The discovery call has a 10-second timeout. If it times out, the page still renders within the 10-second window with the manual fallback. The page itself is never blocked — only the discovery data is missing.
+The discovery call has a 10-second timeout. The server will wait up to 10 seconds for discovery to complete before rendering the page. If discovery times out, the page renders after the timeout with the manual fallback, and discovery data is omitted. The page is not blocked indefinitely beyond the configured timeout.
 
 ### Response Headers
 ```
@@ -155,7 +155,7 @@ Expires: 0
 |-------|------|----------|--------|-------------|
 | `csrf_token` | str | Yes | Hidden | CSRF protection token |
 | `integration_id` | str | Yes | Pick-list `<select>` value OR manual text input | HA entity ID |
-| `auth_attribute` | str | Yes | Dropdown | `slot_code`, `slot_name`, or `last_four` |
+| `identifier_attr` | str | Yes | Dropdown | `slot_code`, `slot_name`, or `last_four` |
 | `checkout_grace_minutes` | int | Yes | Number input | 0–30 |
 | `id` | UUID \| None | No | Hidden | Existing config UUID (for updates) |
 
