@@ -82,10 +82,7 @@ The audit log captures the delete action before the voucher record is removed, e
 ## R4: Delete Race Condition — Concurrent Redemption Guard (FR-010)
 
 ### Decision
-Use optimistic concurrency via a re-read before delete. The `VoucherService.delete()` method re-fetches the voucher inside the same database session immediately before deletion. If `redeemed_count` has increased since the page was loaded, the delete is rejected with an explanatory error.
-
-### Rationale
-Use an atomic, predicate-based delete. The `VoucherService.delete()` method issues a single `DELETE` statement scoped by both the voucher identifier and the eligibility condition, e.g. `WHERE code = :code AND redeemed_count = 0`. It then checks the affected row count:
+Use an atomic, predicate-based delete to guard against concurrent redemption. The `VoucherService.delete()` method delegates to `VoucherRepository.delete()`, which issues a single `DELETE` statement scoped by both the voucher identifier and the eligibility condition (`WHERE code = :code AND redeemed_count = 0`). It then checks the affected row count:
 
 - If exactly one row was deleted, the voucher was still unredeemed and the hard delete succeeds.
 - If zero rows were deleted, the voucher was redeemed (or no longer exists) between page load and submission, and the service rejects the delete with the FR-010 explanatory error.
@@ -109,10 +106,14 @@ Bulk revoke and bulk delete process vouchers sequentially in a single request, c
 - `POST /admin/vouchers/bulk-revoke` — form field `codes[]` (list of voucher codes)
 - `POST /admin/vouchers/bulk-delete` — form field `codes[]` (list of voucher codes)
 
-Each endpoint iterates over the submitted codes, calls the existing single-voucher service method (`revoke()` or `delete()`), catches domain exceptions to skip ineligible vouchers, and accumulates counts for the summary message.
+Each endpoint iterates over the submitted codes, loads the corresponding voucher (if any), and then:
+- For bulk revoke: if the voucher is already revoked, it is counted as "skipped (already revoked)" without calling `revoke()`; otherwise the handler calls the existing single-voucher `revoke()` method and catches domain exceptions (e.g., `VoucherExpiredError`) to skip other ineligible vouchers.
+- For bulk delete: the handler calls the existing single-voucher `delete()` method and catches domain exceptions (e.g., `VoucherRedeemedError`) to skip ineligible vouchers; missing vouchers are counted as "skipped (not found)".
+
+The handler accumulates per-voucher outcomes into counters used to build the summary message.
 
 ### Rationale
-The spec (FR-013, FR-014) requires processing "each individually and skipping ineligible ones." This naturally maps to a loop calling the single-operation service methods. The summary (FR-015) reports counts: "Revoked N vouchers, skipped M (expired: X, already revoked: Y)" or "Deleted N vouchers, skipped M (redeemed: X, not found: Y)".
+The spec (FR-013, FR-014) requires processing "each individually and skipping ineligible ones." This naturally maps to a loop calling the single-operation service methods, with a status pre-check for the "already revoked" case to keep `revoke()` idempotent. The summary (FR-015) reports counts: "Revoked N vouchers, skipped M (expired: X, already revoked: Y)" or "Deleted N vouchers, skipped M (redeemed: X, not found: Y)".
 
 Processing within a single HTTP request is acceptable because:
 - Typical scale: 20–200 vouchers (SC-003 targets 20 in 10 seconds)
