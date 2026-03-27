@@ -33,7 +33,7 @@ class TestAdminLoginCSPCompliance:
         resp = secure_client.get("/admin/login")
         assert resp.status_code == 200
         content = resp.text.lower()
-        assert "<style>" not in content, "Inline <style> blocks are blocked by style-src 'self'"
+        assert "<style" not in content, "Inline <style> blocks are blocked by style-src 'self'"
 
     def test_no_inline_style_attributes(self, secure_client: TestClient) -> None:
         """Login page must not contain HTML-declared style= attributes."""
@@ -46,8 +46,22 @@ class TestAdminLoginCSPCompliance:
         """Setup form must use a CSS class (not inline style) to hide itself."""
         resp = secure_client.get("/admin/login")
         assert resp.status_code == 200
-        assert 'class="hidden"' in resp.text, (
-            "Setup form should use class='hidden' instead of style='display:none'"
+        setup_form_match = re.search(
+            r'<(?P<tag>\w+)\b[^>]*\bid=["\']setup-form["\'][^>]*>',
+            resp.text,
+            re.IGNORECASE,
+        )
+        assert setup_form_match is not None, "Login page must contain a setup-form element"
+        setup_form_tag = setup_form_match.group(0)
+        class_match = re.search(
+            r'\bclass\s*=\s*["\']([^"\']*)["\']',
+            setup_form_tag,
+            re.IGNORECASE,
+        )
+        assert class_match is not None, "Setup form should have a class attribute"
+        class_value = class_match.group(1)
+        assert re.search(r"(?:^|\s)hidden(?:\s|$)", class_value), (
+            "Setup form class list should include 'hidden'"
         )
 
     def test_admin_css_contains_login_styles(self, secure_client: TestClient) -> None:
@@ -67,3 +81,21 @@ class TestAdminLoginCSPCompliance:
         csp = resp.headers.get("Content-Security-Policy", "")
         assert "style-src 'self'" in csp
         assert "'unsafe-inline'" not in csp
+
+    def test_admin_login_js_avoids_inline_styles(self, secure_client: TestClient) -> None:
+        """admin-login.js must not write inline styles blocked by CSP."""
+        resp = secure_client.get("/static/themes/default/admin-login.js")
+        assert resp.status_code == 200
+        js = resp.text
+
+        style_assignments = re.findall(r"\.style\s*[.=]", js)
+        assert style_assignments == [], (
+            f"admin-login.js must not assign inline styles via .style: {style_assignments}"
+        )
+
+        assert "setAttribute('style'" not in js, (
+            "admin-login.js must not set inline styles via setAttribute('style', ...)"
+        )
+        assert 'setAttribute("style"' not in js, (
+            'admin-login.js must not set inline styles via setAttribute("style", ...)'
+        )
