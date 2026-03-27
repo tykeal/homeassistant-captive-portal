@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 ---
 name: Captive Portal Guest Access
-version: "0.0.0-dev"
+version: "0.0.0.dev0"
 slug: captive_portal_guest_access
 description: >-
   Guest network captive portal integrating TP-Omada and Home Assistant
