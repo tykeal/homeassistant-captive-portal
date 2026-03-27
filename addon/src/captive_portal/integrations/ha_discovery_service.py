@@ -102,7 +102,7 @@ class HADiscoveryService:
         except HADiscoveryError as exc:
             category = _ERROR_CATEGORY_MAP.get(type(exc), "unknown")
             logger.error(
-                "HA discovery failed (%s): %s | detail: %s",
+                "HA discovery failed: category=%s message=%s detail=%s",
                 category,
                 exc.user_message,
                 exc.detail,
@@ -119,6 +119,12 @@ class HADiscoveryService:
             for entity in all_states
             if entity.get("entity_id", "").startswith(_RENTAL_CONTROL_PREFIX)
         ]
+
+        logger.info(
+            "HA discovery: total_entities=%d rental_entities=%d",
+            len(all_states),
+            len(rental_entities),
+        )
 
         # Look up already-configured integration IDs
         configured_ids: set[str] = set()
@@ -142,6 +148,12 @@ class HADiscoveryService:
                     already_configured=entity["entity_id"] in configured_ids,
                 )
             )
+
+        logger.debug(
+            "HA discovery complete: discovered=%d configured=%d",
+            len(integrations),
+            len(configured_ids),
+        )
 
         return DiscoveryResult(
             available=True,

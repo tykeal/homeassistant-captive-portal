@@ -159,14 +159,14 @@ def _resolve_identifier_attr(
     raw = identifier_attr or auth_attribute
     if not raw:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="identifier_attr or auth_attribute is required",
         )
     try:
         return IdentifierAttr(raw)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Invalid identifier_attr value: {raw}",
         )
 

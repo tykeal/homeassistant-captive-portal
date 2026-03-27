@@ -31,3 +31,5 @@ schema:
   session_idle_timeout: "int(1,)?"
   session_max_duration: "int(1,)?"
   guest_external_url: "url?"
+  ha_base_url: "url?"
+  ha_token: "str?"
