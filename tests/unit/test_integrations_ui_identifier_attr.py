@@ -1,13 +1,14 @@
 # SPDX-FileCopyrightText: 2025 Andrew Grimberg
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for save_integration identifier_attr bug fix (T014).
+"""Regression tests for save_integration identifier_attr handling (T014).
 
 The ``save_integration`` POST handler receives ``auth_attribute`` from
 the HTML form and must convert it to an ``IdentifierAttr`` enum value,
 assigning it to the model's ``identifier_attr`` field.
 
-The current code has a bug: it assigns to ``auth_attribute`` (which
-does not exist on the model) instead of ``identifier_attr``.
+A previous version had a bug where it assigned to ``auth_attribute``
+(which does not exist on the model) instead of ``identifier_attr``.
+These tests prevent that regression from reoccurring.
 """
 
 from typing import Any

@@ -33,12 +33,18 @@
             return;
         }
 
+        var manualInput = document.getElementById("integration_id_manual");
         var submitBtn = form.querySelector('button[type="submit"]');
         if (!submitBtn) {
             return;
         }
 
         function updateSubmitState() {
+            // If manual input has a value, it takes priority
+            if (manualInput && manualInput.value.trim()) {
+                submitBtn.disabled = false;
+                return;
+            }
             var selectedOption = select.options[select.selectedIndex];
             if (selectedOption && selectedOption.disabled) {
                 submitBtn.disabled = true;
@@ -49,7 +55,36 @@
             }
         }
 
-        select.addEventListener("change", updateSubmitState);
+        // When manual input is typed, copy value into the select's hidden field
+        if (manualInput) {
+            manualInput.addEventListener("input", function () {
+                var val = manualInput.value.trim();
+                if (val) {
+                    // Override the dropdown: set select to blank and use manual value
+                    select.value = "";
+                    select.name = "";
+                    manualInput.name = "integration_id";
+                } else {
+                    // Revert: dropdown is the source
+                    select.name = "integration_id";
+                    manualInput.name = "integration_id_manual";
+                }
+                updateSubmitState();
+            });
+
+            // When dropdown changes, clear manual input
+            select.addEventListener("change", function () {
+                if (select.value) {
+                    manualInput.value = "";
+                    select.name = "integration_id";
+                    manualInput.name = "integration_id_manual";
+                }
+                updateSubmitState();
+            });
+        } else {
+            select.addEventListener("change", updateSubmitState);
+        }
+
         updateSubmitState();
     }
 
@@ -91,8 +126,8 @@
     }
 
     /**
-     * Add AJAX refresh for discovery dropdown.
-     * Fetches fresh discovery data and reloads the page.
+     * Enhance refresh button to fetch fresh discovery data via AJAX
+     * and update the dropdown in-place without a full page reload.
      */
     function enhanceRefreshButton() {
         var refreshBtn = document.getElementById("refresh-discovery");
@@ -105,8 +140,68 @@
             refreshBtn.textContent = "Refreshing…";
             refreshBtn.classList.add("refreshing");
 
-            // Simply reload the page to get fresh discovery data
-            window.location.reload();
+            fetch("/api/integrations/discover", {
+                method: "GET",
+                headers: { "Accept": "application/json" },
+                credentials: "same-origin"
+            })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error("Discovery request failed: " + response.status);
+                }
+                return response.json();
+            })
+            .then(function (data) {
+                var select = document.getElementById("integration_id");
+                if (!select || select.tagName.toLowerCase() !== "select") {
+                    window.location.reload();
+                    return;
+                }
+
+                var currentValue = select.value;
+
+                // Clear existing options except placeholder
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
+
+                // Populate with fresh data
+                var integrations = data.integrations || [];
+                integrations.forEach(function (disc) {
+                    var option = document.createElement("option");
+                    option.value = disc.entity_id;
+                    var label = disc.friendly_name + " (" + disc.entity_id + ")";
+                    if (disc.already_configured) {
+                        label += " (already added)";
+                        option.disabled = true;
+                    }
+                    if (disc.state_display) {
+                        label += " — " + disc.state_display;
+                    }
+                    if (disc.event_summary) {
+                        label += " | " + disc.event_summary;
+                    }
+                    option.textContent = label;
+                    select.appendChild(option);
+                });
+
+                // Restore selection if still available
+                if (currentValue) {
+                    select.value = currentValue;
+                    if (!select.value) {
+                        select.selectedIndex = 0;
+                    }
+                }
+
+                enhanceIntegrationDropdown();
+
+                refreshBtn.textContent = "Refresh Discovery";
+                refreshBtn.disabled = false;
+                refreshBtn.classList.remove("refreshing");
+            })
+            .catch(function () {
+                window.location.reload();
+            });
         });
     }
 

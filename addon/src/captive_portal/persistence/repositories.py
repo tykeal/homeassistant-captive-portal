@@ -112,8 +112,10 @@ class VoucherRepository(BaseRepository[Voucher]):
             Voucher.redeemed_count == 0,  # type: ignore[arg-type]
         )
         result: Any = self.session.execute(stmt)
-        self.session.flush()
-        return bool(result.rowcount > 0)
+        if result.rowcount == 1:
+            self.session.flush()
+            return True
+        return False
 
 
 class AccessGrantRepository(BaseRepository[AccessGrant]):
