@@ -26,7 +26,7 @@ The spec (FR-001, FR-005) and the normative expiry definition explicitly require
 ## R2: Revoke Implementation — Service Method Pattern
 
 ### Decision
-Add `VoucherService.revoke(code: str) -> Voucher` modelled on the existing `GrantService.revoke()` pattern:
+Add `async VoucherService.revoke(code: str) -> Voucher` modelled on the existing `GrantService.revoke()` pattern:
 1. Fetch voucher by code via `VoucherRepository.get_by_code()`
 2. Raise `VoucherNotFoundError` if not found
 3. If already revoked → return immediately (idempotent, per FR-004)
@@ -53,7 +53,7 @@ The revoke method accepts any voucher in `UNUSED` or `ACTIVE` status (per FR-001
 ## R3: Delete Implementation — Hard Delete with Redemption Guard
 
 ### Decision
-Add `VoucherService.delete(code: str) -> None`:
+Add `async VoucherService.delete(code: str) -> None`:
 1. Fetch voucher by code
 2. Raise `VoucherNotFoundError` if not found
 3. If `voucher.redeemed_count > 0` → raise `VoucherRedeemedError` (FR-008)

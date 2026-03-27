@@ -20,7 +20,7 @@ Add voucher lifecycle management — revoke, delete, and bulk operations — to 
 **Project Type**: Web service / Home Assistant add-on with server-rendered admin UI
 **Performance Goals**: Single revoke/delete ≤ 3 s (SC-001/002); bulk revoke of 20 vouchers ≤ 10 s (SC-003); voucher redemption ≤ 800 ms p95 (constitution IV)
 **Constraints**: No inline JS (CSP `script-src 'self'`); external JS files only; ingress root_path prefix on all URLs; forms must work without JS; hard delete (no soft delete for vouchers)
-**Scale/Scope**: 1–5 concurrent admins; ~200 vouchers typical; 3 new POST endpoints (revoke, delete, bulk); ~6 modified/new source files; ~4 new test files
+**Scale/Scope**: 1–5 concurrent admins; ~200 vouchers typical; 4 new POST endpoints (revoke, delete, bulk-revoke, bulk-delete); ~6 modified/new source files; ~4 new test files
 
 ## Constitution Check
 
@@ -31,7 +31,7 @@ Add voucher lifecycle management — revoke, delete, and bulk operations — to 
 | I | Code Quality (NON-NEGOTIABLE) | ✅ PASS | All new files pass ruff, mypy strict, interrogate 100%. SPDX headers required. Functions ≤ CC10. |
 | II | Test-Driven Development (NON-NEGOTIABLE) | ✅ PASS | TDD red-green-refactor for all new service methods and route handlers. Unit tests per route; integration tests for full page flows. |
 | III | User Experience Consistency | ✅ PASS | New action buttons follow identical pattern to grants page (inline forms, disabled states, status badges). Feedback via query-parameter flash messages. |
-| IV | Performance Requirements | ✅ PASS | Single actions within 3 s budget. Bulk operations iterate with single DB transaction. No blocking event loop calls. |
+| IV | Performance Requirements | ✅ PASS | Single actions within 3 s budget. Bulk operations iterate with per-voucher commits to allow partial success. No blocking event loop calls. |
 | V | Atomic Commits & Compliance (NON-NEGOTIABLE) | ✅ PASS | One logical change per commit. SPDX + DCO sign-off. Pre-commit hooks enforced. Conventional Commits. |
 | VI | Phased Development | ✅ PASS | Plan defines three priority-ordered phases (P1 revoke, P2 delete, P3 bulk) with independently testable increments and CI checkpoints. |
 
@@ -59,9 +59,9 @@ addon/src/captive_portal/
 ├── api/routes/
 │   └── vouchers_ui.py           # MODIFY — add POST revoke, delete, bulk-revoke, bulk-delete endpoints
 ├── services/
-│   └── voucher_service.py       # MODIFY — add revoke(), delete(), bulk_revoke(), bulk_delete() methods
+│   └── voucher_service.py       # MODIFY — add revoke() and delete() methods
 ├── persistence/
-│   └── repositories.py          # MODIFY — add VoucherRepository.delete() and list_all() methods
+│   └── repositories.py          # MODIFY — add VoucherRepository.delete() method
 ├── web/
 │   ├── templates/admin/
 │   │   └── vouchers.html        # MODIFY — add action columns, checkboxes, bulk controls, feedback
