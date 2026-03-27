@@ -36,6 +36,7 @@ class VoucherNotFoundError(Exception):
     """Raised when a voucher code cannot be found."""
 
     def __init__(self, code: str) -> None:
+        """Initialize with the missing voucher code."""
         self.code = code
         super().__init__(code)
 
@@ -44,6 +45,7 @@ class VoucherExpiredError(Exception):
     """Raised when an operation targets an expired voucher."""
 
     def __init__(self, code: str) -> None:
+        """Initialize with the expired voucher code."""
         self.code = code
         super().__init__(code)
 
@@ -52,6 +54,7 @@ class VoucherRedeemedError(Exception):
     """Raised when an operation is disallowed because the voucher was redeemed."""
 
     def __init__(self, code: str) -> None:
+        """Initialize with the redeemed voucher code."""
         self.code = code
         super().__init__(code)
 
@@ -281,6 +284,8 @@ class VoucherService:
 
         deleted = self.voucher_repo.delete(code)
         if not deleted:
+            # Expire cached state to bypass SQLAlchemy identity map
+            self.voucher_repo.session.expire_all()
             still_exists = self.voucher_repo.get_by_code(code)
             if still_exists is None:
                 raise VoucherNotFoundError(code)
