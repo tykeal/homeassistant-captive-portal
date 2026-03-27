@@ -37,6 +37,7 @@ uv run mypy addon/src/captive_portal
 Python 3.12+ (per `pyproject.toml` `requires-python = ">=3.12"`): Follow standard conventions
 
 ## Recent Changes
+- 007-voucher-management: Documented plan/spec using existing stack: Python 3.12+ (strict mypy, full type annotations) + FastAPI 0.100+, Jinja2, SQLModel (SQLAlchemy + Pydantic), python-multipart (no new runtime dependencies added in this change)
 - 006-integrations-auto-detect: Added Python 3.12+ (strict mypy, full type annotations) + FastAPI 0.100+, Jinja2, SQLModel (SQLAlchemy + Pydantic), HTTPX (async HTTP client for HA REST API), python-multipart
 - 005-admin-ui-pages: Added Python 3.12+ (strict mypy, full type annotations) + FastAPI 0.100+, Jinja2, SQLModel (SQLAlchemy + Pydantic), python-multipart
 - 004-dual-port-networking: Added Python 3.12+ (type-annotated, mypy-enforced) + FastAPI, Uvicorn, SQLModel, Pydantic, Jinja2, s6-overlay (from HA base image)
