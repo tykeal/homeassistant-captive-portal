@@ -36,9 +36,9 @@ class VoucherNotFoundError(Exception):
     """Raised when a voucher code cannot be found."""
 
     def __init__(self, code: str) -> None:
-        """Initialize with the voucher code that was not found."""
+        """Initialize with the missing voucher code."""
         self.code = code
-        super().__init__(f"Voucher not found: {code}")
+        super().__init__(code)
 
 
 class VoucherExpiredError(Exception):
@@ -47,7 +47,7 @@ class VoucherExpiredError(Exception):
     def __init__(self, code: str) -> None:
         """Initialize with the expired voucher code."""
         self.code = code
-        super().__init__(f"Voucher expired: {code}")
+        super().__init__(code)
 
 
 class VoucherRedeemedError(Exception):
@@ -56,7 +56,7 @@ class VoucherRedeemedError(Exception):
     def __init__(self, code: str) -> None:
         """Initialize with the redeemed voucher code."""
         self.code = code
-        super().__init__(f"Voucher already redeemed: {code}")
+        super().__init__(code)
 
 
 class VoucherService:
@@ -246,7 +246,10 @@ class VoucherService:
         if voucher.status == VoucherStatus.REVOKED:
             return voucher
 
-        if current_time > voucher.expires_utc:
+        expires = voucher.expires_utc
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if current_time > expires:
             raise VoucherExpiredError(code)
 
         voucher.status = VoucherStatus.REVOKED
@@ -281,7 +284,13 @@ class VoucherService:
 
         deleted = self.voucher_repo.delete(code)
         if not deleted:
-            raise VoucherRedeemedError(code)
+            # Expire cached state to bypass SQLAlchemy identity map
+            self.voucher_repo.session.expire_all()
+            still_exists = self.voucher_repo.get_by_code(code)
+            if still_exists is None:
+                raise VoucherNotFoundError(code)
+            else:
+                raise VoucherRedeemedError(code)
 
         self.voucher_repo.commit()
         return meta

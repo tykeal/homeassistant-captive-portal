@@ -2,9 +2,17 @@
 # SPDX-License-Identifier: Apache-2.0
 """Home Assistant REST API client."""
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import httpx
+from fastapi import Request
+
+from captive_portal.integrations.ha_errors import (
+    HAAuthenticationError,
+    HAConnectionError,
+    HAServerError,
+    HATimeoutError,
+)
 
 
 class HAClient:
@@ -60,6 +68,69 @@ class HAClient:
         except httpx.HTTPError as exc:
             raise Exception(f"HA API request failed: {exc}") from exc
 
+    async def get_all_states(self, timeout: float = 10.0) -> List[Dict[str, Any]]:
+        """Retrieve all entity states from Home Assistant.
+
+        Args:
+            timeout: Per-request timeout in seconds (overrides client default).
+
+        Returns:
+            List of entity state dicts (no filtering applied).
+
+        Raises:
+            HAConnectionError: When HA API is unreachable.
+            HAAuthenticationError: On HTTP 401 responses.
+            HAServerError: On HTTP 5xx responses.
+            HATimeoutError: When the request times out.
+        """
+        url = f"{self.base_url}/states"
+
+        try:
+            response = await self.client.get(url, timeout=timeout)
+
+            if response.status_code == 401:
+                raise HAAuthenticationError(
+                    user_message="Authentication with Home Assistant failed",
+                    detail=f"HTTP 401 from {url}",
+                )
+
+            if response.status_code >= 500:
+                raise HAServerError(
+                    user_message="Home Assistant returned a server error",
+                    detail=f"HTTP {response.status_code} from {url}",
+                )
+
+            response.raise_for_status()
+            try:
+                result: List[Dict[str, Any]] = response.json()
+            except (ValueError, TypeError) as exc:
+                raise HAServerError(
+                    user_message="Home Assistant returned an invalid response",
+                    detail=f"JSON decode error from {url}: {exc}",
+                ) from exc
+            return result
+
+        except (
+            HAAuthenticationError,
+            HAServerError,
+        ):
+            raise
+        except httpx.ConnectError as exc:
+            raise HAConnectionError(
+                user_message="Cannot connect to Home Assistant",
+                detail=str(exc),
+            ) from exc
+        except httpx.TimeoutException as exc:
+            raise HATimeoutError(
+                user_message="Home Assistant request timed out",
+                detail=str(exc),
+            ) from exc
+        except httpx.HTTPStatusError as exc:
+            raise HAServerError(
+                user_message="Home Assistant returned an unexpected error",
+                detail=str(exc),
+            ) from exc
+
     async def close(self) -> None:
         """Close the HTTP client connection."""
         await self.client.aclose()
@@ -71,3 +142,15 @@ class HAClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:  # type: ignore[no-untyped-def]
         """Async context manager exit."""
         await self.close()
+
+
+def get_ha_client(request: Request) -> "HAClient":
+    """FastAPI dependency that returns the HAClient from app state.
+
+    Args:
+        request: The incoming FastAPI request.
+
+    Returns:
+        The HAClient instance stored on app.state during lifespan startup.
+    """
+    return request.app.state.ha_client  # type: ignore[no-any-return]

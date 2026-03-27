@@ -7,10 +7,15 @@ from collections.abc import Generator
 from typing import Optional, cast, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
+
+from captive_portal.integrations.ha_discovery_service import (
+    DiscoveryResult,
+    HADiscoveryService,
+)
 
 from captive_portal.models.ha_integration_config import (
     HAIntegrationConfig,
@@ -173,6 +178,37 @@ async def list_integrations(
         cast(list[HAIntegrationConfig], session.exec(statement).all())
     )
     return configs
+
+
+@router.get("/discover")
+async def discover_integrations(
+    request: Request,
+    session: Session = Depends(get_db_session),
+    _admin: UUID = Depends(require_admin),
+) -> DiscoveryResult:
+    """Discover Rental Control calendar entities from Home Assistant.
+
+    Always returns HTTP 200.  When HA is reachable the result contains
+    discovered entities; when not, ``available`` is ``False`` with an
+    error message.
+
+    Args:
+        request: FastAPI request (provides access to app.state.ha_client).
+        session: Database session for cross-referencing configs.
+        _admin: Admin authentication dependency.
+
+    Returns:
+        DiscoveryResult JSON.
+    """
+    ha_client = getattr(request.app.state, "ha_client", None)
+    if ha_client is None:
+        return DiscoveryResult(
+            available=False,
+            error_message="Home Assistant client not configured",
+            error_category="connection",
+        )
+    service = HADiscoveryService(ha_client, session)
+    return await service.discover()
 
 
 @router.get("/{config_id}", response_model=IntegrationConfigResponse)

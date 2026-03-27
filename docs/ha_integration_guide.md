@@ -207,6 +207,31 @@ Maximum backoff: 300s (5 minutes)
 
 ## Admin UI Management
 
+### Auto-Detection of Rental Control Integrations
+
+**Access**: Admin UI → **Integrations**
+
+The Captive Portal automatically discovers Rental Control calendar entities
+from Home Assistant when you visit the Integrations page.
+
+**When HA is reachable**:
+- A dropdown shows all discovered `calendar.rental_control_*` entities
+- Each entry shows the friendly name, current state (Active booking / No active bookings),
+  and event summary (current guest name if available)
+- Already-configured entities are marked "(already added)" and disabled
+- Select an entity from the dropdown and click **Add Integration**
+- A **Refresh Discovery** button re-scans HA for updated entities
+
+**When HA is unreachable**:
+- An error banner shows "Discovery unavailable" with the reason
+- A manual text input field is shown instead of the dropdown
+- You can type any integration ID manually and save
+
+**API Endpoint**: `GET /api/integrations/discover`
+- Admin-only, always returns HTTP 200
+- Returns `DiscoveryResult` JSON with `available`, `integrations[]`, and error info
+- Safe to call repeatedly (idempotent, no side effects)
+
 ### Entity Mapping Dashboard
 
 **Access**: Admin UI → **Integration** → **Entity Mapping**
