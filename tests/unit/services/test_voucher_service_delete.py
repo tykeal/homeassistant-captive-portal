@@ -17,14 +17,15 @@ from captive_portal.services.voucher_service import (
 
 
 def _make_voucher(
-    session,
+    session: Session,
     *,
-    code="TESTCODE01",
-    duration_minutes=60,
-    status=VoucherStatus.UNUSED,
-    redeemed_count=0,
-    booking_ref=None,
-):
+    code: str = "TESTCODE01",
+    duration_minutes: int = 60,
+    status: VoucherStatus = VoucherStatus.UNUSED,
+    redeemed_count: int = 0,
+    booking_ref: str | None = None,
+) -> Voucher:
+    """Create and persist a voucher for testing."""
     v = Voucher(
         code=code,
         duration_minutes=duration_minutes,
@@ -39,7 +40,10 @@ def _make_voucher(
 
 
 class TestVoucherRepositoryDelete:
+    """Tests for VoucherRepository.delete method."""
+
     def test_delete_unredeemed_returns_true(self, db_session: Session) -> None:
+        """Verify deleting an unredeemed voucher returns True."""
         _make_voucher(db_session, code="DELUNRED01", redeemed_count=0)
         repo = VoucherRepository(db_session)
         result = repo.delete("DELUNRED01")
@@ -48,6 +52,7 @@ class TestVoucherRepositoryDelete:
         assert repo.get_by_code("DELUNRED01") is None
 
     def test_delete_redeemed_returns_false(self, db_session: Session) -> None:
+        """Verify deleting a redeemed voucher returns False."""
         v = _make_voucher(db_session, code="DELREDMD01", redeemed_count=1)
         repo = VoucherRepository(db_session)
         result = repo.delete("DELREDMD01")
@@ -57,13 +62,17 @@ class TestVoucherRepositoryDelete:
         db_session.commit()
 
     def test_delete_not_found_returns_false(self, db_session: Session) -> None:
+        """Verify deleting a nonexistent voucher returns False."""
         repo = VoucherRepository(db_session)
         assert repo.delete("NOTEXIST99") is False
 
 
 class TestVoucherServiceDelete:
+    """Tests for VoucherService.delete method."""
+
     @pytest.mark.asyncio
     async def test_delete_unused_voucher(self, db_session: Session) -> None:
+        """Verify deleting an unused voucher succeeds and returns metadata."""
         _make_voucher(db_session, code="SVCDEL001", booking_ref="BK001")
         repo = VoucherRepository(db_session)
         service = VoucherService(session=db_session, voucher_repo=repo)
@@ -74,6 +83,7 @@ class TestVoucherServiceDelete:
 
     @pytest.mark.asyncio
     async def test_delete_revoked_unredeemed_voucher(self, db_session: Session) -> None:
+        """Verify deleting a revoked unredeemed voucher succeeds."""
         _make_voucher(db_session, code="SVCDELRV1", status=VoucherStatus.REVOKED, redeemed_count=0)
         repo = VoucherRepository(db_session)
         service = VoucherService(session=db_session, voucher_repo=repo)
@@ -83,6 +93,7 @@ class TestVoucherServiceDelete:
 
     @pytest.mark.asyncio
     async def test_delete_not_found_raises(self, db_session: Session) -> None:
+        """Verify deleting a nonexistent voucher raises VoucherNotFoundError."""
         repo = VoucherRepository(db_session)
         service = VoucherService(session=db_session, voucher_repo=repo)
         with pytest.raises(VoucherNotFoundError):
@@ -90,6 +101,7 @@ class TestVoucherServiceDelete:
 
     @pytest.mark.asyncio
     async def test_delete_redeemed_raises(self, db_session: Session) -> None:
+        """Verify deleting a redeemed voucher raises VoucherRedeemedError."""
         v = _make_voucher(db_session, code="SVCDELRD1", redeemed_count=2)
         repo = VoucherRepository(db_session)
         service = VoucherService(session=db_session, voucher_repo=repo)

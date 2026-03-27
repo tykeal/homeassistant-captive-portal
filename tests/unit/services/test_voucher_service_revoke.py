@@ -46,18 +46,21 @@ class TestErrorTypes:
     """T002: Error types are importable and well-formed."""
 
     def test_voucher_not_found_error(self) -> None:
+        """Verify VoucherNotFoundError stores the code and is an Exception."""
         err = VoucherNotFoundError("ABC123")
         assert isinstance(err, Exception)
         assert err.code == "ABC123"
         assert "ABC123" in str(err)
 
     def test_voucher_expired_error(self) -> None:
+        """Verify VoucherExpiredError stores the code and is an Exception."""
         err = VoucherExpiredError("DEF456")
         assert isinstance(err, Exception)
         assert err.code == "DEF456"
         assert "DEF456" in str(err)
 
     def test_voucher_redeemed_error(self) -> None:
+        """Verify VoucherRedeemedError stores the code and is an Exception."""
         err = VoucherRedeemedError("GHI789")
         assert isinstance(err, Exception)
         assert err.code == "GHI789"
@@ -69,6 +72,7 @@ class TestVoucherServiceRevoke:
 
     @pytest.mark.asyncio
     async def test_revoke_unused_voucher(self, db_session: Session) -> None:
+        """Verify revoking an unused voucher sets status to REVOKED."""
         _make_voucher(db_session, code="REVUNUSED1")
         repo = VoucherRepository(db_session)
         service = VoucherService(session=db_session, voucher_repo=repo)
@@ -79,6 +83,7 @@ class TestVoucherServiceRevoke:
 
     @pytest.mark.asyncio
     async def test_revoke_active_voucher(self, db_session: Session) -> None:
+        """Verify revoking an active voucher sets status to REVOKED."""
         _make_voucher(db_session, code="REVACTIV01", status=VoucherStatus.ACTIVE)
         repo = VoucherRepository(db_session)
         service = VoucherService(session=db_session, voucher_repo=repo)
@@ -89,6 +94,7 @@ class TestVoucherServiceRevoke:
 
     @pytest.mark.asyncio
     async def test_revoke_already_revoked_is_idempotent(self, db_session: Session) -> None:
+        """Verify revoking an already-revoked voucher is idempotent."""
         _make_voucher(db_session, code="REVIDMPT01", status=VoucherStatus.REVOKED)
         repo = VoucherRepository(db_session)
         service = VoucherService(session=db_session, voucher_repo=repo)
@@ -99,6 +105,7 @@ class TestVoucherServiceRevoke:
 
     @pytest.mark.asyncio
     async def test_revoke_not_found_raises(self, db_session: Session) -> None:
+        """Verify revoking a nonexistent voucher raises VoucherNotFoundError."""
         repo = VoucherRepository(db_session)
         service = VoucherService(session=db_session, voucher_repo=repo)
         with pytest.raises(VoucherNotFoundError):
@@ -106,6 +113,7 @@ class TestVoucherServiceRevoke:
 
     @pytest.mark.asyncio
     async def test_revoke_expired_voucher_raises(self, db_session: Session) -> None:
+        """Verify revoking an expired voucher raises VoucherExpiredError."""
         voucher = _make_voucher(db_session, code="REVEXPRD01")
         repo = VoucherRepository(db_session)
         service = VoucherService(session=db_session, voucher_repo=repo)
