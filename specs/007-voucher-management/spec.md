@@ -78,11 +78,13 @@ As an administrator managing a large number of vouchers (e.g., for a hotel or ev
 
 #### Revoke
 
-- **FR-001**: System MUST allow administrators to revoke individual vouchers that are in "unused" or "active" status.
+- **FR-001**: System MUST allow administrators to revoke individual vouchers that are in "unused" or "active" status, provided they have not expired (their `expires_utc` timestamp is not earlier than the current UTC time).
 - **FR-002**: System MUST change the voucher status to "revoked" when a revoke action is performed.
 - **FR-003**: System MUST prevent redemption of revoked vouchers at the captive portal.
 - **FR-004**: System MUST treat revoking an already-revoked voucher as a no-op (idempotent) without displaying an error.
-- **FR-005**: System MUST NOT allow revoking expired vouchers (revocation is unnecessary and would be misleading).
+- **FR-005**: System MUST NOT allow revoking vouchers that are expired (i.e., vouchers whose `expires_utc` timestamp is earlier than the current UTC time), as revocation is unnecessary and would be misleading.
+
+> **Expiry definition (normative)**: For this feature, a voucher is considered "expired" when the current UTC time is strictly later than its `expires_utc` value. Implementations MAY also persist an `EXPIRED` status derived from this condition, but revoke eligibility MUST, at a minimum, enforce this time-based expiry check and MUST NOT rely solely on a stored status flag.
 
 #### Delete
 
@@ -111,8 +113,8 @@ As an administrator managing a large number of vouchers (e.g., for a hotel or ev
 
 ### Key Entities
 
-- **Voucher**: A redeemable access code with a lifecycle status (unused → active → expired, or revoked at any point). Key attributes: code (unique identifier), duration, status, redemption count, booking reference, creation timestamp. The status determines which management actions are available.
-- **VoucherStatus**: The lifecycle state of a voucher — unused (never redeemed), active (redeemed at least once), expired (past duration), or revoked (manually cancelled by admin). Transitions: unused→active (on redemption), unused→revoked (admin action), active→revoked (admin action), unused/active→expired (time-based). Revoked and expired are terminal states.
+- **Voucher**: A redeemable access code with a lifecycle status (unused → active → expired, or revoked at any point). Key attributes: code (unique identifier), duration, status, redemption count, booking reference, creation timestamp, `expires_utc`. The status determines which management actions are available.
+- **VoucherStatus**: The lifecycle state of a voucher — unused (never redeemed), active (redeemed at least once), expired (past `expires_utc`), or revoked (manually cancelled by admin). Transitions: unused→active (on redemption), unused→revoked (admin action), active→revoked (admin action), unused/active→expired (time-based, computed from `expires_utc`). Revoked and expired are terminal states. Note: "expired" is primarily a computed condition (see normative expiry definition under FR-005); implementations are not required to persist it as a stored status value.
 - **Bulk Operation Result**: A summary of a bulk action outcome — total selected, number successfully processed, number skipped, and reasons for skips. Communicated to the admin via feedback messages after the action completes.
 
 ## Success Criteria *(mandatory)*
