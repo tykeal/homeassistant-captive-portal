@@ -11,67 +11,6 @@ SPDX-License-Identifier: Apache-2.0
     <title>Login - Captive Portal Admin</title>
     <meta name="root-path" content="{{ rp }}">
     <link rel="stylesheet" href="{{ rp }}/static/themes/default/admin.css">
-    <style>
-        .login-wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 60vh;
-        }
-        .login-card {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            width: 100%;
-            max-width: 400px;
-        }
-        .login-card h2 {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        .login-card .form-group {
-            margin-bottom: 1.25rem;
-        }
-        .login-card label {
-            display: block;
-            margin-bottom: 0.25rem;
-            font-weight: 500;
-        }
-        .login-card input[type="text"],
-        .login-card input[type="password"],
-        .login-card input[type="email"] {
-            width: 100%;
-            padding: 0.5rem;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 1rem;
-        }
-        .login-card input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
-        }
-        .login-card .btn {
-            width: 100%;
-            padding: 0.75rem;
-        }
-        .login-error {
-            background-color: #f8d7da;
-            color: var(--danger-color);
-            border: 1px solid #f5c6cb;
-            border-radius: 4px;
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            display: none;
-        }
-        .setup-hint {
-            color: #555;
-            margin-bottom: 1.25rem;
-            text-align: center;
-            font-size: 0.95rem;
-        }
-    </style>
 </head>
 <body>
     <header class="header">
@@ -113,7 +52,7 @@ SPDX-License-Identifier: Apache-2.0
                 </form>
 
                 <!-- Setup form (first-run only) -->
-                <form id="setup-form" method="POST" style="display:none;">
+                <form id="setup-form" method="POST" class="hidden">
                     <p class="setup-hint">No admin account exists yet. Create one to get started.</p>
                     <div class="form-group">
                         <label for="setup-username">Username</label>
