@@ -366,12 +366,15 @@ h2 {
 
 /* Voucher status badges */
 .status-badge {
-    padding: 2px 8px;
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
     border-radius: 4px;
     font-size: 0.85em;
-    font-weight: bold;
+    font-weight: 500;
+    text-transform: uppercase;
 }
 .status-unused { background-color: #e8f5e9; color: #2e7d32; }
-.status-active { background-color: #e3f2fd; color: #1565c0; }
-.status-expired { background-color: #fff3e0; color: #e65100; }
-.status-revoked { background-color: #fce4ec; color: #c62828; }
+.status-pending { background-color: #fff3cd; color: #856404; }
+.status-active { background-color: #d4edda; color: #155724; }
+.status-expired { background-color: #f8d7da; color: #721c24; }
+.status-revoked { background-color: #d6d8db; color: #383d41; }
