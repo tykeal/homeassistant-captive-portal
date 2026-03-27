@@ -131,7 +131,7 @@ The current manual entry already expects the entity ID (the placeholder text say
 ## R5: Duplicate Prevention — Marking Already-Configured Integrations
 
 ### Decision
-When the discovery service returns available integrations, the UI route cross-references them against the existing `HAIntegrationConfig` records in the database. Each discovered integration is annotated with a boolean `already_configured` flag and, if configured, the existing config's UUID. The Jinja2 template renders already-configured integrations with a "Already added" badge, a `disabled` attribute on the `<option>` element, and a visual distinction (muted color).
+When the discovery service returns available integrations, the UI route cross-references them against the existing `HAIntegrationConfig` records in the database. Each discovered integration is annotated with a boolean `already_configured` flag. The Jinja2 template renders already-configured integrations with an "Already added" badge, a `disabled` attribute on the `<option>` element, and a visual distinction (muted color).
 
 ### Rationale
 FR-006 requires: "System MUST visually indicate integrations that are already configured in the captive portal and prevent duplicate additions." The existing create endpoint (`POST /api/integrations`) already enforces uniqueness on `integration_id` (returns 409 Conflict), so the server-side guard exists. The UI-side marking provides a better UX by preventing the admin from attempting to add a duplicate in the first place.
