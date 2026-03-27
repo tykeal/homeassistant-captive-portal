@@ -36,6 +36,7 @@ class VoucherNotFoundError(Exception):
     """Raised when a voucher code cannot be found."""
 
     def __init__(self, code: str) -> None:
+        """Initialize with the voucher code that was not found."""
         self.code = code
         super().__init__(code)
 
@@ -44,6 +45,7 @@ class VoucherExpiredError(Exception):
     """Raised when an operation targets an expired voucher."""
 
     def __init__(self, code: str) -> None:
+        """Initialize with the expired voucher code."""
         self.code = code
         super().__init__(code)
 
@@ -52,6 +54,7 @@ class VoucherRedeemedError(Exception):
     """Raised when an operation is disallowed because the voucher was redeemed."""
 
     def __init__(self, code: str) -> None:
+        """Initialize with the redeemed voucher code."""
         self.code = code
         super().__init__(code)
 
@@ -219,9 +222,7 @@ class VoucherService:
 
         return grant
 
-    async def revoke(
-        self, code: str, current_time: Optional[datetime] = None
-    ) -> Voucher:
+    async def revoke(self, code: str, current_time: Optional[datetime] = None) -> Voucher:
         """Revoke a voucher (idempotent for already-revoked).
 
         Args:

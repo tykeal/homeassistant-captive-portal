@@ -42,7 +42,6 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templa
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
-
 class VoucherActions(NamedTuple):
     """Pre-computed action eligibility for a voucher."""
 
@@ -77,10 +76,7 @@ def format_bulk_message(result: BulkResult) -> tuple[str, str]:
     else:
         skip_parts = [f"{count} {reason}" for reason, count in result.skip_reasons.items()]
         skip_detail = ", ".join(skip_parts)
-        msg = (
-            f"No vouchers {result.action} — "
-            f"{total_skipped} skipped ({skip_detail})"
-        )
+        msg = f"No vouchers {result.action} — {total_skipped} skipped ({skip_detail})"
         return msg, "error"
 
 
@@ -119,7 +115,9 @@ async def get_vouchers(
         expires = voucher.expires_utc
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
-        can_revoke = voucher.status not in {VoucherStatus.REVOKED, VoucherStatus.EXPIRED} and now <= expires
+        can_revoke = (
+            voucher.status not in {VoucherStatus.REVOKED, VoucherStatus.EXPIRED} and now <= expires
+        )
         can_delete = voucher.redeemed_count == 0
         voucher_actions[voucher.code] = VoucherActions(can_revoke=can_revoke, can_delete=can_delete)
 
@@ -250,19 +248,33 @@ async def revoke_voucher(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for voucher revoke %s", code)
-        return RedirectResponse(url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     try:
         await voucher_service.revoke(code)
     except VoucherNotFoundError:
         logger.warning("Voucher not found for revoke: %s", code)
-        return RedirectResponse(url=f"{root}/admin/vouchers/?error=Voucher+not+found", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Voucher+not+found",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     except VoucherExpiredError:
         logger.warning("Cannot revoke expired voucher: %s", code)
-        return RedirectResponse(url=f"{root}/admin/vouchers/?error=Cannot+revoke+an+expired+voucher", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Cannot+revoke+an+expired+voucher",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     audit_service = AuditService(session)
-    await audit_service.log_admin_action(admin_id=admin_id, action="voucher.revoke", target_type="voucher", target_id=code)
-    return RedirectResponse(url=f"{root}/admin/vouchers/?success=Voucher+{code}+revoked+successfully", status_code=status.HTTP_303_SEE_OTHER)
+    await audit_service.log_admin_action(
+        admin_id=admin_id, action="voucher.revoke", target_type="voucher", target_id=code
+    )
+    return RedirectResponse(
+        url=f"{root}/admin/vouchers/?success=Voucher+{code}+revoked+successfully",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/delete/{code}")
@@ -279,19 +291,37 @@ async def delete_voucher(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for voucher delete %s", code)
-        return RedirectResponse(url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     try:
         meta = await voucher_service.delete(code)
     except VoucherNotFoundError:
         logger.warning("Voucher not found for delete: %s", code)
-        return RedirectResponse(url=f"{root}/admin/vouchers/?error=Voucher+not+found", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Voucher+not+found",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     except VoucherRedeemedError:
         logger.warning("Cannot delete redeemed voucher: %s", code)
-        return RedirectResponse(url=f"{root}/admin/vouchers/?error=Cannot+delete+voucher+{code}+%E2%80%94+it+has+been+redeemed", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Cannot+delete+voucher+{code}+%E2%80%94+it+has+been+redeemed",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     audit_service = AuditService(session)
-    await audit_service.log_admin_action(admin_id=admin_id, action="voucher.delete", target_type="voucher", target_id=code, metadata=meta)
-    return RedirectResponse(url=f"{root}/admin/vouchers/?success=Voucher+{code}+deleted+successfully", status_code=status.HTTP_303_SEE_OTHER)
+    await audit_service.log_admin_action(
+        admin_id=admin_id,
+        action="voucher.delete",
+        target_type="voucher",
+        target_id=code,
+        metadata=meta,
+    )
+    return RedirectResponse(
+        url=f"{root}/admin/vouchers/?success=Voucher+{code}+deleted+successfully",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/bulk-revoke")
@@ -307,11 +337,17 @@ async def bulk_revoke_vouchers(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for bulk voucher revoke")
-        return RedirectResponse(url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     form = await request.form()
     codes = form.getlist("codes")
     if not codes:
-        return RedirectResponse(url=f"{root}/admin/vouchers/?error=No+vouchers+selected", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=No+vouchers+selected",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     audit_service = AuditService(session)
     result = BulkResult(action="revoked")
@@ -320,19 +356,26 @@ async def bulk_revoke_vouchers(
         voucher_repo = VoucherRepository(session)
         existing = voucher_repo.get_by_code(code)
         if existing and existing.status == VoucherStatus.REVOKED:
-            result.skip_reasons["already revoked"] = result.skip_reasons.get("already revoked", 0) + 1
+            result.skip_reasons["already revoked"] = (
+                result.skip_reasons.get("already revoked", 0) + 1
+            )
             continue
         try:
             await voucher_service.revoke(code)
             result.success_count += 1
-            await audit_service.log_admin_action(admin_id=admin_id, action="voucher.revoke", target_type="voucher", target_id=code)
+            await audit_service.log_admin_action(
+                admin_id=admin_id, action="voucher.revoke", target_type="voucher", target_id=code
+            )
         except VoucherExpiredError:
             result.skip_reasons["expired"] = result.skip_reasons.get("expired", 0) + 1
         except VoucherNotFoundError:
             result.skip_reasons["not found"] = result.skip_reasons.get("not found", 0) + 1
     msg, param_key = format_bulk_message(result)
     encoded_msg = urllib.parse.quote_plus(msg)
-    return RedirectResponse(url=f"{root}/admin/vouchers/?{param_key}={encoded_msg}", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url=f"{root}/admin/vouchers/?{param_key}={encoded_msg}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/bulk-delete")
@@ -348,11 +391,17 @@ async def bulk_delete_vouchers(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for bulk voucher delete")
-        return RedirectResponse(url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     form = await request.form()
     codes = form.getlist("codes")
     if not codes:
-        return RedirectResponse(url=f"{root}/admin/vouchers/?error=No+vouchers+selected", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=No+vouchers+selected",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     audit_service = AuditService(session)
     result = BulkResult(action="deleted")
@@ -361,12 +410,22 @@ async def bulk_delete_vouchers(
         try:
             meta = await voucher_service.delete(code)
             result.success_count += 1
-            await audit_service.log_admin_action(admin_id=admin_id, action="voucher.delete", target_type="voucher", target_id=code, metadata=meta)
+            await audit_service.log_admin_action(
+                admin_id=admin_id,
+                action="voucher.delete",
+                target_type="voucher",
+                target_id=code,
+                metadata=meta,
+            )
         except VoucherRedeemedError:
-            result.skip_reasons["already redeemed"] = result.skip_reasons.get("already redeemed", 0) + 1
+            result.skip_reasons["already redeemed"] = (
+                result.skip_reasons.get("already redeemed", 0) + 1
+            )
         except VoucherNotFoundError:
             result.skip_reasons["not found"] = result.skip_reasons.get("not found", 0) + 1
     msg, param_key = format_bulk_message(result)
     encoded_msg = urllib.parse.quote_plus(msg)
-    return RedirectResponse(url=f"{root}/admin/vouchers/?{param_key}={encoded_msg}", status_code=status.HTTP_303_SEE_OTHER)
-
+    return RedirectResponse(
+        url=f"{root}/admin/vouchers/?{param_key}={encoded_msg}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )

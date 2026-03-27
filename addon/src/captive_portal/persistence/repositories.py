@@ -109,12 +109,12 @@ class VoucherRepository(BaseRepository[Voucher]):
 
         stmt: Any = (
             sa_delete(Voucher)
-            .where(Voucher.code == code)
-            .where(Voucher.redeemed_count == 0)
+            .where(Voucher.code == code)  # type: ignore[arg-type]
+            .where(Voucher.redeemed_count == 0)  # type: ignore[arg-type]
         )
         result = self.session.execute(stmt)
         self.session.flush()
-        return bool(result.rowcount > 0)
+        return bool(result.rowcount > 0)  # type: ignore[attr-defined]
 
 
 class AccessGrantRepository(BaseRepository[AccessGrant]):
