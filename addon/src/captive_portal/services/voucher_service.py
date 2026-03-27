@@ -281,7 +281,7 @@ class VoucherService:
 
         deleted = self.voucher_repo.delete(code)
         if not deleted:
-            raise VoucherNotFoundError(code)
+            raise VoucherRedeemedError(code)
 
         self.voucher_repo.commit()
         return meta
