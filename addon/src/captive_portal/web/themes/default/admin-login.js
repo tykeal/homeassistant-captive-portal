@@ -9,11 +9,11 @@ const errorDiv = document.getElementById('login-error');
 
 function showError(msg) {
     errorDiv.textContent = msg;
-    errorDiv.style.display = 'block';
+    errorDiv.classList.remove('hidden');
 }
 
 function hideError() {
-    errorDiv.style.display = 'none';
+    errorDiv.classList.add('hidden');
 }
 
 // Check auth status and show appropriate form
@@ -23,8 +23,8 @@ async function checkAuthStatus() {
         const data = await resp.json();
         if (data.needs_setup) {
             cardTitle.textContent = 'Create Admin Account';
-            loginForm.style.display = 'none';
-            setupForm.style.display = 'block';
+            loginForm.classList.add('hidden');
+            setupForm.classList.remove('hidden');
             document.getElementById('setup-username').focus();
         }
     } catch (_) {
