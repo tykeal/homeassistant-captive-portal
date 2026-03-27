@@ -104,17 +104,31 @@ These follow the existing `GrantNotFoundError` / `GrantOperationError` pattern f
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `delete` | `delete(self, code: str) -> bool` | Remove voucher row by PK. Returns True if deleted, False if not found. |
+| `delete` | `delete(self, code: str) -> bool` | Remove voucher row by PK if it has never been redeemed. Returns True if deleted, False if not found or already redeemed. |
 
 Implementation:
 ```python
+from sqlalchemy import delete
+
 def delete(self, code: str) -> bool:
-    voucher = self.get_by_code(code)
-    if voucher is None:
-        return False
-    self.session.delete(voucher)
-    self.session.flush()
-    return True
+    """Hard-delete a voucher that has never been redeemed.
+
+    Returns:
+        True if a single voucher row was deleted.
+        False if no such voucher exists or it has already been redeemed.
+    """
+    stmt = (
+        delete(Voucher)
+        .where(
+            Voucher.code == code,
+            Voucher.redeemed_count == 0,
+        )
+    )
+    result = self.session.execute(stmt)
+    deleted = result.rowcount == 1
+    if deleted:
+        self.session.flush()
+    return deleted
 ```
 
 ---

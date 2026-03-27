@@ -85,16 +85,19 @@ The audit log captures the delete action before the voucher record is removed, e
 Use optimistic concurrency via a re-read before delete. The `VoucherService.delete()` method re-fetches the voucher inside the same database session immediately before deletion. If `redeemed_count` has increased since the page was loaded, the delete is rejected with an explanatory error.
 
 ### Rationale
-FR-010 requires: "System MUST reject a delete request if the voucher was redeemed between page load and the delete action submission, displaying an explanatory error message." Since SQLModel uses SQLAlchemy sessions, the `get_by_code()` call within the delete transaction reads the current database state — not a cached value from a previous request. This naturally handles the race condition because:
-1. Admin loads page → sees `redeemed_count=0`
-2. Guest redeems voucher → `redeemed_count=1` in DB
-3. Admin submits delete → service calls `get_by_code()` → reads `redeemed_count=1` → rejects
+Use an atomic, predicate-based delete. The `VoucherService.delete()` method issues a single `DELETE` statement scoped by both the voucher identifier and the eligibility condition, e.g. `WHERE code = :code AND redeemed_count = 0`. It then checks the affected row count:
 
-No explicit locking is needed because SQLite serializes writes and the service method reads the current state within the same transaction.
+- If exactly one row was deleted, the voucher was still unredeemed and the hard delete succeeds.
+- If zero rows were deleted, the voucher was redeemed (or no longer exists) between page load and submission, and the service rejects the delete with the FR-010 explanatory error.
+
+### Rationale
+FR-010 requires: "System MUST reject a delete request if the voucher was redeemed between page load and the delete action submission, displaying an explanatory error message." A simple "re-read then unconditional delete" leaves a race window between the final eligibility check and the delete statement, during which a concurrent redemption can increment `redeemed_count` and still be deleted.
+
+By encoding the eligibility check (`redeemed_count = 0`) directly into the `DELETE` predicate and verifying that exactly one row was affected, the check and delete become a single atomic database operation. In SQLite, this is executed under its normal write-serialization rules; no additional client-side locking is required to prevent a concurrent redemption from slipping between the check and the delete.
 
 ### Alternatives Considered
-1. **Optimistic locking with version field**: Rejected — adds schema complexity; the natural re-read is sufficient given SQLite's serialization.
-2. **Row-level lock (SELECT FOR UPDATE)**: Rejected — SQLite does not support row-level locks; its write serialization provides equivalent guarantees.
+1. **Optimistic locking with version field**: Rejected — adds schema complexity; the predicate-based delete already provides a lightweight form of optimistic concurrency.
+2. **Row-level lock (SELECT FOR UPDATE)**: Rejected — SQLite does not support row-level locks; the atomic `DELETE ... WHERE redeemed_count = 0` pattern achieves the necessary protection.
 3. **Pass redeemed_count from form as a hidden field and compare**: Rejected — client-supplied values cannot be trusted for security-critical decisions.
 
 ---
