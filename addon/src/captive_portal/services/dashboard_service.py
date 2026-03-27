@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
@@ -17,8 +16,6 @@ from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.audit_log import AuditLog
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.models.voucher import Voucher, VoucherStatus
-
-logger = logging.getLogger("captive_portal")
 
 
 @dataclass

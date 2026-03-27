@@ -104,7 +104,7 @@ async def create_voucher(
     except HTTPException:
         logger.warning("CSRF validation failed for voucher create")
         return RedirectResponse(
-            url=f"{root}/admin/vouchers?error=Invalid+CSRF+token",
+            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -120,21 +120,21 @@ async def create_voucher(
     except (ValueError, TypeError):
         logger.warning("Invalid duration value '%s' for voucher create", duration_raw)
         return RedirectResponse(
-            url=f"{root}/admin/vouchers?error=Duration+must+be+between+1+and+43200+minutes",
+            url=f"{root}/admin/vouchers/?error=Duration+must+be+between+1+and+43200+minutes",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
     if duration < 1 or duration > 43200:
         logger.warning("Duration out of range (%d) for voucher create", duration)
         return RedirectResponse(
-            url=f"{root}/admin/vouchers?error=Duration+must+be+between+1+and+43200+minutes",
+            url=f"{root}/admin/vouchers/?error=Duration+must+be+between+1+and+43200+minutes",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
     # Trim and validate booking_ref length
     if booking_ref and len(booking_ref) > 128:
         return RedirectResponse(
-            url=f"{root}/admin/vouchers?error=Booking+reference+must+be+128+characters+or+less",
+            url=f"{root}/admin/vouchers/?error=Booking+reference+must+be+128+characters+or+less",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -145,7 +145,7 @@ async def create_voucher(
     except VoucherCollisionError:
         logger.warning("Voucher code collision during create")
         return RedirectResponse(
-            url=f"{root}/admin/vouchers?error=Failed+to+generate+unique+voucher+code",
+            url=f"{root}/admin/vouchers/?error=Failed+to+generate+unique+voucher+code",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -160,6 +160,6 @@ async def create_voucher(
     )
 
     return RedirectResponse(
-        url=f"{root}/admin/vouchers?new_code={voucher.code}&success=Voucher+created+successfully",
+        url=f"{root}/admin/vouchers/?new_code={voucher.code}&success=Voucher+created+successfully",
         status_code=status.HTTP_303_SEE_OTHER,
     )

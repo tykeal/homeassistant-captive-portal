@@ -144,7 +144,7 @@ async def extend_grant(
     except HTTPException:
         logger.warning("CSRF validation failed for grant extend %s", grant_id)
         return RedirectResponse(
-            url=f"{root}/admin/grants?error=Invalid+CSRF+token",
+            url=f"{root}/admin/grants/?error=Invalid+CSRF+token",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -156,14 +156,14 @@ async def extend_grant(
     except (ValueError, TypeError):
         logger.warning("Invalid minutes value '%s' for grant extend %s", minutes_raw, grant_id)
         return RedirectResponse(
-            url=f"{root}/admin/grants?error=Minutes+must+be+between+1+and+1440",
+            url=f"{root}/admin/grants/?error=Minutes+must+be+between+1+and+1440",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
     if minutes < 1 or minutes > 1440:
         logger.warning("Minutes out of range (%d) for grant extend %s", minutes, grant_id)
         return RedirectResponse(
-            url=f"{root}/admin/grants?error=Minutes+must+be+between+1+and+1440",
+            url=f"{root}/admin/grants/?error=Minutes+must+be+between+1+and+1440",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -176,13 +176,13 @@ async def extend_grant(
     except GrantNotFoundError:
         logger.warning("Grant not found for extend: %s", grant_id)
         return RedirectResponse(
-            url=f"{root}/admin/grants?error=Grant+not+found",
+            url=f"{root}/admin/grants/?error=Grant+not+found",
             status_code=status.HTTP_303_SEE_OTHER,
         )
     except GrantOperationError:
         logger.warning("Cannot extend revoked grant: %s", grant_id)
         return RedirectResponse(
-            url=f"{root}/admin/grants?error=Cannot+extend+a+revoked+grant",
+            url=f"{root}/admin/grants/?error=Cannot+extend+a+revoked+grant",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -197,7 +197,7 @@ async def extend_grant(
     )
 
     return RedirectResponse(
-        url=f"{root}/admin/grants?success=Grant+extended+by+{minutes}+minutes",
+        url=f"{root}/admin/grants/?success=Grant+extended+by+{minutes}+minutes",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -230,7 +230,7 @@ async def revoke_grant(
     except HTTPException:
         logger.warning("CSRF validation failed for grant revoke %s", grant_id)
         return RedirectResponse(
-            url=f"{root}/admin/grants?error=Invalid+CSRF+token",
+            url=f"{root}/admin/grants/?error=Invalid+CSRF+token",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -243,7 +243,7 @@ async def revoke_grant(
     except GrantNotFoundError:
         logger.warning("Grant not found for revoke: %s", grant_id)
         return RedirectResponse(
-            url=f"{root}/admin/grants?error=Grant+not+found",
+            url=f"{root}/admin/grants/?error=Grant+not+found",
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -257,6 +257,6 @@ async def revoke_grant(
     )
 
     return RedirectResponse(
-        url=f"{root}/admin/grants?success=Grant+revoked+successfully",
+        url=f"{root}/admin/grants/?success=Grant+revoked+successfully",
         status_code=status.HTTP_303_SEE_OTHER,
     )
