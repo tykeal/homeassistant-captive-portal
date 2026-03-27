@@ -73,7 +73,7 @@ FR-006 requires deletion only for never-redeemed vouchers. FR-007 specifies perm
 - Revoked, previously redeemed (redeemed_count>0): not deletable ✗
 - Expired (redeemed_count>0): not deletable ✗
 
-The audit log captures the delete action before the voucher record is removed, ensuring traceability even after hard delete.
+The service captures the required voucher fields (status, booking_ref) before attempting the hard delete. The audit log entry is written only after the delete has been confirmed successful, using the captured snapshot values. This prevents orphaned audit entries when the predicate-based delete fails.
 
 ### Alternatives Considered
 1. **Soft delete (mark as deleted, keep record)**: Rejected — spec explicitly requires permanent removal (FR-007) and the assumption section states "Voucher deletion is a hard delete (permanent removal), not a soft delete."
@@ -240,18 +240,21 @@ can_delete = voucher.redeemed_count == 0
 Extend the existing `AuditService` usage pattern to log revoke and delete actions:
 
 - **Revoke**: `action="voucher.revoke"`, `target_type="voucher"`, `target_id=voucher.code`
-- **Delete**: `action="voucher.delete"`, `target_type="voucher"`, `target_id=voucher.code`, `meta={"status_at_delete": voucher.status.value, "booking_ref": voucher.booking_ref}`
+- **Delete**: `action="voucher.delete"`, `target_type="voucher"`, `target_id=voucher.code`, `meta={"status_at_delete": voucher.status.value, "booking_ref": voucher.booking_ref}`. The service MUST capture these fields before issuing the hard delete, but MUST only call `audit_service.log_admin_action()` after the delete has been confirmed successful (or perform both within a single database transaction).
 - **Bulk revoke**: One log entry per successfully revoked voucher (same as single revoke)
-- **Bulk delete**: One log entry per successfully deleted voucher (same as single delete)
+- **Bulk delete**: One log entry per successfully deleted voucher (same as single delete). For each voucher, fields needed for `meta` are captured pre-delete, and the audit log entry is written only if that voucher's delete actually succeeds.
 
 ### Rationale
 FR-020 requires logging all revoke and delete actions with admin identity. The existing pattern in `vouchers_ui.py` (for create) and `grants_ui.py` (for extend/revoke) uses `audit_service.log_admin_action()`. Maintaining one log entry per voucher (not one per bulk operation) ensures granular traceability.
 
-For delete actions, the meta field captures the voucher's state at deletion time because the record is hard-deleted afterward. This preserves essential information (booking reference, status) in the audit trail.
+For delete actions, the meta field captures the voucher's state at deletion time because the record is hard-deleted afterward. To avoid recording a successful delete in the audit log when the database delete fails or is rejected (for example, due to a `redeemed_count` race), implementations MUST either:
+
+- capture the required voucher fields before attempting the delete, perform the delete, and only then call `audit_service.log_admin_action()` if the delete succeeds; or
+- wrap the delete and the audit log write in a single atomic transaction so that they either both commit or both roll back.
 
 ### Alternatives Considered
 1. **Single bulk audit entry per operation**: Rejected — loses per-voucher traceability. If a bulk operation deletes 15 vouchers, there should be 15 audit entries so each can be investigated individually.
-2. **Pre-delete snapshot in separate table**: Rejected — adds schema complexity. The meta field on the audit log entry is sufficient.
+2. **Pre-delete snapshot in separate table**: Rejected — adds schema complexity. The meta field on the audit log entry is sufficient when combined with the post-delete (or transactional) logging pattern described above.
 3. **Add specialized AuditService methods (log_voucher_revoked, log_voucher_deleted)**: Considered — may be added for consistency with `log_voucher_created()`, but `log_admin_action()` is sufficient and used by the existing route handlers.
 
 ---
@@ -267,7 +270,7 @@ Bulk operation feedback messages follow this format:
 - **Delete partial**: `"Deleted 2 vouchers, skipped 3 (already redeemed)"`
 
 ### Rationale
-FR-015 requires a summary "indicating how many vouchers were affected and how many were skipped, with reasons." The message is URL-encoded in the redirect query parameter (consistent with existing feedback pattern). Skip reasons are grouped by category for clarity.
+FR-015 requires a summary "indicating how many vouchers were affected and how many were skipped, with reasons." The message is built using `urllib.parse.quote_plus()` for proper URL encoding before being placed in the redirect query parameter (consistent with existing feedback pattern but ensuring punctuation and non-ASCII characters are handled safely). Skip reasons are grouped by category for clarity.
 
 ### Implementation
 The bulk endpoint builds a `BulkResult` dataclass:

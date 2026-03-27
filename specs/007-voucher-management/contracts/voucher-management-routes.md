@@ -115,7 +115,7 @@ For each voucher, the `voucher_actions` dict provides:
 - `target_type`: `"voucher"`
 - `target_id`: voucher code
 - `meta`: `{"status_at_delete": "<status>", "booking_ref": "<ref or null>"}`
-- Logged **before** the hard delete (record removed after audit entry committed)
+- Implementation note: snapshot `status_at_delete` and `booking_ref`, perform the predicate-based hard delete, then log this entry **after** a successful delete using the snapshot values.
 
 ---
 
@@ -195,7 +195,7 @@ All POST routes validate CSRF using the existing double-submit cookie pattern:
 3. On failure: redirect with `?error=Invalid+CSRF+token`
 
 ### Authentication
-All routes use `require_admin` dependency. Unauthenticated requests return 401 (mapped to login redirect by exception handler).
+All routes use `require_admin` dependency. Unauthenticated requests return `401 Unauthorized`.
 
 ### Ingress Root Path
 All redirects prefixed with `request.scope.get("root_path", "")`.
