@@ -1,0 +1,150 @@
+{% set rp = request.scope.root_path %}
+<!--
+SPDX-FileCopyrightText: 2025 Andrew Grimberg
+SPDX-License-Identifier: Apache-2.0
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vouchers - Admin</title>
+    <link rel="stylesheet" href="{{ rp }}/static/themes/default/admin.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>Captive Portal Admin</h1>
+            <nav>
+                <a href="{{ rp }}/admin/dashboard/" class="nav-link">Dashboard</a>
+                <a href="{{ rp }}/admin/grants/" class="nav-link">Grants</a>
+                <a href="{{ rp }}/admin/vouchers/" class="nav-link active">Vouchers</a>
+                <a href="{{ rp }}/admin/integrations/" class="nav-link">Integrations</a>
+                <a href="{{ rp }}/admin/portal-settings/" class="nav-link">Settings</a>
+                <form action="{{ rp }}/admin/logout" method="POST" class="nav-inline-form">
+                    <button type="submit" class="btn-link">Logout</button>
+                </form>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <h2>Vouchers</h2>
+
+        {% if success_message %}
+        <div class="alert alert-success">
+            {{ success_message }}
+        </div>
+        {% endif %}
+
+        {% if error_message %}
+        <div class="alert alert-error">
+            {{ error_message }}
+        </div>
+        {% endif %}
+
+        {% if new_code %}
+        <div class="voucher-code-display">
+            <h3>New Voucher Created</h3>
+            <p class="code-value">{{ new_code }}</p>
+        </div>
+        {% endif %}
+
+        <section class="settings-form">
+            <h3>Create Voucher</h3>
+            <form method="POST" action="{{ rp }}/admin/vouchers/create">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <div class="form-group">
+                    <label for="duration_minutes" class="form-label">Duration (minutes) *</label>
+                    <input type="number"
+                           id="duration_minutes"
+                           name="duration_minutes"
+                           class="form-control"
+                           min="1"
+                           max="43200"
+                           required
+                           placeholder="60">
+                    <small>Access duration in minutes (1–43200, i.e., up to 30 days)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="booking_ref" class="form-label">Booking Reference (optional)</label>
+                    <input type="text"
+                           id="booking_ref"
+                           name="booking_ref"
+                           class="form-control"
+                           maxlength="128"
+                           placeholder="e.g., BOOKING-001">
+                    <small>Optional reference to associate with this voucher</small>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Create Voucher</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="vouchers-list">
+            <h3>All Vouchers</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Redemption</th>
+                        <th>Booking Ref</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if vouchers %}
+                    {% for voucher in vouchers %}
+                    <tr{% if new_code and voucher.code == new_code %} class="row-highlight"{% endif %}>
+                        <td><code>{{ voucher.code }}</code></td>
+                        <td>{{ voucher.duration_minutes }} min</td>
+                        <td>
+                            <span class="status-badge status-{{ voucher.status.value }}">
+                                {{ voucher.status.value }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if voucher.redeemed_count > 0 %}
+                                Redeemed
+                                {% if voucher.last_redeemed_utc %}
+                                    ({{ voucher.last_redeemed_utc.strftime('%Y-%m-%d %H:%M') }})
+                                {% endif %}
+                            {% else %}
+                                Unredeemed
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if voucher.booking_ref %}
+                                {{ voucher.booking_ref }}
+                            {% else %}
+                                <em>-</em>
+                            {% endif %}
+                        </td>
+                        <td>{{ voucher.created_utc.strftime('%Y-%m-%d %H:%M') }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="empty-state">No vouchers found. Create one using the form above.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Captive Portal v1.0 | Powered by Home Assistant</p>
+        </div>
+    </footer>
+
+
+</body>
+</html>

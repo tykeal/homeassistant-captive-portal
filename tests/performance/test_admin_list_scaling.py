@@ -97,18 +97,18 @@ async def test_admin_grants_list_500_grants_p95(async_client: "AsyncClient") -> 
     assert p95 <= 1500.0, f"Admin grants list p95 latency {p95:.2f}ms exceeds 1500ms target"
 
 
-@pytest.mark.skip(reason="Admin vouchers list endpoint not yet implemented")
 @pytest.mark.asyncio
 @pytest.mark.performance
-async def test_admin_vouchers_list_100_vouchers_p95(
+async def test_admin_vouchers_list_200_vouchers_p95(
     async_client: "AsyncClient",
 ) -> None:
-    """
-    Benchmark admin vouchers list with 100 vouchers.
+    """Benchmark admin vouchers HTML list with 200 vouchers.
 
-    No explicit target, but should be comparable to grants list.
+    Performance target: p95 <= 1500ms for the HTML UI endpoint.
+    Note: This measures /admin/vouchers/ (HTML rendering + template),
+    not the JSON API endpoint.
     """
-    # GIVEN: Admin user and 100 vouchers
+    # GIVEN: Admin user and 200 vouchers
     from captive_portal.models.voucher import Voucher
 
     session = next(get_session())
@@ -124,8 +124,8 @@ async def test_admin_vouchers_list_100_vouchers_p95(
         session.add(admin)
         session.flush()
 
-        # Create 100 vouchers
-        for i in range(100):
+        # Create 200 vouchers
+        for i in range(200):
             voucher = Voucher(
                 code=f"VLIST{i:05d}",
                 duration_minutes=60 + (i % 1440),  # 1 hour to 1 day
@@ -136,23 +136,22 @@ async def test_admin_vouchers_list_100_vouchers_p95(
         session.close()
 
     # WHEN: Measuring vouchers list latency
+    # Login once before benchmark to avoid session accumulation
+    login_response = await async_client.post(
+        "/api/admin/auth/login",
+        json={
+            "username": "voucher_list_admin",
+            "password": "benchmark_password",
+        },
+    )
+    assert login_response.status_code == 200
+
     async def fetch_vouchers_list() -> float:
         """Fetch vouchers list and return latency in milliseconds."""
-        client = async_client
-        login_response = await client.post(
-            "/api/admin/auth/login",
-            json={
-                "username": "voucher_list_admin",
-                "password": "benchmark_password",
-            },
-        )
-        assert login_response.status_code == 200
-
         start = time.perf_counter()
-        response = await client.get("/admin/vouchers")
+        response = await async_client.get("/admin/vouchers/")
         assert response.status_code == 200
         elapsed = time.perf_counter() - start
-
         return elapsed * 1000
 
     # Run benchmark (20 samples)
@@ -164,9 +163,78 @@ async def test_admin_vouchers_list_100_vouchers_p95(
     p95_index = int(len(latencies_sorted) * 0.95)
     p95 = latencies_sorted[p95_index]
 
-    print("\nAdmin Vouchers List Benchmark (100 vouchers):")  # noqa: T201
+    print("\nAdmin Vouchers List Benchmark (200 vouchers):")  # noqa: T201
     print(f"  Samples: {len(latencies)}")  # noqa: T201
     print(f"  p50: {p50:.2f}ms")  # noqa: T201
-    print(f"  p95: {p95:.2f}ms")  # noqa: T201
+    print(f"  p95: {p95:.2f}ms (target: <=1500ms)")  # noqa: T201
 
-    # No strict assertion, but log results for comparison
+    assert p95 <= 1500.0, f"Admin vouchers list p95 latency {p95:.2f}ms exceeds 1500ms target"
+
+
+@pytest.mark.asyncio
+@pytest.mark.performance
+async def test_admin_voucher_create_p95(
+    async_client: "AsyncClient",
+) -> None:
+    """
+    Benchmark admin voucher creation endpoint.
+
+    Performance target: p95 <= 800ms
+    """
+    # GIVEN: Admin user
+    session = next(get_session())
+    try:
+        admin = AdminUser(
+            username="voucher_create_admin",
+            password_hash=hash_password("benchmark_password"),
+            email="voucher_create_admin@test.local",
+            role="admin",
+            created_utc=datetime.now(UTC),
+        )
+        session.add(admin)
+        session.commit()
+    finally:
+        session.close()
+
+    # Login once
+    client = async_client
+    login_response = await client.post(
+        "/api/admin/auth/login",
+        json={
+            "username": "voucher_create_admin",
+            "password": "benchmark_password",
+        },
+    )
+    assert login_response.status_code == 200
+    csrf_token = login_response.json()["csrf_token"]
+    client.cookies.set("csrftoken", csrf_token)
+
+    # WHEN: Measuring voucher creation latency
+    async def create_voucher() -> float:
+        """Create a voucher and return latency in milliseconds."""
+        start = time.perf_counter()
+        response = await client.post(
+            "/admin/vouchers/create",
+            data={"csrf_token": csrf_token, "duration_minutes": "60"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+        elapsed = time.perf_counter() - start
+
+        return elapsed * 1000
+
+    # Run benchmark (20 samples)
+    latencies = [await create_voucher() for _ in range(20)]
+
+    # THEN: Calculate percentiles
+    latencies_sorted = sorted(latencies)
+    p50 = statistics.median(latencies_sorted)
+    p95_index = int(len(latencies_sorted) * 0.95)
+    p95 = latencies_sorted[p95_index]
+
+    print("\nAdmin Voucher Create Benchmark:")  # noqa: T201
+    print(f"  Samples: {len(latencies)}")  # noqa: T201
+    print(f"  p50: {p50:.2f}ms")  # noqa: T201
+    print(f"  p95: {p95:.2f}ms (target: <=800ms)")  # noqa: T201
+
+    assert p95 <= 800.0, f"Admin voucher create p95 latency {p95:.2f}ms exceeds 800ms target"

@@ -16,13 +16,12 @@ SPDX-License-Identifier: Apache-2.0
         <div class="container">
             <h1>Captive Portal Admin</h1>
             <nav>
-                <a href="{{ rp }}/admin/dashboard" class="nav-link">Dashboard</a>
-                <a href="{{ rp }}/admin/grants" class="nav-link">Grants</a>
-                <a href="{{ rp }}/admin/vouchers" class="nav-link">Vouchers</a>
-                <a href="{{ rp }}/admin/integrations" class="nav-link active">Integrations</a>
-                <a href="{{ rp }}/admin/portal-settings" class="nav-link">Settings</a>
-                <form action="{{ rp }}/api/admin/logout" method="POST" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <a href="{{ rp }}/admin/dashboard/" class="nav-link">Dashboard</a>
+                <a href="{{ rp }}/admin/grants/" class="nav-link">Grants</a>
+                <a href="{{ rp }}/admin/vouchers/" class="nav-link">Vouchers</a>
+                <a href="{{ rp }}/admin/integrations/" class="nav-link active">Integrations</a>
+                <a href="{{ rp }}/admin/portal-settings/" class="nav-link">Settings</a>
+                <form action="{{ rp }}/admin/logout" method="POST" class="nav-inline-form">
                     <button type="submit" class="btn-link">Logout</button>
                 </form>
             </nav>
@@ -89,7 +88,7 @@ SPDX-License-Identifier: Apache-2.0
                         {% if integration %}Update{% else %}Add{% endif %} Integration
                     </button>
                     {% if integration %}
-                    <a href="{{ rp }}/admin/integrations" class="btn">Cancel</a>
+                    <a href="{{ rp }}/admin/integrations/" class="btn">Cancel</a>
                     {% endif %}
                 </div>
             </form>

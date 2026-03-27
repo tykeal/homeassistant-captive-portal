@@ -70,6 +70,14 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             )
             response.headers["Content-Security-Policy"] = csp
 
+        # Cache-control headers for admin pages (FR-028)
+        # Prevents back-button content leakage after logout
+        path = request.scope.get("path", request.url.path)
+        if path == "/admin" or path.startswith("/admin/"):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+
         # Permissions Policy - disable unnecessary features
         permissions = (
             "geolocation=(), "

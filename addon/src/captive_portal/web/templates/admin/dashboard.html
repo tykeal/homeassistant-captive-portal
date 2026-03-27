@@ -16,13 +16,12 @@ SPDX-License-Identifier: Apache-2.0
         <div class="container">
             <h1>Captive Portal Admin</h1>
             <nav>
-                <a href="{{ rp }}/admin/dashboard" class="nav-link active">Dashboard</a>
-                <a href="{{ rp }}/admin/grants" class="nav-link">Grants</a>
-                <a href="{{ rp }}/admin/vouchers" class="nav-link">Vouchers</a>
-                <a href="{{ rp }}/admin/integrations" class="nav-link">Integrations</a>
-                <a href="{{ rp }}/admin/portal-settings" class="nav-link">Settings</a>
-                <form action="{{ rp }}/api/admin/logout" method="POST" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <a href="{{ rp }}/admin/dashboard/" class="nav-link active">Dashboard</a>
+                <a href="{{ rp }}/admin/grants/" class="nav-link">Grants</a>
+                <a href="{{ rp }}/admin/vouchers/" class="nav-link">Vouchers</a>
+                <a href="{{ rp }}/admin/integrations/" class="nav-link">Integrations</a>
+                <a href="{{ rp }}/admin/portal-settings/" class="nav-link">Settings</a>
+                <form action="{{ rp }}/admin/logout" method="POST" class="nav-inline-form">
                     <button type="submit" class="btn-link">Logout</button>
                 </form>
             </nav>
@@ -61,6 +60,7 @@ SPDX-License-Identifier: Apache-2.0
                     </tr>
                 </thead>
                 <tbody>
+                    {% if recent_logs %}
                     {% for log in recent_logs %}
                     <tr>
                         <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
@@ -69,6 +69,11 @@ SPDX-License-Identifier: Apache-2.0
                         <td>{{ log.admin_username }}</td>
                     </tr>
                     {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="empty-state">No recent activity</td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         </section>
