@@ -190,7 +190,7 @@ class TestAdminDashboardPage:
         With the full middleware stack the route's require_admin dependency
         raises 401 for unauthenticated requests.
         """
-        resp = secure_client.get("/admin/dashboard", follow_redirects=False)
+        resp = secure_client.get("/admin/dashboard/", follow_redirects=False)
         assert resp.status_code == 401
 
     def test_authenticated_page_load_with_stats_cards(
@@ -211,7 +211,7 @@ class TestAdminDashboardPage:
         v1 = _create_voucher(db_session, code="INTG0001")
         i1 = _create_integration(db_session, integration_id="integ-dash-1")
 
-        resp = client.get("/admin/dashboard")
+        resp = client.get("/admin/dashboard/")
         assert resp.status_code == 200
         assert "text/html" in resp.headers["content-type"]
         body = resp.text
@@ -248,7 +248,7 @@ class TestAdminDashboardPage:
             target_id="VCODE9",
         )
 
-        resp = client.get("/admin/dashboard")
+        resp = client.get("/admin/dashboard/")
         assert resp.status_code == 200
         body = resp.text
 
@@ -265,7 +265,7 @@ class TestAdminDashboardPage:
         activity feed should display 'No recent activity' or be empty."""
         client, _csrf = authed_secure_client
 
-        resp = client.get("/admin/dashboard")
+        resp = client.get("/admin/dashboard/")
         assert resp.status_code == 200
         assert "text/html" in resp.headers["content-type"]
         body = resp.text

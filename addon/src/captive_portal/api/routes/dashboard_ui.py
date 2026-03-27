@@ -34,7 +34,7 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templa
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
-@router.get("/dashboard", response_class=HTMLResponse)
+@router.get("/dashboard/", response_class=HTMLResponse)
 async def get_dashboard(
     request: Request,
     session: Annotated[Session, Depends(get_session)],
