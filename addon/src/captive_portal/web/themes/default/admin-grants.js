@@ -39,7 +39,10 @@
     function enhanceSubmitButtons() {
         var forms = document.querySelectorAll("form[method='POST']");
         forms.forEach(function (form) {
-            form.addEventListener("submit", function () {
+            form.addEventListener("submit", function (event) {
+                if (event.defaultPrevented) {
+                    return;
+                }
                 var buttons = form.querySelectorAll('button[type="submit"]');
                 buttons.forEach(function (button) {
                     if (!button.disabled) {

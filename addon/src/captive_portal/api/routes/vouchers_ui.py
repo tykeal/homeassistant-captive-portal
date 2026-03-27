@@ -112,7 +112,12 @@ async def create_voucher(
     form = await request.form()
     duration_raw = form.get("duration_minutes", "")
     booking_ref_raw = form.get("booking_ref", "")
-    booking_ref: str | None = str(booking_ref_raw).strip() if booking_ref_raw else None
+    booking_ref: str | None
+    if booking_ref_raw:
+        booking_ref_str = str(booking_ref_raw).strip()
+        booking_ref = booking_ref_str or None
+    else:
+        booking_ref = None
 
     # Validate duration
     try:
