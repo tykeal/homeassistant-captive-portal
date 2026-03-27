@@ -3,7 +3,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # captive-portal Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-03-26
+Auto-generated from all feature plans. Last updated: 2026-03-27
 
 ## Active Technologies
 - Python 3.12+ (runtime: Python 3.13 from HA base image) + FastAPI, Uvicorn, SQLModel, Pydantic, Jinja2, Argon2-cffi, HTTPX, passlib (003-addon-structure-refactor)
@@ -36,9 +36,9 @@ uv run mypy addon/src/captive_portal
 Python 3.12+ (per `pyproject.toml` `requires-python = ">=3.12"`): Follow standard conventions
 
 ## Recent Changes
+- 007-voucher-management: Added Python 3.12+ (strict mypy, full type annotations) + FastAPI 0.100+, Jinja2, SQLModel (SQLAlchemy + Pydantic), python-multipart
 - 005-admin-ui-pages: Added Python 3.12+ (strict mypy, full type annotations) + FastAPI 0.100+, Jinja2, SQLModel (SQLAlchemy + Pydantic), python-multipart
 - 004-dual-port-networking: Added Python 3.12+ (type-annotated, mypy-enforced) + FastAPI, Uvicorn, SQLModel, Pydantic, Jinja2, s6-overlay (from HA base image)
-- 003-addon-structure-refactor: Added Python 3.12+ (runtime: Python 3.13 from HA base image) + FastAPI, Uvicorn, SQLModel, Pydantic, Jinja2, Argon2-cffi, HTTPX, passlib
 
 
 <!-- MANUAL ADDITIONS START -->
