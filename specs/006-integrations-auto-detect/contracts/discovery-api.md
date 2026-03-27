@@ -85,11 +85,20 @@ This document defines the contract for the new discovery JSON endpoint and the m
 | `server_error` | 500, 502, 503 | HA internal error |
 | `unknown` | Any other | Unexpected exception |
 
+Implementations of this endpoint MUST derive `error_category` from the underlying HTTP client error/response, not by collapsing all failures into a generic `Exception`. The discovery logic MUST either:
+
+- inspect HTTP client exceptions directly (for example, `httpx.HTTPError` and its subclasses), or
+- raise/handle a typed or custom exception that:
+  - encodes a specific `error_category` from the table above, and
+  - does **not** include request URLs, headers, bodies, or raw response content in its public message.
+
+Generic `Exception` messages (or stringified HTTP exceptions) MUST NOT be exposed to callers or used verbatim as `error_message`. Only fixed, user-safe strings defined by this contract may be sent in responses.
+
 ### Security
 
 - The response MUST NOT include the HA API token, internal URLs, or raw HTTP response bodies
-- Error messages MUST be constrained to the categories above
-- Full error details (stack traces, raw responses) MUST be logged server-side only
+- Error messages MUST be constrained to the categories above and MUST NOT contain raw exception texts (including `httpx.HTTPError` or generic `Exception` messages)
+- Full error details (stack traces, raw responses, full exception objects/messages) MUST be logged server-side only and NEVER returned to the client
 
 ---
 

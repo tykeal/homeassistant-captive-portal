@@ -132,14 +132,15 @@ state_display:
                  ┌──────────────────────────────────────┐
                  │  integrations.html (Jinja2)          │
                  │                                      │
-                 │  IF discovery_available:              │
+                 │  IF discovery_result.available:       │
                  │    Pick-list dropdown with            │
                  │    DiscoveredIntegration items        │
                  │    + entity state details             │
                  │    + "Already added" badges           │
                  │  ELSE:                               │
                  │    Manual text input (fallback)       │
-                 │    + Error notification banner        │
+                 │    + Error banner using               │
+                 │      discovery_result.error_message   │
                  └──────────────────────────────────────┘
 ```
 

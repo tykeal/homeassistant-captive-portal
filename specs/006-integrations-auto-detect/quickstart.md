@@ -77,9 +77,9 @@ uv run uvicorn captive_portal.app:create_app --factory --host 0.0.0.0 --port 808
 #   Vouchers:     http://localhost:8080/admin/vouchers
 #   Settings:     http://localhost:8080/admin/portal-settings
 
-# To simulate HA API for local testing, set environment variables:
+# To simulate HA API for local testing (planned; not yet wired in settings loader):
 # export SUPERVISOR_TOKEN="test-token"
-# export CP_HA_BASE_URL="http://localhost:8123/api"
+# export CP_HA_BASE_URL="http://localhost:8123/api"  # planned env var; requires settings loader update
 # Then have a local HA instance running with Rental Control integrations
 ```
 

@@ -13,7 +13,7 @@ Use `GET /api/states` on the Home Assistant REST API to retrieve all entity stat
 ### Rationale
 The HA REST API does not provide a built-in "list integrations" endpoint that returns integration-level metadata. However, Rental Control integrations expose calendar entities that follow a discoverable naming convention (`calendar.rental_control_<name>`). The `GET /api/states` endpoint returns all entity states in a single call, which is efficient for addons running inside the Supervisor network (local HTTP, no TLS overhead, sub-second latency). The client-side filter approach avoids depending on undocumented HA internals.
 
-The `homeassistant_api: true` flag in `config.yaml` causes the Supervisor to inject a `SUPERVISOR_TOKEN` environment variable. The addon accesses the HA API at `http://supervisor/core/api` using this token as a Bearer header — exactly as the existing `HAClient` already does.
+The `homeassistant_api: true` flag in `config.yaml` causes the Supervisor to inject a `SUPERVISOR_TOKEN` environment variable. As part of this feature, the addon will be configured to read `SUPERVISOR_TOKEN` and use it with `HAClient` to call the HA API at `http://supervisor/core/api` with a Bearer token.
 
 ### Alternatives Considered
 1. **Query individual entities by known pattern (e.g., `GET /api/states/calendar.rental_control_*`)**: Rejected — the HA REST API does not support wildcard entity queries. Each entity must be fetched individually, which requires knowing the entity IDs in advance (the exact problem we're solving).
@@ -92,7 +92,7 @@ Apply a **10-second timeout** on the `GET /api/states` call. If the call fails (
 ### Rationale
 SC-004 requires the manual fallback within 10 seconds. SC-005 requires the pick-list to populate within 5 seconds under normal conditions. The 10-second timeout gives a generous buffer for slow HA instances while meeting the fallback SLA.
 
-The fallback approach is server-side: the UI route handler wraps the discovery call in a try/except. On failure, it sets `discovery_available=False` and `discovery_error="..."` in the template context. The Jinja2 template renders different HTML depending on this flag. This means the fallback works without JavaScript.
+The fallback approach is server-side: the UI route handler wraps the discovery call in a try/except. On failure, it builds a `DiscoveryResult` wrapper (as defined in `data-model.md` / `discovery-api.md`) with `available=False` and an error message, and passes it into the template context. The Jinja2 template renders different HTML depending on `discovery_result.available`. This means the fallback works without JavaScript.
 
 ### Error Classification
 | HA API Error | Notification Text | Log Level |
