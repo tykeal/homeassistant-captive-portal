@@ -352,18 +352,22 @@ async def bulk_revoke_vouchers(
     result = BulkResult(action="revoked")
     for code_val in codes:
         code = str(code_val)
-        existing = voucher_repo.get_by_code(code)
-        if existing and existing.status == VoucherStatus.REVOKED:
-            result.skip_reasons["already revoked"] = (
-                result.skip_reasons.get("already revoked", 0) + 1
-            )
-            continue
         try:
+            existing = voucher_repo.get_by_code(code)
+            was_revoked = existing is not None and existing.status == VoucherStatus.REVOKED
             await voucher_service.revoke(code)
-            result.success_count += 1
-            await audit_service.log_admin_action(
-                admin_id=admin_id, action="voucher.revoke", target_type="voucher", target_id=code
-            )
+            if was_revoked:
+                result.skip_reasons["already revoked"] = (
+                    result.skip_reasons.get("already revoked", 0) + 1
+                )
+            else:
+                result.success_count += 1
+                await audit_service.log_admin_action(
+                    admin_id=admin_id,
+                    action="voucher.revoke",
+                    target_type="voucher",
+                    target_id=code,
+                )
         except VoucherExpiredError:
             result.skip_reasons["expired"] = result.skip_reasons.get("expired", 0) + 1
         except VoucherNotFoundError:

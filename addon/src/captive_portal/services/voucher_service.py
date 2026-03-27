@@ -246,10 +246,7 @@ class VoucherService:
         if voucher.status == VoucherStatus.REVOKED:
             return voucher
 
-        expires = voucher.expires_utc
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
-        if current_time > expires:
+        if current_time > voucher.expires_utc:
             raise VoucherExpiredError(code)
 
         voucher.status = VoucherStatus.REVOKED
@@ -284,11 +281,7 @@ class VoucherService:
 
         deleted = self.voucher_repo.delete(code)
         if not deleted:
-            still_exists = self.voucher_repo.get_by_code(code)
-            if still_exists is None:
-                raise VoucherNotFoundError(code)
-            else:
-                raise VoucherRedeemedError(code)
+            raise VoucherNotFoundError(code)
 
         self.voucher_repo.commit()
         return meta
