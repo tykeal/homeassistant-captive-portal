@@ -42,14 +42,21 @@ async def admin_logout(request: Request) -> RedirectResponse:
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
+    # Access session store and config once
+    session_store = request.app.state.session_store
+    session_config = request.app.state.session_config
+
     if session_id:
-        # Destroy session from store
-        session_store = request.app.state.session_store
         session_store.delete(session_id)
         logger.info("Admin session destroyed via HTML logout")
+    else:
+        # Fallback: delete by raw cookie value if present
+        cookie_session_id = request.cookies.get(session_config.cookie_name)
+        if cookie_session_id:
+            session_store.delete(cookie_session_id)
+            logger.info("Admin session destroyed via HTML logout (cookie fallback)")
 
     # Clear session cookie regardless
-    session_config = request.app.state.session_config
     response.delete_cookie(key=session_config.cookie_name)
 
     return response

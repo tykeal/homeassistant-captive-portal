@@ -129,7 +129,7 @@ def _create_grant(
 class TestAdminGrantsPage:
     """T012: Full-page integration tests for /admin/grants."""
 
-    def test_unauthenticated_redirects_to_login(self, secure_client: TestClient) -> None:
+    def test_unauthenticated_returns_401(self, secure_client: TestClient) -> None:
         """Unauthenticated request to grants page should return 401.
 
         With the full middleware stack the route's require_admin dependency
