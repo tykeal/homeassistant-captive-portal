@@ -52,7 +52,7 @@ async def get_vouchers(
     Returns:
         HTML response with vouchers template.
     """
-    csrf_token = csrf.generate_token()
+    csrf_token = csrf.get_token_from_request(request)
 
     new_code = request.query_params.get("new_code")
     success_message = request.query_params.get("success")
@@ -78,7 +78,7 @@ async def get_vouchers(
     )
 
 
-@router.post("/create", response_class=HTMLResponse)
+@router.post("/create")
 async def create_voucher(
     request: Request,
     session: Annotated[Session, Depends(get_session)],

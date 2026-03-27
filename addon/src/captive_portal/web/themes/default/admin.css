@@ -357,3 +357,21 @@ h2 {
 .filters {
     margin-bottom: 1rem;
 }
+
+/* Inline logout form in nav */
+.nav-inline-form { display: inline; }
+
+/* Highlight row for newly created items */
+.row-highlight { background-color: #e8f5e9; }
+
+/* Voucher status badges */
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+.status-unused { background-color: #e8f5e9; color: #2e7d32; }
+.status-active { background-color: #e3f2fd; color: #1565c0; }
+.status-expired { background-color: #fff3e0; color: #e65100; }
+.status-revoked { background-color: #fce4ec; color: #c62828; }

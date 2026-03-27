@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlmodel import Session, func, select
+from sqlmodel import Session, col, func, select
 from sqlalchemy import desc
 
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
@@ -110,9 +110,13 @@ class DashboardService:
             )
         ).one()
 
-        # Available vouchers: unused and not expired
-        # Voucher.expires_utc is a computed property, not a DB column,
-        # so we compute expiry in Python after fetching all unused vouchers
+        # Available vouchers: unused and not expired.
+        # NOTE: Voucher.expires_utc is a computed property (created_utc +
+        # duration_minutes), not a stored DB column, so the expiry check
+        # cannot be pushed into SQL without duplicating the calculation in a
+        # SQLite expression.  Filtering in Python is acceptable here because
+        # the number of UNUSED vouchers is expected to remain small.  If the
+        # volume grows, consider adding an indexed ``expires_utc`` column.
         all_unused = self._session.exec(
             select(Voucher).where(Voucher.status == VoucherStatus.UNUSED)
         ).all()
@@ -155,22 +159,23 @@ class DashboardService:
             .limit(limit)
         ).all()
 
-        # Build admin username lookup
-        admin_ids: set[str] = {log.actor for log in logs}
-        admin_map: dict[str, str] = {}
-        for actor_str in admin_ids:
-            try:
-                from uuid import UUID
+        # Build admin username lookup (single query for all UUIDs)
+        from uuid import UUID
 
-                actor_uuid = UUID(actor_str)
-                admin = self._session.exec(
-                    select(AdminUser).where(AdminUser.id == actor_uuid)
-                ).first()
-                if admin:
-                    admin_map[actor_str] = admin.username
+        uuid_actors: dict[str, UUID] = {}
+        for actor_str in {log.actor for log in logs}:
+            try:
+                uuid_actors[actor_str] = UUID(actor_str)
             except (ValueError, AttributeError):
-                # Not a UUID — use raw string (system actions, etc.)
                 pass
+
+        admin_map: dict[str, str] = {}
+        if uuid_actors:
+            admins = self._session.exec(
+                select(AdminUser).where(col(AdminUser.id).in_(list(uuid_actors.values())))
+            ).all()
+            for admin in admins:
+                admin_map[str(admin.id)] = admin.username
 
         entries: list[ActivityLogEntry] = []
         for log in logs:

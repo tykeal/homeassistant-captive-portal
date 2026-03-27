@@ -52,7 +52,7 @@ async def get_dashboard(
     Returns:
         HTML response with dashboard template.
     """
-    csrf_token = csrf.generate_token()
+    csrf_token = csrf.get_token_from_request(request)
     service = DashboardService(session)
 
     try:

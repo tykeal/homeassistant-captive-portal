@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Admin UI route for HTML-based logout with browser redirect.
 
-Invokes the existing JSON logout handler to destroy the session,
-then issues a browser-friendly 303 redirect to the login page.
-CSRF-exempt per FR-019.
+Destroys the current admin session (if any) directly via the session
+store, clears the session cookie, and issues a browser-friendly 303
+redirect to the login page. CSRF-exempt per FR-019.
 """
 
 from __future__ import annotations

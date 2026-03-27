@@ -82,14 +82,14 @@ async def get_grants(
     Returns:
         HTML response with grants list template.
     """
-    csrf_token = csrf.generate_token()
+    csrf_token = csrf.get_token_from_request(request)
     now = datetime.now(timezone.utc)
 
     status_filter = request.query_params.get("status", "")
     success_message = request.query_params.get("success")
     error_message = request.query_params.get("error")
 
-    # Fetch all non-revoked grants (or all if filtering for revoked)
+    # Fetch all grants ordered by creation date (filtered by status below)
     stmt: Any = select(AccessGrant).order_by(desc(AccessGrant.created_utc))  # type: ignore[arg-type]
     all_grants = list(cast(list[AccessGrant], session.exec(stmt).all()))
 
@@ -115,7 +115,7 @@ async def get_grants(
     )
 
 
-@router.post("/extend/{grant_id}", response_class=HTMLResponse)
+@router.post("/extend/{grant_id}")
 async def extend_grant(
     request: Request,
     grant_id: UUID,
@@ -201,7 +201,7 @@ async def extend_grant(
     )
 
 
-@router.post("/revoke/{grant_id}", response_class=HTMLResponse)
+@router.post("/revoke/{grant_id}")
 async def revoke_grant(
     request: Request,
     grant_id: UUID,
