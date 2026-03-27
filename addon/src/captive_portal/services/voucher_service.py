@@ -38,7 +38,7 @@ class VoucherNotFoundError(Exception):
     def __init__(self, code: str) -> None:
         """Initialize with the voucher code that was not found."""
         self.code = code
-        super().__init__(code)
+        super().__init__(f"Voucher not found: {code}")
 
 
 class VoucherExpiredError(Exception):
@@ -47,7 +47,7 @@ class VoucherExpiredError(Exception):
     def __init__(self, code: str) -> None:
         """Initialize with the expired voucher code."""
         self.code = code
-        super().__init__(code)
+        super().__init__(f"Voucher expired: {code}")
 
 
 class VoucherRedeemedError(Exception):
@@ -56,7 +56,7 @@ class VoucherRedeemedError(Exception):
     def __init__(self, code: str) -> None:
         """Initialize with the redeemed voucher code."""
         self.code = code
-        super().__init__(code)
+        super().__init__(f"Voucher already redeemed: {code}")
 
 
 class VoucherService:
