@@ -108,8 +108,8 @@ By encoding the eligibility check (`redeemed_count = 0`) directly into the `DELE
 
 ### Decision
 Bulk revoke and bulk delete process vouchers sequentially in a single request, collecting per-voucher outcomes into a summary. New endpoints:
-- `POST /admin/vouchers/bulk-revoke` — form field `codes[]` (list of voucher codes)
-- `POST /admin/vouchers/bulk-delete` — form field `codes[]` (list of voucher codes)
+- `POST /admin/vouchers/bulk-revoke` — form field `codes` (list of voucher codes)
+- `POST /admin/vouchers/bulk-delete` — form field `codes` (list of voucher codes)
 
 Each endpoint iterates over the submitted codes, loads the corresponding voucher (if any), and then:
 - For bulk revoke: if the voucher is already revoked, it is counted as "skipped (already revoked)" without calling `revoke()` to enable accurate skip counting; otherwise the handler calls the existing single-voucher `revoke()` method and catches domain exceptions (e.g., `VoucherExpiredError`) to skip other ineligible vouchers.
@@ -138,14 +138,14 @@ Each individual voucher operation commits independently (matching the single-ope
 ## R6: UI Selection Mechanism — Checkbox Forms Without JS
 
 ### Decision
-Add a checkbox column to the voucher table with a master "select all" checkbox. Checkboxes are standard HTML `<input type="checkbox" name="codes[]" value="{code}">` inside a `<form>` element. Bulk action buttons (`Revoke Selected`, `Delete Selected`) submit the form.
+Add a checkbox column to the voucher table with a master "select all" checkbox. Checkboxes are standard HTML `<input type="checkbox" name="codes" value="{code}">` inside a `<form>` element. Bulk action buttons (`Revoke Selected`, `Delete Selected`) submit the form.
 
 The "select all" checkbox uses a small external JS file (`admin-vouchers.js`) for progressive enhancement, but the form works without JS — the user can manually check individual vouchers and submit.
 
 ### Rationale
 FR-011 requires selection checkboxes. FR-012 requires "select all." The spec assumption states: "Bulk operations add selection UI on top of the existing table without redesigning the page layout."
 
-HTML checkboxes with `name="codes[]"` submit as a list of values in form data. This is the simplest server-compatible approach and works without JavaScript. The "select all" checkbox behavior (checking/unchecking all visible checkboxes) requires JS but is a progressive enhancement — the form still submits correctly without it.
+HTML checkboxes with `name="codes"` submit as a list of values in form data. This is the simplest server-compatible approach and works without JavaScript. The "select all" checkbox behavior (checking/unchecking all visible checkboxes) requires JS but is a progressive enhancement — the form still submits correctly without it.
 
 ### Template Structure
 ```html
@@ -168,7 +168,7 @@ HTML checkboxes with `name="codes[]"` submit as a list of values in form data. T
     <tbody>
       {% for voucher in vouchers %}
       <tr>
-        <td><input type="checkbox" name="codes[]" value="{{ voucher.code }}" aria-label="Select voucher {{ voucher.code }}"></td>
+        <td><input type="checkbox" name="codes" value="{{ voucher.code }}" aria-label="Select voucher {{ voucher.code }}"></td>
         ...existing columns...
         <td>
           <!-- Individual action forms remain separate for single-voucher ops -->

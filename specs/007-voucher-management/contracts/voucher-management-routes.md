@@ -131,7 +131,7 @@ For each voucher, the `voucher_actions` dict provides:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `csrf_token` | str | Yes | CSRF protection token |
-| `codes[]` | list[str] | Yes | Selected voucher codes (from checkboxes) |
+| `codes` | list[str] | Yes | Selected voucher codes (from checkboxes) |
 
 ### Responses
 
@@ -165,7 +165,7 @@ One entry per successfully revoked voucher (same as single revoke).
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `csrf_token` | str | Yes | CSRF protection token |
-| `codes[]` | list[str] | Yes | Selected voucher codes (from checkboxes) |
+| `codes` | list[str] | Yes | Selected voucher codes (from checkboxes) |
 
 ### Responses
 
