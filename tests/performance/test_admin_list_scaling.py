@@ -102,10 +102,11 @@ async def test_admin_grants_list_500_grants_p95(async_client: "AsyncClient") -> 
 async def test_admin_vouchers_list_200_vouchers_p95(
     async_client: "AsyncClient",
 ) -> None:
-    """
-    Benchmark admin vouchers list with 200 vouchers.
+    """Benchmark admin vouchers HTML list with 200 vouchers.
 
-    Performance target: p95 <= 1500ms (same as grants list).
+    Performance target: p95 <= 1500ms for the HTML UI endpoint.
+    Note: This measures /admin/vouchers/ (HTML rendering + template),
+    not the JSON API endpoint.
     """
     # GIVEN: Admin user and 200 vouchers
     from captive_portal.models.voucher import Voucher

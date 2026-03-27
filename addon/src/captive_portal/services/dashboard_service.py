@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from sqlmodel import Session, col, func, select
-from sqlalchemy import desc
 
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.models.admin_user import AdminUser
@@ -151,9 +150,7 @@ class DashboardService:
             List of ActivityLogEntry ordered by timestamp descending.
         """
         logs = self._session.exec(
-            select(AuditLog)
-            .order_by(desc(AuditLog.timestamp_utc))  # type: ignore[arg-type]
-            .limit(limit)
+            select(AuditLog).order_by(col(AuditLog.timestamp_utc).desc()).limit(limit)
         ).all()
 
         # Build admin username lookup (single query for all UUIDs)

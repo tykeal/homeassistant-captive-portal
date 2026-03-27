@@ -17,8 +17,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlmodel import Session, select
-from sqlalchemy import desc
+from sqlmodel import Session, col, select
 
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.persistence.database import get_session
@@ -93,7 +92,7 @@ async def get_grants(
     error_message = request.query_params.get("error")
 
     # Fetch all grants ordered by creation date (filtered by status below)
-    stmt: Any = select(AccessGrant).order_by(desc(AccessGrant.created_utc))  # type: ignore[arg-type]
+    stmt: Any = select(AccessGrant).order_by(col(AccessGrant.created_utc).desc())
     all_grants = list(cast(list[AccessGrant], session.exec(stmt).all()))
 
     # Re-compute status at render time and filter
