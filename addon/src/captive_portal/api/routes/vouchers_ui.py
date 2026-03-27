@@ -113,8 +113,6 @@ async def get_vouchers(
     voucher_actions: dict[str, VoucherActions] = {}
     for voucher in vouchers:
         expires = voucher.expires_utc
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
         can_revoke = (
             voucher.status not in {VoucherStatus.REVOKED, VoucherStatus.EXPIRED} and now <= expires
         )
@@ -348,12 +346,12 @@ async def bulk_revoke_vouchers(
             url=f"{root}/admin/vouchers/?error=No+vouchers+selected",
             status_code=status.HTTP_303_SEE_OTHER,
         )
-    voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
+    voucher_repo = VoucherRepository(session)
+    voucher_service = VoucherService(session=session, voucher_repo=voucher_repo)
     audit_service = AuditService(session)
     result = BulkResult(action="revoked")
     for code_val in codes:
         code = str(code_val)
-        voucher_repo = VoucherRepository(session)
         existing = voucher_repo.get_by_code(code)
         if existing and existing.status == VoucherStatus.REVOKED:
             result.skip_reasons["already revoked"] = (
