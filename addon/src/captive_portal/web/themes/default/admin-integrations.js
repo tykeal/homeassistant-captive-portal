@@ -90,16 +90,38 @@
         });
     }
 
+    /**
+     * Add AJAX refresh for discovery dropdown.
+     * Fetches fresh discovery data and reloads the page.
+     */
+    function enhanceRefreshButton() {
+        var refreshBtn = document.getElementById("refresh-discovery");
+        if (!refreshBtn) {
+            return;
+        }
+
+        refreshBtn.addEventListener("click", function () {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = "Refreshing…";
+            refreshBtn.classList.add("refreshing");
+
+            // Simply reload the page to get fresh discovery data
+            window.location.reload();
+        });
+    }
+
     // Initialize when DOM is ready
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", function () {
             enhanceIntegrationDropdown();
             enhanceDeleteButtons();
             enhanceSubmitButtons();
+            enhanceRefreshButton();
         });
     } else {
         enhanceIntegrationDropdown();
         enhanceDeleteButtons();
         enhanceSubmitButtons();
+        enhanceRefreshButton();
     }
 })();

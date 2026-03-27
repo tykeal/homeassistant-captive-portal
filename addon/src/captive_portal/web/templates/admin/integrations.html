@@ -73,6 +73,9 @@ SPDX-License-Identifier: Apache-2.0
                            class="form-control"
                            placeholder="Or type a custom integration ID"
                            style="margin-top: 0.5rem;">
+                    <button type="button" id="refresh-discovery" class="btn btn-secondary" style="margin-top: 0.5rem;">
+                        Refresh Discovery
+                    </button>
                     {% elif not integration and discovery_result and discovery_result.available and not discovery_result.integrations %}
                     {# Available but empty #}
                     <p class="empty-state">No Rental Control calendar entities discovered in Home Assistant.</p>
