@@ -269,8 +269,9 @@ async def revoke_voucher(
     await audit_service.log_admin_action(
         admin_id=admin_id, action="voucher.revoke", target_type="voucher", target_id=code
     )
+    msg = urllib.parse.quote_plus(f"Voucher {code} revoked successfully")
     return RedirectResponse(
-        url=f"{root}/admin/vouchers/?success=Voucher+{code}+revoked+successfully",
+        url=f"{root}/admin/vouchers/?success={msg}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -304,8 +305,9 @@ async def delete_voucher(
         )
     except VoucherRedeemedError:
         logger.warning("Cannot delete redeemed voucher: %s", code)
+        msg = urllib.parse.quote_plus(f"Cannot delete voucher {code} \u2014 it has been redeemed")
         return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Cannot+delete+voucher+{code}+%E2%80%94+it+has+been+redeemed",
+            url=f"{root}/admin/vouchers/?error={msg}",
             status_code=status.HTTP_303_SEE_OTHER,
         )
     audit_service = AuditService(session)
@@ -316,8 +318,9 @@ async def delete_voucher(
         target_id=code,
         metadata=meta,
     )
+    msg = urllib.parse.quote_plus(f"Voucher {code} deleted successfully")
     return RedirectResponse(
-        url=f"{root}/admin/vouchers/?success=Voucher+{code}+deleted+successfully",
+        url=f"{root}/admin/vouchers/?success={msg}",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
