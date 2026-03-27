@@ -82,8 +82,8 @@ SPDX-License-Identifier: Apache-2.0
                     <tr>
                         <td><code>{{ grant.mac }}</code></td>
                         <td>
-                            <span class="status-badge status-{{ grant.status }}">
-                                {{ grant.status }}
+                            <span class="status-badge status-{{ grant_statuses[grant.id|string] }}">
+                                {{ grant_statuses[grant.id|string] }}
                             </span>
                         </td>
                         <td>
@@ -120,13 +120,13 @@ SPDX-License-Identifier: Apache-2.0
                             <form method="POST" action="{{ rp }}/admin/grants/extend/{{ grant.id }}" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <input type="number" name="minutes" min="1" max="1440" value="60" style="width: 60px;">
-                                <button type="submit" class="btn btn-success" {% if grant.status == 'revoked' %}disabled{% endif %}>
+                                <button type="submit" class="btn btn-success" {% if grant_statuses[grant.id|string] == 'revoked' %}disabled{% endif %}>
                                     Extend
                                 </button>
                             </form>
                             <form method="POST" action="{{ rp }}/admin/grants/revoke/{{ grant.id }}" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                <button type="submit" class="btn btn-danger" {% if grant.status == 'revoked' %}disabled{% endif %}>
+                                <button type="submit" class="btn btn-danger" {% if grant_statuses[grant.id|string] == 'revoked' %}disabled{% endif %}>
                                     Revoke
                                 </button>
                             </form>

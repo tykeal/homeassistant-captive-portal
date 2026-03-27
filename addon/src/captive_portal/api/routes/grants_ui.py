@@ -95,18 +95,19 @@ async def get_grants(
 
     # Re-compute status at render time and filter
     grants: list[AccessGrant] = []
+    grant_statuses: dict[str, str] = {}
     for grant in all_grants:
         computed = _recompute_status(grant, now)
-        # Temporarily set the computed status for display
-        grant.status = GrantStatus(computed)
         if not status_filter or computed == status_filter:
             grants.append(grant)
+            grant_statuses[str(grant.id)] = computed
 
     return templates.TemplateResponse(
         request=request,
         name="admin/grants_enhanced.html",
         context={
             "grants": grants,
+            "grant_statuses": grant_statuses,
             "status_filter": status_filter,
             "csrf_token": csrf_token,
             "success_message": success_message,

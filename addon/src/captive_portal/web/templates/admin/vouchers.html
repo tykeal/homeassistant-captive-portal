@@ -105,8 +105,8 @@ SPDX-License-Identifier: Apache-2.0
                         <td><code>{{ voucher.code }}</code></td>
                         <td>{{ voucher.duration_minutes }} min</td>
                         <td>
-                            <span class="status-badge status-{{ voucher.status }}">
-                                {{ voucher.status }}
+                            <span class="status-badge status-{{ voucher.status.value }}">
+                                {{ voucher.status.value }}
                             </span>
                         </td>
                         <td>
