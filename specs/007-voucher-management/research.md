@@ -85,7 +85,9 @@ The audit log captures the delete action before the voucher record is removed, e
 Use an atomic, predicate-based delete to guard against concurrent redemption. The `VoucherService.delete()` method delegates to `VoucherRepository.delete()`, which issues a single `DELETE` statement scoped by both the voucher identifier and the eligibility condition (`WHERE code = :code AND redeemed_count = 0`). It then checks the affected row count:
 
 - If exactly one row was deleted, the voucher was still unredeemed and the hard delete succeeds.
-- If zero rows were deleted, the voucher was redeemed (or no longer exists) between page load and submission, and the service rejects the delete with the FR-010 explanatory error.
+- If zero rows were deleted, the service performs a follow-up lookup by code to disambiguate:
+  - If the voucher no longer exists, it returns a "not found" response as per the route contract.
+  - If the voucher still exists but no longer satisfies `redeemed_count = 0`, it returns the FR-010 error ("redeemed between page load and submission").
 
 ### Rationale
 FR-010 requires: "System MUST reject a delete request if the voucher was redeemed between page load and the delete action submission, displaying an explanatory error message." A simple "re-read then unconditional delete" leaves a race window between the final eligibility check and the delete statement, during which a concurrent redemption can increment `redeemed_count` and still be deleted.
@@ -107,13 +109,13 @@ Bulk revoke and bulk delete process vouchers sequentially in a single request, c
 - `POST /admin/vouchers/bulk-delete` — form field `codes[]` (list of voucher codes)
 
 Each endpoint iterates over the submitted codes, loads the corresponding voucher (if any), and then:
-- For bulk revoke: if the voucher is already revoked, it is counted as "skipped (already revoked)" without calling `revoke()`; otherwise the handler calls the existing single-voucher `revoke()` method and catches domain exceptions (e.g., `VoucherExpiredError`) to skip other ineligible vouchers.
+- For bulk revoke: if the voucher is already revoked, it is counted as "skipped (already revoked)" without calling `revoke()` to enable accurate skip counting; otherwise the handler calls the existing single-voucher `revoke()` method and catches domain exceptions (e.g., `VoucherExpiredError`) to skip other ineligible vouchers.
 - For bulk delete: the handler calls the existing single-voucher `delete()` method and catches domain exceptions (e.g., `VoucherRedeemedError`) to skip ineligible vouchers; missing vouchers are counted as "skipped (not found)".
 
 The handler accumulates per-voucher outcomes into counters used to build the summary message.
 
 ### Rationale
-The spec (FR-013, FR-014) requires processing "each individually and skipping ineligible ones." This naturally maps to a loop calling the single-operation service methods, with a status pre-check for the "already revoked" case to keep `revoke()` idempotent. The summary (FR-015) reports counts: "Revoked N vouchers, skipped M (expired: X, already revoked: Y)" or "Deleted N vouchers, skipped M (redeemed: X, not found: Y)".
+The spec (FR-013, FR-014) requires processing "each individually and skipping ineligible ones." This naturally maps to a loop calling the single-operation service methods. The pre-check for "already revoked" status avoids a redundant (idempotent) service call and enables accurate skip counting in the summary. The summary (FR-015) reports counts: "Revoked N vouchers, skipped M (expired: X, already revoked: Y)" or "Deleted N vouchers, skipped M (redeemed: X, not found: Y)".
 
 Processing within a single HTTP request is acceptable because:
 - Typical scale: 20–200 vouchers (SC-003 targets 20 in 10 seconds)
@@ -237,7 +239,7 @@ Extend the existing `AuditService` usage pattern to log revoke and delete action
 - **Revoke**: `action="voucher.revoke"`, `target_type="voucher"`, `target_id=voucher.code`
 - **Delete**: `action="voucher.delete"`, `target_type="voucher"`, `target_id=voucher.code`, `meta={"status_at_delete": voucher.status.value, "booking_ref": voucher.booking_ref}`
 - **Bulk revoke**: One log entry per successfully revoked voucher (same as single revoke)
-- **Bulk delete**: One log entry per successfully deleted voucher (same as single delete, but includes summary in meta)
+- **Bulk delete**: One log entry per successfully deleted voucher (same as single delete)
 
 ### Rationale
 FR-020 requires logging all revoke and delete actions with admin identity. The existing pattern in `vouchers_ui.py` (for create) and `grants_ui.py` (for extend/revoke) uses `audit_service.log_admin_action()`. Maintaining one log entry per voucher (not one per bulk operation) ensures granular traceability.

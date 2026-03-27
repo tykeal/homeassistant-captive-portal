@@ -68,11 +68,11 @@ For each voucher, the `voucher_actions` dict provides:
 
 | Scenario | Status | Redirect |
 |----------|--------|----------|
-| Success | 303 | `/admin/vouchers?success=Voucher+{CODE}+revoked+successfully` |
-| Already revoked (idempotent) | 303 | `/admin/vouchers?success=Voucher+{CODE}+revoked+successfully` |
-| Voucher not found | 303 | `/admin/vouchers?error=Voucher+not+found` |
-| Voucher expired | 303 | `/admin/vouchers?error=Cannot+revoke+an+expired+voucher` |
-| Invalid CSRF | 303 | `/admin/vouchers?error=Invalid+CSRF+token` |
+| Success | 303 | `/admin/vouchers/?success=Voucher+{CODE}+revoked+successfully` |
+| Already revoked (idempotent) | 303 | `/admin/vouchers/?success=Voucher+{CODE}+revoked+successfully` |
+| Voucher not found | 303 | `/admin/vouchers/?error=Voucher+not+found` |
+| Voucher expired | 303 | `/admin/vouchers/?error=Cannot+revoke+an+expired+voucher` |
+| Invalid CSRF | 303 | `/admin/vouchers/?error=Invalid+CSRF+token` |
 
 ### Audit Log Entry
 - `action`: `"voucher.revoke"`
@@ -105,10 +105,10 @@ For each voucher, the `voucher_actions` dict provides:
 
 | Scenario | Status | Redirect |
 |----------|--------|----------|
-| Success | 303 | `/admin/vouchers?success=Voucher+{CODE}+deleted+successfully` |
-| Voucher redeemed | 303 | `/admin/vouchers?error=Cannot+delete+voucher+{CODE}+—+it+has+been+redeemed` |
-| Voucher not found | 303 | `/admin/vouchers?error=Voucher+not+found` |
-| Invalid CSRF | 303 | `/admin/vouchers?error=Invalid+CSRF+token` |
+| Success | 303 | `/admin/vouchers/?success=Voucher+{CODE}+deleted+successfully` |
+| Voucher redeemed | 303 | `/admin/vouchers/?error=Cannot+delete+voucher+{CODE}+—+it+has+been+redeemed` |
+| Voucher not found | 303 | `/admin/vouchers/?error=Voucher+not+found` |
+| Invalid CSRF | 303 | `/admin/vouchers/?error=Invalid+CSRF+token` |
 
 ### Audit Log Entry
 - `action`: `"voucher.delete"`
@@ -137,11 +137,11 @@ For each voucher, the `voucher_actions` dict provides:
 
 | Scenario | Status | Redirect |
 |----------|--------|----------|
-| All revoked | 303 | `/admin/vouchers?success=Revoked+N+vouchers+successfully` |
-| Partial success | 303 | `/admin/vouchers?success=Revoked+N+vouchers,+skipped+M+(reason+details)` |
-| All skipped | 303 | `/admin/vouchers?error=No+vouchers+revoked+—+N+skipped+(reason+details)` |
-| None selected (FR-016) | 303 | `/admin/vouchers?error=No+vouchers+selected` |
-| Invalid CSRF | 303 | `/admin/vouchers?error=Invalid+CSRF+token` |
+| All revoked | 303 | `/admin/vouchers/?success=Revoked+N+vouchers+successfully` |
+| Partial success | 303 | `/admin/vouchers/?success=Revoked+N+vouchers,+skipped+M+(reason+details)` |
+| All skipped | 303 | `/admin/vouchers/?error=No+vouchers+revoked+—+N+skipped+(reason+details)` |
+| None selected (FR-016) | 303 | `/admin/vouchers/?error=No+vouchers+selected` |
+| Invalid CSRF | 303 | `/admin/vouchers/?error=Invalid+CSRF+token` |
 
 ### Skip Reasons
 - `"expired"`: voucher expired (`now > expires_utc`)
@@ -171,11 +171,11 @@ One entry per successfully revoked voucher (same as single revoke).
 
 | Scenario | Status | Redirect |
 |----------|--------|----------|
-| All deleted | 303 | `/admin/vouchers?success=Deleted+N+vouchers+successfully` |
-| Partial success | 303 | `/admin/vouchers?success=Deleted+N+vouchers,+skipped+M+(reason+details)` |
-| All skipped | 303 | `/admin/vouchers?error=No+vouchers+deleted+—+N+skipped+(reason+details)` |
-| None selected (FR-016) | 303 | `/admin/vouchers?error=No+vouchers+selected` |
-| Invalid CSRF | 303 | `/admin/vouchers?error=Invalid+CSRF+token` |
+| All deleted | 303 | `/admin/vouchers/?success=Deleted+N+vouchers+successfully` |
+| Partial success | 303 | `/admin/vouchers/?success=Deleted+N+vouchers,+skipped+M+(reason+details)` |
+| All skipped | 303 | `/admin/vouchers/?error=No+vouchers+deleted+—+N+skipped+(reason+details)` |
+| None selected (FR-016) | 303 | `/admin/vouchers/?error=No+vouchers+selected` |
+| Invalid CSRF | 303 | `/admin/vouchers/?error=Invalid+CSRF+token` |
 
 ### Skip Reasons
 - `"already redeemed"`: voucher has `redeemed_count > 0`

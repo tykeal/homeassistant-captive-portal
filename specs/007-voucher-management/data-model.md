@@ -63,7 +63,7 @@ eligible = redeemed_count == 0
 **Validation Rules** (applied in VoucherService):
 - Revoke: voucher must exist, must not be expired (`now > expires_utc` → VoucherExpiredError)
 - Delete: voucher must exist, `redeemed_count` must be 0 (else → VoucherRedeemedError)
-- Delete race condition (FR-010): re-read `redeemed_count` at delete time within DB session
+- Delete race condition (FR-010): perform atomic `DELETE ... WHERE code = :code AND redeemed_count = 0` and verify affected rowcount
 
 ---
 
