@@ -9,7 +9,6 @@ import time
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -41,20 +40,24 @@ class TestDiscoveryPerformance:
         # Generate 100 entities (50 rental, 50 other)
         entities: list[dict[str, Any]] = []
         for i in range(50):
-            entities.append({
-                "entity_id": f"calendar.rental_control_unit_{i}",
-                "state": "on" if i % 2 == 0 else "off",
-                "attributes": {
-                    "friendly_name": f"Unit {i}",
-                    "message": f"Guest {i}" if i % 2 == 0 else None,
-                },
-            })
+            entities.append(
+                {
+                    "entity_id": f"calendar.rental_control_unit_{i}",
+                    "state": "on" if i % 2 == 0 else "off",
+                    "attributes": {
+                        "friendly_name": f"Unit {i}",
+                        "message": f"Guest {i}" if i % 2 == 0 else None,
+                    },
+                }
+            )
         for i in range(50):
-            entities.append({
-                "entity_id": f"sensor.temperature_{i}",
-                "state": str(20 + i * 0.1),
-                "attributes": {"friendly_name": f"Temp {i}"},
-            })
+            entities.append(
+                {
+                    "entity_id": f"sensor.temperature_{i}",
+                    "state": str(20 + i * 0.1),
+                    "attributes": {"friendly_name": f"Temp {i}"},
+                }
+            )
 
         mock = MagicMock(spec=HAClient)
         mock.get_all_states = AsyncMock(return_value=entities)

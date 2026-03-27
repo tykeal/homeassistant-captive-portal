@@ -18,17 +18,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
 
 from captive_portal.integrations.ha_client import HAClient
 from captive_portal.integrations.ha_errors import (
     HAAuthenticationError,
     HAServerError,
     HATimeoutError,
-)
-from captive_portal.models.ha_integration_config import (
-    HAIntegrationConfig,
-    IdentifierAttr,
 )
 
 
@@ -55,12 +50,14 @@ class TestEdgeCaseEntityAttributes:
     ) -> None:
         """Entity without attributes dict still discovered safely."""
         mock = MagicMock(spec=HAClient)
-        mock.get_all_states = AsyncMock(return_value=[
-            {
-                "entity_id": "calendar.rental_control_bare",
-                "state": "off",
-            },
-        ])
+        mock.get_all_states = AsyncMock(
+            return_value=[
+                {
+                    "entity_id": "calendar.rental_control_bare",
+                    "state": "off",
+                },
+            ]
+        )
         app.state.ha_client = mock
         _login(client)
 
@@ -81,13 +78,15 @@ class TestEdgeCaseEntityAttributes:
     ) -> None:
         """Entity with empty string friendly_name handled gracefully."""
         mock = MagicMock(spec=HAClient)
-        mock.get_all_states = AsyncMock(return_value=[
-            {
-                "entity_id": "calendar.rental_control_empty_name",
-                "state": "off",
-                "attributes": {"friendly_name": ""},
-            },
-        ])
+        mock.get_all_states = AsyncMock(
+            return_value=[
+                {
+                    "entity_id": "calendar.rental_control_empty_name",
+                    "state": "off",
+                    "attributes": {"friendly_name": ""},
+                },
+            ]
+        )
         app.state.ha_client = mock
         _login(client)
 
@@ -104,13 +103,15 @@ class TestEdgeCaseEntityAttributes:
     ) -> None:
         """Entity with unexpected state value still works."""
         mock = MagicMock(spec=HAClient)
-        mock.get_all_states = AsyncMock(return_value=[
-            {
-                "entity_id": "calendar.rental_control_weird",
-                "state": "custom_state",
-                "attributes": {"friendly_name": "Weird Calendar"},
-            },
-        ])
+        mock.get_all_states = AsyncMock(
+            return_value=[
+                {
+                    "entity_id": "calendar.rental_control_weird",
+                    "state": "custom_state",
+                    "attributes": {"friendly_name": "Weird Calendar"},
+                },
+            ]
+        )
         app.state.ha_client = mock
         _login(client)
 

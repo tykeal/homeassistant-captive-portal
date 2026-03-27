@@ -11,7 +11,6 @@ Covers:
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -140,10 +139,7 @@ class TestRefreshButtonInTemplate:
         assert resp.status_code == 200
         html = resp.text.lower()
         assert (
-            "refresh" in html
-            or "re-discover" in html
-            or "rediscover" in html
-            or "reload" in html
+            "refresh" in html or "re-discover" in html or "rediscover" in html or "reload" in html
         )
 
 
@@ -157,9 +153,7 @@ class TestLoadingIndicatorCSS:
         """admin.css contains a loading/spinner CSS class."""
         import pathlib
 
-        css_path = pathlib.Path(
-            "addon/src/captive_portal/web/themes/default/admin.css"
-        )
+        css_path = pathlib.Path("addon/src/captive_portal/web/themes/default/admin.css")
         css_content = css_path.read_text()
         assert (
             "loading" in css_content.lower()

@@ -46,13 +46,15 @@ def _mock_ha_unavailable(app: FastAPI) -> MagicMock:
 def _mock_ha_empty(app: FastAPI) -> MagicMock:
     """Attach a mock HAClient returning no rental control entities."""
     mock = MagicMock(spec=HAClient)
-    mock.get_all_states = AsyncMock(return_value=[
-        {
-            "entity_id": "sensor.temperature",
-            "state": "22.5",
-            "attributes": {"friendly_name": "Temperature Sensor"},
-        },
-    ])
+    mock.get_all_states = AsyncMock(
+        return_value=[
+            {
+                "entity_id": "sensor.temperature",
+                "state": "22.5",
+                "attributes": {"friendly_name": "Temperature Sensor"},
+            },
+        ]
+    )
     app.state.ha_client = mock
     return mock
 
@@ -100,7 +102,7 @@ class TestFallbackRendering:
         assert resp.status_code == 200
         html = resp.text
         assert 'name="integration_id"' in html
-        assert '<input' in html
+        assert "<input" in html
 
     def test_no_dropdown_when_ha_unavailable(
         self,

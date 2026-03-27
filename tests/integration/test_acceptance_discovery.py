@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
 from captive_portal.integrations.ha_client import HAClient
-from captive_portal.integrations.ha_errors import HAConnectionError, HATimeoutError
+from captive_portal.integrations.ha_errors import HAConnectionError
 from captive_portal.models.ha_integration_config import (
     HAIntegrationConfig,
     IdentifierAttr,
@@ -104,8 +104,7 @@ class TestAcceptanceDiscoverAndConfigure:
         db_session.expire_all()
         row = db_session.exec(
             select(HAIntegrationConfig).where(
-                HAIntegrationConfig.integration_id
-                == "calendar.rental_control_cabin_a"
+                HAIntegrationConfig.integration_id == "calendar.rental_control_cabin_a"
             )
         ).first()
         assert row is not None
@@ -137,8 +136,7 @@ class TestAcceptanceDiscoverAndConfigure:
 
         # Integration fields
         cabin_a = next(
-            i for i in body["integrations"]
-            if i["entity_id"] == "calendar.rental_control_cabin_a"
+            i for i in body["integrations"] if i["entity_id"] == "calendar.rental_control_cabin_a"
         )
         assert cabin_a["friendly_name"] == "Cabin A Calendar"
         assert cabin_a["state"] == "on"
@@ -172,14 +170,12 @@ class TestAcceptanceDiscoverAndConfigure:
         resp = client.get("/api/integrations/discover")
         body = resp.json()
         cabin_a = next(
-            i for i in body["integrations"]
-            if i["entity_id"] == "calendar.rental_control_cabin_a"
+            i for i in body["integrations"] if i["entity_id"] == "calendar.rental_control_cabin_a"
         )
         assert cabin_a["already_configured"] is True
 
         cabin_b = next(
-            i for i in body["integrations"]
-            if i["entity_id"] == "calendar.rental_control_cabin_b"
+            i for i in body["integrations"] if i["entity_id"] == "calendar.rental_control_cabin_b"
         )
         assert cabin_b["already_configured"] is False
 

@@ -17,10 +17,6 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from captive_portal.integrations.ha_client import HAClient
-from captive_portal.integrations.ha_discovery_service import (
-    DiscoveredIntegration,
-    DiscoveryResult,
-)
 
 # ── Test data ────────────────────────────────────────────────────────
 
@@ -92,8 +88,7 @@ class TestEnrichedDiscoveryFields:
 
         body = resp.json()
         unit_a = next(
-            i for i in body["integrations"]
-            if i["entity_id"] == "calendar.rental_control_unit_a"
+            i for i in body["integrations"] if i["entity_id"] == "calendar.rental_control_unit_a"
         )
         assert unit_a["event_summary"] == "Guest Johnson"
 
@@ -110,8 +105,7 @@ class TestEnrichedDiscoveryFields:
 
         body = resp.json()
         unit_a = next(
-            i for i in body["integrations"]
-            if i["entity_id"] == "calendar.rental_control_unit_a"
+            i for i in body["integrations"] if i["entity_id"] == "calendar.rental_control_unit_a"
         )
         assert unit_a["event_start"] == "2025-07-10T15:00:00"
 
@@ -128,8 +122,7 @@ class TestEnrichedDiscoveryFields:
 
         body = resp.json()
         unit_b = next(
-            i for i in body["integrations"]
-            if i["entity_id"] == "calendar.rental_control_unit_b"
+            i for i in body["integrations"] if i["entity_id"] == "calendar.rental_control_unit_b"
         )
         assert unit_b["event_summary"] is None
         assert unit_b["event_start"] is None
@@ -152,8 +145,7 @@ class TestStateDisplay:
         resp = client.get("/api/integrations/discover")
         body = resp.json()
         unit_a = next(
-            i for i in body["integrations"]
-            if i["entity_id"] == "calendar.rental_control_unit_a"
+            i for i in body["integrations"] if i["entity_id"] == "calendar.rental_control_unit_a"
         )
         assert unit_a["state_display"] == "Active booking"
 
@@ -168,8 +160,7 @@ class TestStateDisplay:
         resp = client.get("/api/integrations/discover")
         body = resp.json()
         unit_b = next(
-            i for i in body["integrations"]
-            if i["entity_id"] == "calendar.rental_control_unit_b"
+            i for i in body["integrations"] if i["entity_id"] == "calendar.rental_control_unit_b"
         )
         assert unit_b["state_display"] == "No active bookings"
 
@@ -184,8 +175,7 @@ class TestStateDisplay:
         resp = client.get("/api/integrations/discover")
         body = resp.json()
         unit_c = next(
-            i for i in body["integrations"]
-            if i["entity_id"] == "calendar.rental_control_unit_c"
+            i for i in body["integrations"] if i["entity_id"] == "calendar.rental_control_unit_c"
         )
         assert unit_c["state_display"] == "Unavailable"
 
