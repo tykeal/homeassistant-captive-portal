@@ -54,16 +54,17 @@ The revoke method accepts any voucher in `UNUSED` or `ACTIVE` status (per FR-001
 
 ### Decision
 Add `async VoucherService.delete(code: str) -> None`:
-1. Fetch voucher by code
-2. Raise `VoucherNotFoundError` if not found
-3. If `voucher.redeemed_count > 0` → raise `VoucherRedeemedError` (FR-008)
-4. Hard-delete via `VoucherRepository.delete(code)`
-5. Commit
+1. Fetch voucher by code via `VoucherRepository.get_by_code()` (used for not-found handling and better error messaging).
+2. Raise `VoucherNotFoundError` if not found.
+3. Optionally, if `voucher.redeemed_count > 0` → raise `VoucherRedeemedError` (FR-008) for a clearer, pre-emptive error. This check is an optimization only and is **not** the concurrency guard.
+4. Call `VoucherRepository.delete(code)` which performs an atomic `DELETE FROM vouchers WHERE code = ? AND redeemed_count = 0` and returns `True` iff a row was deleted.
+5. If `VoucherRepository.delete(code)` returns `False` → raise `VoucherRedeemedError` (covers the FR-010 race where redemption occurs between the read in step 1 and the delete).
+6. Commit.
 
-Add `VoucherRepository.delete(code: str) -> bool` that removes the voucher row from SQLite.
+Add `VoucherRepository.delete(code: str) -> bool` that issues the predicate delete (`WHERE redeemed_count = 0`) and returns `True` only when the voucher was never redeemed and has been removed.
 
 ### Rationale
-FR-006 requires deletion only for never-redeemed vouchers. FR-007 specifies permanent removal. FR-009 explicitly allows deletion of revoked-but-never-redeemed vouchers. The guard checks `redeemed_count == 0` which covers all cases:
+FR-006 requires deletion only for never-redeemed vouchers. FR-007 specifies permanent removal. FR-009 explicitly allows deletion of revoked-but-never-redeemed vouchers. The guard checks `redeemed_count == 0` at the database level via an atomic predicate delete, which covers all cases and prevents the FR-010 race:
 - Unused (redeemed_count=0): deletable ✓
 - Revoked, never redeemed (redeemed_count=0): deletable ✓ (FR-009)
 - Active (redeemed_count>0): not deletable ✗
@@ -87,10 +88,10 @@ Use an atomic, predicate-based delete to guard against concurrent redemption. Th
 - If exactly one row was deleted, the voucher was still unredeemed and the hard delete succeeds.
 - If zero rows were deleted, the service performs a follow-up lookup by code to disambiguate:
   - If the voucher no longer exists, it returns a "not found" response as per the route contract.
-  - If the voucher still exists but no longer satisfies `redeemed_count = 0`, it returns the FR-010 error ("redeemed between page load and submission").
+  - If the voucher still exists but no longer satisfies `redeemed_count = 0`, it returns the FR-010 error ("voucher has been redeemed and can no longer be deleted"; the UI copy may explain that it may have been redeemed after the page was loaded).
 
 ### Rationale
-FR-010 requires: "System MUST reject a delete request if the voucher was redeemed between page load and the delete action submission, displaying an explanatory error message." A simple "re-read then unconditional delete" leaves a race window between the final eligibility check and the delete statement, during which a concurrent redemption can increment `redeemed_count` and still be deleted.
+FR-010 requires: "System MUST reject a delete request if, at delete processing time, the voucher is already redeemed, displaying an explanatory error message (for example, indicating that it may have been redeemed after the page was loaded)." A simple "re-read then unconditional delete" leaves a race window between the final eligibility check and the delete statement, during which a concurrent redemption can increment `redeemed_count` and still be deleted.
 
 By encoding the eligibility check (`redeemed_count = 0`) directly into the `DELETE` predicate and verifying that exactly one row was affected, the check and delete become a single atomic database operation. In SQLite, this is executed under its normal write-serialization rules; no additional client-side locking is required to prevent a concurrent redemption from slipping between the check and the delete.
 
