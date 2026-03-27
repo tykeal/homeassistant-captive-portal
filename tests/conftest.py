@@ -83,6 +83,15 @@ def app(db_engine: Engine) -> FastAPI:
     test_app.state.session_config = session_config
     test_app.state.session_store = session_store
 
+    # Provide a default mock HAClient so discovery-dependent routes work
+    from unittest.mock import AsyncMock, MagicMock
+
+    from captive_portal.integrations.ha_client import HAClient
+
+    mock_ha = MagicMock(spec=HAClient)
+    mock_ha.get_all_states = AsyncMock(return_value=[])
+    test_app.state.ha_client = mock_ha
+
     # Add session middleware
     test_app.add_middleware(SessionMiddleware, config=session_config, store=session_store)
 
@@ -97,11 +106,15 @@ def app(db_engine: Engine) -> FastAPI:
         grants_ui,
         guest_portal,
         health,
+        integrations,
         integrations_ui,
         portal_config,
         vouchers,
         vouchers_ui,
     )
+
+    # Initialize the integrations API router's DB engine
+    integrations.set_db_engine(db_engine)
 
     test_app.include_router(admin_accounts.router)
     test_app.include_router(admin_auth.router)
@@ -112,6 +125,7 @@ def app(db_engine: Engine) -> FastAPI:
     test_app.include_router(grants_ui.router)
     test_app.include_router(guest_portal.router)
     test_app.include_router(health.router)
+    test_app.include_router(integrations.router)
     test_app.include_router(portal_config.router)
     test_app.include_router(vouchers.router)
     test_app.include_router(vouchers_ui.router)

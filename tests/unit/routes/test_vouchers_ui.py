@@ -34,7 +34,12 @@ from captive_portal.security.session_middleware import (
     SessionStore,
 )
 
-from captive_portal.api.routes.vouchers_ui import BulkResult, format_bulk_message
+# Lazy import guard: BulkResult/format_bulk_message may not exist yet (TDD RED phase)
+try:
+    from captive_portal.api.routes.vouchers_ui import BulkResult, format_bulk_message
+except ImportError:
+    BulkResult = None  # type: ignore[assignment,misc]
+    format_bulk_message = None  # type: ignore[assignment]
 
 
 # ---------------------------------------------------------------------------

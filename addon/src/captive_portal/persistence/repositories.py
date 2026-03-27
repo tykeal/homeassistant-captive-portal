@@ -107,14 +107,13 @@ class VoucherRepository(BaseRepository[Voucher]):
         """
         from sqlalchemy import delete as sa_delete
 
-        stmt: Any = (
-            sa_delete(Voucher)
-            .where(Voucher.code == code)  # type: ignore[arg-type]
-            .where(Voucher.redeemed_count == 0)  # type: ignore[arg-type]
+        stmt = sa_delete(Voucher).where(
+            Voucher.code == code,  # type: ignore[arg-type]
+            Voucher.redeemed_count == 0,  # type: ignore[arg-type]
         )
-        result = self.session.execute(stmt)
+        result: Any = self.session.execute(stmt)
         self.session.flush()
-        return bool(result.rowcount > 0)  # type: ignore[attr-defined]
+        return bool(result.rowcount > 0)
 
 
 class AccessGrantRepository(BaseRepository[AccessGrant]):

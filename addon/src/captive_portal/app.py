@@ -184,6 +184,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         grants_ui,
         guest_portal,
         health,
+        integrations,
         integrations_ui,
         portal_config,
         portal_settings_ui,
@@ -204,6 +205,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(grants_ui.router)
     app.include_router(guest_portal.router)
     app.include_router(health.router)
+    app.include_router(integrations.router)
     app.include_router(portal_config.router)
     app.include_router(portal_settings_ui.router)
     app.include_router(vouchers.router)

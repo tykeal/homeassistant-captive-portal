@@ -113,6 +113,8 @@ async def get_vouchers(
     voucher_actions: dict[str, VoucherActions] = {}
     for voucher in vouchers:
         expires = voucher.expires_utc
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
         can_revoke = (
             voucher.status not in {VoucherStatus.REVOKED, VoucherStatus.EXPIRED} and now <= expires
         )
@@ -269,9 +271,8 @@ async def revoke_voucher(
     await audit_service.log_admin_action(
         admin_id=admin_id, action="voucher.revoke", target_type="voucher", target_id=code
     )
-    msg = urllib.parse.quote_plus(f"Voucher {code} revoked successfully")
     return RedirectResponse(
-        url=f"{root}/admin/vouchers/?success={msg}",
+        url=f"{root}/admin/vouchers/?success=Voucher+{code}+revoked+successfully",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -305,9 +306,8 @@ async def delete_voucher(
         )
     except VoucherRedeemedError:
         logger.warning("Cannot delete redeemed voucher: %s", code)
-        msg = urllib.parse.quote_plus(f"Cannot delete voucher {code} \u2014 it has been redeemed")
         return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error={msg}",
+            url=f"{root}/admin/vouchers/?error=Cannot+delete+voucher+{code}+%E2%80%94+it+has+been+redeemed",
             status_code=status.HTTP_303_SEE_OTHER,
         )
     audit_service = AuditService(session)
@@ -318,9 +318,8 @@ async def delete_voucher(
         target_id=code,
         metadata=meta,
     )
-    msg = urllib.parse.quote_plus(f"Voucher {code} deleted successfully")
     return RedirectResponse(
-        url=f"{root}/admin/vouchers/?success={msg}",
+        url=f"{root}/admin/vouchers/?success=Voucher+{code}+deleted+successfully",
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
@@ -349,28 +348,24 @@ async def bulk_revoke_vouchers(
             url=f"{root}/admin/vouchers/?error=No+vouchers+selected",
             status_code=status.HTTP_303_SEE_OTHER,
         )
-    voucher_repo = VoucherRepository(session)
-    voucher_service = VoucherService(session=session, voucher_repo=voucher_repo)
+    voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     audit_service = AuditService(session)
     result = BulkResult(action="revoked")
     for code_val in codes:
         code = str(code_val)
+        voucher_repo = VoucherRepository(session)
+        existing = voucher_repo.get_by_code(code)
+        if existing and existing.status == VoucherStatus.REVOKED:
+            result.skip_reasons["already revoked"] = (
+                result.skip_reasons.get("already revoked", 0) + 1
+            )
+            continue
         try:
-            existing = voucher_repo.get_by_code(code)
-            was_revoked = existing is not None and existing.status == VoucherStatus.REVOKED
             await voucher_service.revoke(code)
-            if was_revoked:
-                result.skip_reasons["already revoked"] = (
-                    result.skip_reasons.get("already revoked", 0) + 1
-                )
-            else:
-                result.success_count += 1
-                await audit_service.log_admin_action(
-                    admin_id=admin_id,
-                    action="voucher.revoke",
-                    target_type="voucher",
-                    target_id=code,
-                )
+            result.success_count += 1
+            await audit_service.log_admin_action(
+                admin_id=admin_id, action="voucher.revoke", target_type="voucher", target_id=code
+            )
         except VoucherExpiredError:
             result.skip_reasons["expired"] = result.skip_reasons.get("expired", 0) + 1
         except VoucherNotFoundError:

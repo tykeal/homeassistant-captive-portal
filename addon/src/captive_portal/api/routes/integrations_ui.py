@@ -2,24 +2,56 @@
 # SPDX-License-Identifier: Apache-2.0
 """Admin UI routes for Home Assistant integration management."""
 
+import logging
 from pathlib import Path
+from typing import Any, Optional, cast
 from uuid import UUID
-from typing import cast, Any
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
-from captive_portal.models.ha_integration_config import HAIntegrationConfig
+from captive_portal.integrations.ha_discovery_service import (
+    DiscoveryResult,
+    HADiscoveryService,
+)
+from captive_portal.models.ha_integration_config import (
+    HAIntegrationConfig,
+    IdentifierAttr,
+)
 from captive_portal.persistence.database import get_session
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
 from captive_portal.security.session_middleware import require_admin
 from captive_portal.services.audit_service import AuditService
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/admin/integrations", tags=["admin-ui-integrations"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+
+
+async def _run_discovery(request: Request, session: Session) -> DiscoveryResult:
+    """Run HA discovery if an HAClient is available on app state.
+
+    Args:
+        request: FastAPI request (provides access to app.state).
+        session: Database session for cross-referencing configured integrations.
+
+    Returns:
+        DiscoveryResult from the discovery service, or an unavailable
+        result if no HAClient is configured.
+    """
+    ha_client = getattr(request.app.state, "ha_client", None)
+    if ha_client is None:
+        return DiscoveryResult(
+            available=False,
+            error_message="Home Assistant client not configured",
+            error_category="connection",
+        )
+    service = HADiscoveryService(ha_client, session)
+    return await service.discover()
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -45,6 +77,8 @@ async def list_integrations(
     statement: Any = select(HAIntegrationConfig)
     integrations = list(cast(list[HAIntegrationConfig], session.exec(statement).all()))
 
+    discovery_result = await _run_discovery(request, session)
+
     return templates.TemplateResponse(
         request=request,
         name="admin/integrations.html",
@@ -52,6 +86,7 @@ async def list_integrations(
             "integrations": integrations,
             "integration": None,
             "csrf_token": csrf_token,
+            "discovery_result": discovery_result,
         },
     )
 
@@ -88,6 +123,8 @@ async def edit_integration(
     statement: Any = select(HAIntegrationConfig)
     integrations = list(cast(list[HAIntegrationConfig], session.exec(statement).all()))
 
+    discovery_result = await _run_discovery(request, session)
+
     return templates.TemplateResponse(
         request=request,
         name="admin/integrations.html",
@@ -95,16 +132,52 @@ async def edit_integration(
             "integrations": integrations,
             "integration": integration,
             "csrf_token": csrf_token,
+            "discovery_result": discovery_result,
         },
     )
+
+
+def _resolve_identifier_attr(
+    identifier_attr: Optional[str],
+    auth_attribute: Optional[str],
+) -> IdentifierAttr:
+    """Resolve identifier_attr from form fields with backward compatibility.
+
+    Prefers ``identifier_attr`` when present; falls back to the legacy
+    ``auth_attribute`` field.
+
+    Args:
+        identifier_attr: New form field value (may be None).
+        auth_attribute: Legacy form field value (may be None).
+
+    Returns:
+        IdentifierAttr enum value.
+
+    Raises:
+        HTTPException: If neither field is provided or value is invalid.
+    """
+    raw = identifier_attr or auth_attribute
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="identifier_attr or auth_attribute is required",
+        )
+    try:
+        return IdentifierAttr(raw)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid identifier_attr value: {raw}",
+        )
 
 
 @router.post("/save")
 async def save_integration(
     request: Request,
     integration_id: str = Form(...),
-    auth_attribute: str = Form(...),
     checkout_grace_minutes: int = Form(...),
+    identifier_attr: Optional[str] = Form(None),
+    auth_attribute: Optional[str] = Form(None),
     id: UUID | None = Form(None),
     session: Session = Depends(get_session),
     admin_id: UUID = Depends(require_admin),
@@ -112,11 +185,15 @@ async def save_integration(
 ) -> RedirectResponse:
     """Save or update integration configuration (admin only).
 
+    Accepts both ``identifier_attr`` (preferred) and ``auth_attribute``
+    (legacy) form fields for backward compatibility.
+
     Args:
         request: FastAPI request
         integration_id: HA integration identifier
-        auth_attribute: Authorization attribute (slot_code, slot_name, last_four)
         checkout_grace_minutes: Checkout grace period
+        identifier_attr: Identifier attribute (new field name)
+        auth_attribute: Legacy field name (backward compat)
         id: Optional existing integration UUID (for updates)
         session: Database session
         admin_id: Authenticated admin user ID
@@ -126,10 +203,11 @@ async def save_integration(
         Redirect to integrations list
 
     Raises:
-        400: Invalid form data
+        HTTPException: 404 on missing integration, 409 on duplicate, 422 on invalid data
     """
     await csrf.validate_token(request)
     audit_service = AuditService(session)
+    resolved_attr = _resolve_identifier_attr(identifier_attr, auth_attribute)
 
     if id:
         # Update existing
@@ -140,7 +218,7 @@ async def save_integration(
             )
 
         integration.integration_id = integration_id
-        integration.auth_attribute = auth_attribute
+        integration.identifier_attr = resolved_attr
         integration.checkout_grace_minutes = checkout_grace_minutes
 
         session.add(integration)
@@ -153,10 +231,23 @@ async def save_integration(
             target_id=str(id),
         )
     else:
+        # Duplicate guard
+        dup_stmt: Any = select(HAIntegrationConfig).where(
+            HAIntegrationConfig.integration_id == integration_id
+        )
+        existing: HAIntegrationConfig | None = cast(
+            Optional[HAIntegrationConfig], session.exec(dup_stmt).first()
+        )
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Integration '{integration_id}' already exists",
+            )
+
         # Create new
         integration = HAIntegrationConfig(
             integration_id=integration_id,
-            auth_attribute=auth_attribute,
+            identifier_attr=resolved_attr,
             checkout_grace_minutes=checkout_grace_minutes,
         )
 
