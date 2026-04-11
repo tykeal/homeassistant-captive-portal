@@ -160,8 +160,6 @@ def _sanitize_error_message(message: str | None) -> str:
 
     # Strip any HTML tags (basic sanitization)
     # Jinja2 auto-escape will handle the rest
-    import re
-
     message = re.sub(r"<[^>]*>", "", message)
 
     # If message becomes empty after sanitization, use default
