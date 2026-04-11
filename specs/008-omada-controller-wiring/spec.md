@@ -1,7 +1,5 @@
-<!--
 SPDX-FileCopyrightText: 2026 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
--->
 
 # Feature Specification: Omada Controller Integration Wiring
 
@@ -58,7 +56,7 @@ A Home Assistant administrator installs the captive portal addon and wants to co
 
 1. **Given** the addon config includes Omada controller settings (URL, username, password, site, controller ID), **When** the addon starts, **Then** the s6 run scripts read these values and pass them to the application as environment variables, and the application loads them into its settings model.
 2. **Given** the addon config includes Omada settings, **When** the admin and guest applications start up, **Then** each application instantiates a controller client and adapter during its startup phase and stores them for use during request handling.
-3. **Given** the addon config does NOT include an Omada URL, **When** the addon starts, **Then** the application starts normally without initializing any controller client (no errors, no warnings beyond an informational log message).
+3. **Given** the addon config does NOT include an Omada URL, **When** the addon starts, **Then** the application starts normally without initializing any controller client, with no errors and no warnings; it may emit an informational log message.
 4. **Given** the Omada password is configured, **When** the application logs its configuration at startup, **Then** the password value is never written to any log output.
 5. **Given** the application is running with a controller connection, **When** the application shuts down, **Then** the controller client connection is cleanly closed and all resources are released.
 

@@ -1,7 +1,5 @@
-<!--
 SPDX-FileCopyrightText: 2026 Andrew Grimberg
 SPDX-License-Identifier: Apache-2.0
--->
 
 # Specification Quality Checklist: Omada Controller Integration Wiring
 
@@ -11,9 +9,9 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Content Quality
 
-- [x] No implementation details (languages, frameworks, APIs)
+- [x] No implementation details in user stories or requirements (technical context is limited to Assumptions section)
 - [x] Focused on user value and business needs
-- [x] Written for non-technical stakeholders
+- [x] Written with user stories accessible to non-technical stakeholders
 - [x] All mandatory sections completed
 
 ## Requirement Completeness
@@ -37,5 +35,5 @@ SPDX-License-Identifier: Apache-2.0
 ## Notes
 
 - All 16 checklist items pass validation.
-- No clarification markers were needed — the user's feature description was comprehensive and unambiguous, providing all 7 integration gaps with architecture context.
+- No clarification markers were needed — the user's feature description was comprehensive and unambiguous, providing all 8 integration gaps with architecture context.
 - Scope is tightly bounded: this feature covers wiring only, not modifying the existing OmadaClient/OmadaAdapter code.
