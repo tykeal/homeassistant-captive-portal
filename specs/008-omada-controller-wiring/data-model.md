@@ -97,7 +97,7 @@ ACTIVE ──(admin revoke, no controller)──→ REVOKED
 
 | Method | Input | Output | Controller Endpoint |
 |--------|-------|--------|-------------------|
-| `authorize(mac, expires_at, upload_kbps, download_kbps)` | MAC + expiry + bandwidth | `{grant_id, status, mac}` | `POST /extportal/auth` |
+| `authorize(mac, expires_at, upload_limit_kbps, download_limit_kbps)` | MAC + expiry + bandwidth | `{grant_id, status, mac}` | `POST /extportal/auth` |
 | `revoke(mac, grant_id?)` | MAC | `{success, mac}` | `POST /extportal/revoke` |
 | `update(mac, expires_at, grant_id?)` | MAC + new expiry | same as authorize | Re-authorizes via `/extportal/auth` |
 | `get_status(mac)` | MAC | `{mac, authorized, remaining_seconds}` | `POST /extportal/session` |
@@ -134,7 +134,7 @@ New state attributes set during lifespan:
 | `app.state.omada_client` | `OmadaClient | None` | Startup (if configured) | No Omada URL |
 | `app.state.omada_adapter` | `OmadaAdapter | None` | Startup (if configured) | No Omada URL |
 
-**Shutdown behavior**: If `omada_client._client is not None` (i.e., it was entered during runtime), call `await omada_client.__aexit__(None, None, None)` to close the httpx session.
+**Shutdown behavior**: Since route handlers use `async with client:` per operation, no global shutdown cleanup is needed for the OmadaClient. The client's async context manager handles session cleanup after each operation. If a future optimization introduces persistent connections, add a public `is_open` property and corresponding shutdown logic.
 
 ## Entity Relationship Diagram
 

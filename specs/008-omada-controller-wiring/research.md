@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
 
 **Alternative considered**: Wrapping the client in a "lazy proxy" that auto-enters the context on first call. Rejected because it adds complexity and hides lifecycle management. Explicit context entry is clearer and the adapter methods already require an active client.
 
-**Implementation approach**: Store uninitialized `OmadaClient` and `OmadaAdapter` on `app.state`. The authorize and revoke route handlers will enter the async context on first use. To avoid entering/exiting on every request, a "session guard" wrapper can be used: check if `client._client is not None` before entering context. On shutdown, the lifespan only calls `__aexit__` if `_client` was previously created.
+**Implementation approach**: Store uninitialized `OmadaClient` and `OmadaAdapter` on `app.state`. The authorize and revoke route handlers should use `async with client:` for each operation so session creation, authentication, and cleanup follow the client's public lifecycle contract. Do not use a "session guard" based on `client._client is not None`, because that private attribute does not reliably indicate that the underlying `httpx.AsyncClient` is still open after `__aexit__`. If avoiding repeated enter/exit ever becomes necessary, that should be implemented by adding a public lifecycle indicator such as `is_open`/`is_active` or by making `__aexit__` reset `_client` to `None`, rather than depending on private state in callers.
 
 ---
 

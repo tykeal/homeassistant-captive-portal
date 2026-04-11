@@ -57,7 +57,7 @@ This contract documents the interface that the wiring layer depends on. The adap
 | Timeout | `OmadaRetryExhaustedError` | Yes (up to 4 attempts) |
 | HTTP 4xx | `OmadaClientError` | No |
 | HTTP 5xx | `OmadaRetryExhaustedError` | Yes (up to 4 attempts) |
-| Omada errorCode >= 5000 | `OmadaClientError` / `OmadaRetryExhaustedError` | Yes |
+| Omada errorCode >= 5000 | `OmadaClientError` | Yes (up to 4 attempts) |
 | Omada errorCode < 5000, != 0 | `OmadaClientError` | No |
 
 ---
