@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
+from captive_portal.api.routes.guest_portal import _apply_site_override
 from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
 from captive_portal.controllers.tp_omada.base_client import OmadaClient
 
@@ -24,87 +25,25 @@ _SITE_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{16,64}$")
 class TestSiteIdOverride:
     """Tests for site_id override from Omada controller redirect."""
 
-    @pytest.mark.asyncio
-    async def test_site_override_applied_before_authorize(self) -> None:
-        """Site from form data should override adapter's default site_id."""
-        mock_client = AsyncMock(spec=OmadaClient)
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
-        mock_client.controller_id = "test-ctrl"
+    def test_valid_site_overrides_current(self) -> None:
+        """Valid hex site should override the current site_id."""
+        result = _apply_site_override("686982d482171c5562624ad1", "Default", _SITE_ID_PATTERN)
+        assert result == "686982d482171c5562624ad1"
 
-        mock_adapter = MagicMock(spec=OmadaAdapter)
-        mock_adapter.client = mock_client
-        mock_adapter.site_id = "Default"
-        mock_adapter.authorize = AsyncMock(
-            return_value={
-                "grant_id": "ctrl-grant-1",
-                "status": "active",
-                "mac": "AA:BB:CC:DD:EE:FF",
-            }
-        )
-
-        # Simulate what handle_authorization does
-        site = "686982d482171c5562624ad1"
-        if (
-            mock_adapter is not None
-            and site
-            and isinstance(site, str)
-            and _SITE_ID_PATTERN.match(site.strip())
-        ):
-            mock_adapter.site_id = site.strip()
-
-        assert mock_adapter.site_id == "686982d482171c5562624ad1"
-
-    @pytest.mark.asyncio
-    async def test_empty_site_does_not_override(self) -> None:
+    def test_empty_site_does_not_override(self) -> None:
         """Empty site value should not override adapter site_id."""
-        mock_adapter = MagicMock(spec=OmadaAdapter)
-        mock_adapter.site_id = "Default"
+        result = _apply_site_override("", "Default", _SITE_ID_PATTERN)
+        assert result == "Default"
 
-        site = ""
-        if (
-            mock_adapter is not None
-            and site
-            and isinstance(site, str)
-            and _SITE_ID_PATTERN.match(site.strip())
-        ):
-            mock_adapter.site_id = site.strip()
-
-        assert mock_adapter.site_id == "Default"
-
-    @pytest.mark.asyncio
-    async def test_none_site_does_not_override(self) -> None:
+    def test_none_site_does_not_override(self) -> None:
         """None site value should not override adapter site_id."""
-        mock_adapter = MagicMock(spec=OmadaAdapter)
-        mock_adapter.site_id = "Default"
+        result = _apply_site_override(None, "Default", _SITE_ID_PATTERN)
+        assert result == "Default"
 
-        site = None
-        if (
-            mock_adapter is not None
-            and site
-            and isinstance(site, str)
-            and _SITE_ID_PATTERN.match(site.strip())
-        ):
-            mock_adapter.site_id = site.strip()
-
-        assert mock_adapter.site_id == "Default"
-
-    @pytest.mark.asyncio
-    async def test_whitespace_site_does_not_override(self) -> None:
+    def test_whitespace_site_does_not_override(self) -> None:
         """Whitespace-only site value should not override adapter site_id."""
-        mock_adapter = MagicMock(spec=OmadaAdapter)
-        mock_adapter.site_id = "Default"
-
-        site = "   "
-        if (
-            mock_adapter is not None
-            and site
-            and isinstance(site, str)
-            and _SITE_ID_PATTERN.match(site.strip())
-        ):
-            mock_adapter.site_id = site.strip()
-
-        assert mock_adapter.site_id == "Default"
+        result = _apply_site_override("   ", "Default", _SITE_ID_PATTERN)
+        assert result == "Default"
 
     @pytest.mark.asyncio
     async def test_site_override_with_authorize(self) -> None:
@@ -117,7 +56,9 @@ class TestSiteIdOverride:
         adapter = OmadaAdapter(client=mock_client, site_id="Default")
 
         # Override site as the handler would
-        adapter.site_id = "686982d482171c5562624ad1"
+        adapter.site_id = _apply_site_override(
+            "686982d482171c5562624ad1", adapter.site_id, _SITE_ID_PATTERN
+        )
 
         captured_payloads: list[dict[str, object]] = []
 

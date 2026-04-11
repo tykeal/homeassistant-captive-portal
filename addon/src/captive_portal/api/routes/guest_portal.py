@@ -44,6 +44,27 @@ _SITE_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{16,64}$")
 
 _logger = logging.getLogger("captive_portal.guest")
 
+
+def _apply_site_override(
+    site_from_form: str | None,
+    current_site: str,
+    pattern: re.Pattern,  # type: ignore[type-arg]
+) -> str:
+    """Apply site override from form data if valid.
+
+    Args:
+        site_from_form: Site identifier from the submitted form.
+        current_site: Current adapter site ID.
+        pattern: Compiled regex for site ID validation.
+
+    Returns:
+        Overridden site if valid, otherwise the current site.
+    """
+    if site_from_form and site_from_form.strip() and pattern.match(site_from_form.strip()):
+        return site_from_form.strip()
+    return current_site
+
+
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 
 router = APIRouter(prefix="/guest", tags=["guest"])
@@ -219,16 +240,16 @@ async def _authorize_with_controller(
 @router.get("/authorize", response_class=HTMLResponse)
 async def show_authorize_form(
     request: Request,
-    clientMac: Annotated[Optional[str], Query()] = None,
-    clientIp: Annotated[Optional[str], Query()] = None,
+    client_mac: Annotated[Optional[str], Query(alias="clientMac")] = None,
+    client_ip: Annotated[Optional[str], Query(alias="clientIp")] = None,
     site: Annotated[Optional[str], Query()] = None,
-    apMac: Annotated[Optional[str], Query()] = None,
-    gatewayMac: Annotated[Optional[str], Query()] = None,
-    radioId: Annotated[Optional[str], Query()] = None,
-    ssidName: Annotated[Optional[str], Query()] = None,
+    ap_mac: Annotated[Optional[str], Query(alias="apMac")] = None,
+    gateway_mac: Annotated[Optional[str], Query(alias="gatewayMac")] = None,
+    radio_id: Annotated[Optional[str], Query(alias="radioId")] = None,
+    ssid_name: Annotated[Optional[str], Query(alias="ssidName")] = None,
     vid: Annotated[Optional[str], Query()] = None,
     t: Annotated[Optional[str], Query()] = None,
-    redirectUrl: Annotated[Optional[str], Query()] = None,
+    redirect_url: Annotated[Optional[str], Query(alias="redirectUrl")] = None,
     continue_url: Annotated[Optional[str], Query(alias="continue")] = None,
 ) -> HTMLResponse:
     """Display guest authorization form.
@@ -238,37 +259,37 @@ async def show_authorize_form(
 
     Args:
         request: FastAPI request object
-        clientMac: Device MAC address (from Omada redirect)
-        clientIp: Device IP address (from Omada redirect)
+        client_mac: Device MAC address (from Omada redirect)
+        client_ip: Device IP address (from Omada redirect)
         site: Omada site identifier hash (from Omada redirect)
-        apMac: Access point MAC (from Omada redirect)
-        gatewayMac: Gateway MAC (from Omada redirect)
-        radioId: Radio identifier (from Omada redirect)
-        ssidName: SSID name (from Omada redirect)
+        ap_mac: Access point MAC (from Omada redirect)
+        gateway_mac: Gateway MAC (from Omada redirect)
+        radio_id: Radio identifier (from Omada redirect)
+        ssid_name: SSID name (from Omada redirect)
         vid: VLAN ID (from Omada redirect)
         t: Timestamp (from Omada redirect)
-        redirectUrl: Original redirect URL (from Omada redirect)
+        redirect_url: Original redirect URL (from Omada redirect)
         continue_url: Optional redirect destination after successful authorization
 
     Returns:
         HTMLResponse: Rendered authorization form with CSRF token
     """
     omada_params = {
-        "clientMac": clientMac or "",
-        "clientIp": clientIp or "",
+        "clientMac": client_mac or "",
+        "clientIp": client_ip or "",
         "site": site or "",
-        "apMac": apMac or "",
-        "gatewayMac": gatewayMac or "",
-        "radioId": radioId or "",
-        "ssidName": ssidName or "",
+        "apMac": ap_mac or "",
+        "gatewayMac": gateway_mac or "",
+        "radioId": radio_id or "",
+        "ssidName": ssid_name or "",
         "vid": vid or "",
         "t": t or "",
-        "redirectUrl": redirectUrl or "",
+        "redirectUrl": redirect_url or "",
     }
 
     # Use redirectUrl as continue_url if no explicit continue was provided
     effective_continue = (
-        continue_url or redirectUrl or f"{request.scope.get('root_path', '')}/guest/welcome"
+        continue_url or redirect_url or f"{request.scope.get('root_path', '')}/guest/welcome"
     )
 
     # Generate CSRF token
@@ -346,16 +367,8 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     request: Request,
     code: Annotated[str, Form()],
     continue_url: Annotated[Optional[str], Form(alias="continue")] = None,
-    clientMac: Annotated[Optional[str], Form()] = None,
+    client_mac: Annotated[Optional[str], Form(alias="clientMac")] = None,
     site: Annotated[Optional[str], Form()] = None,
-    apMac: Annotated[Optional[str], Form()] = None,
-    gatewayMac: Annotated[Optional[str], Form()] = None,
-    radioId: Annotated[Optional[str], Form()] = None,
-    ssidName: Annotated[Optional[str], Form()] = None,
-    vid: Annotated[Optional[str], Form()] = None,
-    clientIp: Annotated[Optional[str], Form()] = None,
-    t: Annotated[Optional[str], Form()] = None,
-    redirectUrl: Annotated[Optional[str], Form()] = None,
     rate_limiter: RateLimiter = Depends(),
     unified_code_service: UnifiedCodeService = Depends(),
     redirect_validator: RedirectValidator = Depends(),
@@ -373,16 +386,8 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         request: FastAPI request object
         code: Authorization code (voucher or booking code)
         continue_url: Optional redirect destination
-        clientMac: Device MAC from Omada controller redirect
+        client_mac: Device MAC from Omada controller redirect
         site: Omada site identifier from controller redirect
-        apMac: Access point MAC from controller redirect
-        gatewayMac: Gateway MAC from controller redirect
-        radioId: Radio identifier from controller redirect
-        ssidName: SSID name from controller redirect
-        vid: VLAN ID from controller redirect
-        clientIp: Client IP from controller redirect
-        t: Timestamp from controller redirect
-        redirectUrl: Original redirect URL from controller redirect
         rate_limiter: Rate limiting service
         unified_code_service: Code validation and grant creation service
         redirect_validator: Redirect URL validation service
@@ -428,7 +433,7 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
 
     # Extract device MAC address
     try:
-        mac_address = _extract_mac_address(request, form_mac=clientMac)
+        mac_address = _extract_mac_address(request, form_mac=client_mac)
     except HTTPException as e:
         # Log MAC extraction failure
         await audit_service.log(
@@ -661,13 +666,8 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
 
     # --- Controller authorization ---
     # Override adapter site_id if Omada controller sent a site identifier
-    if (
-        omada_adapter is not None
-        and site
-        and isinstance(site, str)
-        and _SITE_ID_PATTERN.match(site.strip())
-    ):
-        omada_adapter.site_id = site.strip()
+    if omada_adapter is not None:
+        omada_adapter.site_id = _apply_site_override(site, omada_adapter.site_id, _SITE_ID_PATTERN)
 
     grant, error_detail = await _authorize_with_controller(
         adapter=omada_adapter,
