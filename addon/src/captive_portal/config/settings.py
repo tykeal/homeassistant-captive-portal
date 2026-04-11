@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Any
+from typing import Any, Callable
 
 from pydantic import BaseModel
 
@@ -45,6 +45,12 @@ _ADDON_OPTION_MAP: dict[str, str] = {
     "guest_external_url": "guest_external_url",
     "ha_base_url": "ha_base_url",
     "ha_token": "ha_token",
+    "omada_controller_url": "omada_controller_url",
+    "omada_username": "omada_username",
+    "omada_password": "omada_password",
+    "omada_site_name": "omada_site_name",
+    "omada_controller_id": "omada_controller_id",
+    "omada_verify_ssl": "omada_verify_ssl",
 }
 
 # Mapping from env var names to AppSettings field names
@@ -56,6 +62,12 @@ _ENV_VAR_MAP: dict[str, str] = {
     "CP_GUEST_EXTERNAL_URL": "guest_external_url",
     "CP_HA_BASE_URL": "ha_base_url",
     "CP_HA_TOKEN": "ha_token",
+    "CP_OMADA_CONTROLLER_URL": "omada_controller_url",
+    "CP_OMADA_USERNAME": "omada_username",
+    "CP_OMADA_PASSWORD": "omada_password",
+    "CP_OMADA_SITE_NAME": "omada_site_name",
+    "CP_OMADA_CONTROLLER_ID": "omada_controller_id",
+    "CP_OMADA_VERIFY_SSL": "omada_verify_ssl",
 }
 
 
@@ -131,6 +143,83 @@ def _validate_ha_url(value: Any) -> bool:
     return parts.scheme in ("http", "https") and bool(parts.netloc)
 
 
+def _validate_omada_url(value: Any) -> bool:
+    """Check if *value* is a valid Omada controller URL or empty string.
+
+    Args:
+        value: Candidate value.
+
+    Returns:
+        True if the value is a valid URL (http/https) or empty string.
+    """
+    if not isinstance(value, str):
+        return False
+    stripped = value.strip()
+    if stripped == "":
+        return True
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(stripped)
+    return parts.scheme in ("http", "https") and bool(parts.netloc)
+
+
+def _validate_omada_bool(value: Any) -> bool:
+    """Check if *value* is a valid boolean or bool-like string.
+
+    Args:
+        value: Candidate value.
+
+    Returns:
+        True if the value can be coerced to a boolean.
+    """
+    if isinstance(value, bool):
+        return True
+    if isinstance(value, str):
+        return value.lower() in ("true", "false", "1", "0")
+    return False
+
+
+def _validate_non_empty_str(value: Any) -> bool:
+    """Check if *value* is a non-empty stripped string.
+
+    Args:
+        value: Candidate value.
+
+    Returns:
+        True if the value is a non-empty string after stripping.
+    """
+    return isinstance(value, str) and len(value.strip()) > 0
+
+
+# Dispatch table for field validation
+# Omada optional string fields: empty string means "unset", not invalid
+_OMADA_OPTIONAL_STR_FIELDS: frozenset[str] = frozenset(
+    {
+        "omada_username",
+        "omada_password",
+        "omada_controller_id",
+        "omada_site_name",
+    }
+)
+
+# Dispatch table for field validation
+_FIELD_VALIDATORS: dict[str, Callable[[Any], bool]] = {
+    "log_level": lambda v: isinstance(v, str) and v.lower() in _VALID_LOG_LEVELS,
+    "db_path": lambda v: isinstance(v, str) and len(v) > 0,
+    "session_idle_minutes": _validate_positive_int,
+    "session_max_hours": _validate_positive_int,
+    "guest_external_url": _validate_guest_url,
+    "ha_base_url": _validate_ha_url,
+    "ha_token": _validate_non_empty_str,
+    "omada_controller_url": _validate_omada_url,
+    "omada_username": _validate_non_empty_str,
+    "omada_password": _validate_non_empty_str,
+    "omada_controller_id": _validate_non_empty_str,
+    "omada_site_name": _validate_non_empty_str,
+    "omada_verify_ssl": _validate_omada_bool,
+}
+
+
 def _validate_field(field: str, value: Any) -> bool:
     """Validate a single field value.
 
@@ -141,19 +230,10 @@ def _validate_field(field: str, value: Any) -> bool:
     Returns:
         True if the value is valid for the given field.
     """
-    if field == "log_level":
-        return isinstance(value, str) and value.lower() in _VALID_LOG_LEVELS
-    if field == "db_path":
-        return isinstance(value, str) and len(value) > 0
-    if field in ("session_idle_minutes", "session_max_hours"):
-        return _validate_positive_int(value)
-    if field == "guest_external_url":
-        return _validate_guest_url(value)
-    if field == "ha_base_url":
-        return _validate_ha_url(value)
-    if field == "ha_token":
-        return isinstance(value, str) and len(value.strip()) > 0
-    return False
+    validator = _FIELD_VALIDATORS.get(field)
+    if validator is None:
+        return False
+    return validator(value)
 
 
 def _coerce_field(field: str, value: Any) -> Any:
@@ -176,7 +256,50 @@ def _coerce_field(field: str, value: Any) -> Any:
         return str(value).strip()
     if field == "ha_token":
         return str(value).strip()
+    if field in (
+        "omada_controller_url",
+        "omada_username",
+        "omada_password",
+        "omada_site_name",
+        "omada_controller_id",
+    ):
+        return str(value).strip()
+    if field == "omada_verify_ssl":
+        if isinstance(value, bool):
+            return value
+        s = str(value).lower()
+        return s in ("true", "1")
     return value
+
+
+def _try_addon_option(field_name: str, addon_key: str, raw: Any) -> tuple[bool, Any]:
+    """Attempt to resolve a field from an addon option value.
+
+    Returns ``(True, coerced_value)`` when the value is valid, or
+    ``(False, None)`` when the caller should fall through to
+    environment / default resolution.  For optional Omada string
+    fields, empty strings are silently treated as unset.
+
+    Args:
+        field_name: AppSettings field name.
+        addon_key: Corresponding key in ``options.json``.
+        raw: Raw value read from addon options.
+
+    Returns:
+        Tuple of (resolved, value).
+    """
+    if field_name in _OMADA_OPTIONAL_STR_FIELDS and isinstance(raw, str) and raw.strip() == "":
+        return False, None
+
+    if _validate_field(field_name, raw):
+        return True, _coerce_field(field_name, raw)
+
+    logger.warning(
+        "Invalid addon option '%s': %r — ignoring, will try environment variable or default.",
+        addon_key,
+        raw,
+    )
+    return False, None
 
 
 class AppSettings(BaseModel):
@@ -189,6 +312,28 @@ class AppSettings(BaseModel):
     guest_external_url: str = ""
     ha_base_url: str = "http://supervisor/core/api"
     ha_token: str = ""
+    omada_controller_url: str = ""
+    omada_username: str = ""
+    omada_password: str = ""
+    omada_site_name: str = "Default"
+    omada_controller_id: str = ""
+    omada_verify_ssl: bool = True
+
+    @property
+    def omada_configured(self) -> bool:
+        """True only when all required Omada settings are present.
+
+        Returns:
+            True when ``omada_controller_url``,
+            ``omada_controller_id``, ``omada_username``, and
+            ``omada_password`` are all non-empty stripped strings.
+        """
+        return bool(
+            self.omada_controller_url.strip()
+            and self.omada_controller_id.strip()
+            and self.omada_username.strip()
+            and self.omada_password.strip()
+        )
 
     @classmethod
     def load(cls, options_path: str = "/data/options.json") -> AppSettings:
@@ -226,21 +371,24 @@ class AppSettings(BaseModel):
             "guest_external_url",
             "ha_base_url",
             "ha_token",
+            "omada_controller_url",
+            "omada_username",
+            "omada_password",
+            "omada_site_name",
+            "omada_controller_id",
+            "omada_verify_ssl",
         ):
             # --- Try addon option ---
             addon_key = _FIELD_TO_ADDON_KEY.get(field_name)
             if addon_key and addon_key in addon_options:
-                raw = addon_options[addon_key]
-                if _validate_field(field_name, raw):
-                    resolved[field_name] = _coerce_field(field_name, raw)
-                    continue
-                # Invalid addon option → log warning and fall through
-                logger.warning(
-                    "Invalid addon option '%s': %r — ignoring, will try "
-                    "environment variable or default.",
+                resolved_ok, value = _try_addon_option(
+                    field_name,
                     addon_key,
-                    raw,
+                    addon_options[addon_key],
                 )
+                if resolved_ok:
+                    resolved[field_name] = value
+                    continue
 
             # --- Try environment variable ---
             # ha_token has a special primary source: SUPERVISOR_TOKEN
@@ -299,6 +447,15 @@ class AppSettings(BaseModel):
         log.info("  guest_external_url = %s", self.guest_external_url or "(not configured)")
         log.info("  ha_base_url = %s", self.ha_base_url)
         log.info("  ha_token = %s", "(set)" if self.ha_token else "(not set)")
+        log.info(
+            "  omada_controller_url = %s",
+            self.omada_controller_url or "(not configured)",
+        )
+        log.info("  omada_username = %s", self.omada_username or "(not set)")
+        log.info("  omada_password = %s", "(set)" if self.omada_password else "(not set)")
+        log.info("  omada_site_name = %s", self.omada_site_name)
+        log.info("  omada_controller_id = %s", self.omada_controller_id or "(not set)")
+        log.info("  omada_verify_ssl = %s", self.omada_verify_ssl)
 
     def validate_db_path(self) -> None:
         """Validate that the database path's parent directory exists and is writable.

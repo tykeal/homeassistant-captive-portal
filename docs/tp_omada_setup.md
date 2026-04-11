@@ -38,12 +38,12 @@ The Captive Portal integrates with TP-Link Omada Controllers using the **Externa
    - **Portal Type**: Select **External Portal**
    - **Portal Name**: `Captive Portal Guest Access` (or your preference)
    - **External Portal URL**: Enter Captive Portal address
-     - Example: `https://captiveportal.local:8080/guest/authorize`
+     - Example: `https://captiveportal.local:8099/guest/authorize`
      - Must be reachable from clients (use public IP or hostname if needed)
 
 4. **Configure Portal Parameters**
    - **Landing Page**: URL to redirect after successful auth
-     - Example: `https://www.example.com` or `http://captiveportal.local:8080/success`
+     - Example: `https://www.example.com` or `http://captiveportal.local:8099/success`
    - **Authentication Timeout**: 5 minutes (default)
    - **Terms of Service**: Enable if required (optional)
 
@@ -139,7 +139,7 @@ If using VLANs or strict firewall policies:
 2. **Verify Portal Parameters**
    - Captive Portal should receive URL like:
      ```
-     https://captiveportal.local:8080/guest/authorize?clientMac=AA:BB:CC:DD:EE:FF&apMac=00:11:22:33:44:55&ssidName=Guest+WiFi&t=1711234567890123&radioId=1&site=Default&redirectUrl=https://www.example.com
+     https://captiveportal.local:8099/guest/authorize?clientMac=AA:BB:CC:DD:EE:FF&apMac=00:11:22:33:44:55&ssidName=Guest+WiFi&t=1711234567890123&radioId=1&site=Default&redirectUrl=https://www.example.com
      ```
    - Check Captive Portal logs for incoming requests
 
@@ -159,16 +159,14 @@ Edit add-on config in **Settings** → **Add-ons** → **Captive Portal** → **
 
 ```yaml
 # TP-Omada Controller Settings
-omada_url: https://192.168.1.10:8043  # Controller HTTPS URL
+omada_controller_url: https://192.168.1.10:8043  # Controller HTTPS URL
 omada_username: captive_portal_api    # Hotspot operator username (Step 3)
-omada_password: kD8#nQ2@mP5!xR7$      # Hotspot operator password
-omada_site: Default                   # Site name (case-sensitive, usually "Default")
+omada_password: "kD8#nQ2@mP5!xR7$"    # Hotspot operator password
+omada_site_name: Default              # Site name (case-sensitive, usually "Default")
+omada_controller_id: "a1b2c3d4e5f6"   # Required — hex string from controller URL
 
 # Connection Settings (optional)
 omada_verify_ssl: true                # Set false for self-signed certs (not recommended)
-omada_timeout_seconds: 30             # API request timeout
-omada_retry_attempts: 3               # Retry failed API calls
-omada_retry_backoff_seconds: 5        # Exponential backoff base
 ```
 
 ### Standalone Container Configuration
@@ -179,12 +177,14 @@ Set environment variables:
 docker run -d \
   --name captive-portal \
   -p 8080:8080 \
+  -p 8099:8099 \
   -v ./data:/data \
-  -e OMADA_URL=https://192.168.1.10:8043 \
-  -e OMADA_USERNAME=captive_portal_api \
-  -e OMADA_PASSWORD=kD8#nQ2@mP5!xR7$ \
-  -e OMADA_SITE=Default \
-  -e OMADA_VERIFY_SSL=true \
+  -e CP_OMADA_CONTROLLER_URL=https://192.168.1.10:8043 \
+  -e CP_OMADA_CONTROLLER_ID=your_controller_id_hex \
+  -e CP_OMADA_USERNAME=captive_portal_api \
+  -e CP_OMADA_PASSWORD='kD8#nQ2@mP5!xR7$' \
+  -e CP_OMADA_SITE_NAME=Default \
+  -e CP_OMADA_VERIFY_SSL=true \
   ghcr.io/tykeal/homeassistant-captive-portal:latest
 ```
 
@@ -197,12 +197,12 @@ If you manage multiple properties/sites in one Omada Controller:
 **Option 1: Separate Captive Portal Instances**
 ```yaml
 # Property 1 Instance
-omada_site: Property1
-omada_url: https://controller.local:8043
+omada_site_name: Property1
+omada_controller_url: https://controller.local:8043
 
 # Property 2 Instance (separate container)
-omada_site: Property2
-omada_url: https://controller.local:8043
+omada_site_name: Property2
+omada_controller_url: https://controller.local:8043
 ```
 
 **Option 2: Site Routing** (Future Feature)
@@ -302,7 +302,7 @@ omada_failover_timeout_seconds: 30
 
 4. **Firewall Blocking Portal**
    - Verify guest VLAN can reach Captive Portal URL
-   - Check: `curl https://captiveportal.local:8080/guest/authorize` from guest network
+   - Check: `curl https://captiveportal.local:8099/guest/authorize` from guest network
 
 5. **iOS/Android Detection Failure**
    - Implement captive portal detection endpoints:
@@ -332,7 +332,10 @@ omada_failover_timeout_seconds: 30
 
 4. **Controller ID Mismatch**
    - URL requires controller ID: `/[controller-id]/api/v2/hotspot/login`
-   - Captive Portal auto-discovers controller ID on first request
+   - Find the controller ID in your browser URL bar when logged into the
+     Omada web UI (the hex string after the hostname, e.g.
+     `https://controller:8043/a1b2c3d4e5f6/...`)
+   - Set ``omada_controller_id`` in configuration — this field is required
 
 5. **Session Expired**
    - Operator sessions expire after 30 minutes
@@ -359,7 +362,7 @@ omada_failover_timeout_seconds: 30
 3. **Retry Queue Backlog**
    - API retries accumulating
    - Check Captive Portal metrics: `controller_latency_seconds`
-   - Solution: Increase `omada_timeout_seconds` or retry limits
+   - Solution: Increase retry limits or check network latency
 
 4. **Controller Overload**
    - High client count or CPU usage
@@ -384,7 +387,7 @@ omada_failover_timeout_seconds: 30
 
 3. **Hostname Mismatch**
    - Certificate issued for `omada.local` but using IP `192.168.1.10`
-   - Solution: Use hostname in `omada_url` that matches certificate CN/SAN
+   - Solution: Use hostname in `omada_controller_url` that matches certificate CN/SAN
 
 4. **Intermediate CA Missing**
    - Install full certificate chain on controller

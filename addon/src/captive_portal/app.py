@@ -79,6 +79,21 @@ def _make_lifespan(
         app.state.ha_client = ha_client
         logger.info("HAClient initialized for %s", settings.ha_base_url)
 
+        # Configure Omada controller integration
+        if settings.omada_configured:
+            app.state.omada_config = {
+                "base_url": settings.omada_controller_url,
+                "controller_id": settings.omada_controller_id,
+                "username": settings.omada_username,
+                "password": settings.omada_password,
+                "verify_ssl": settings.omada_verify_ssl,
+                "site_id": settings.omada_site_name,
+            }
+            logger.info("Omada controller configured for %s", settings.omada_controller_url)
+        else:
+            app.state.omada_config = None
+            logger.info("Omada controller not configured — controller calls will be skipped")
+
         yield
 
         # --- Shutdown ---
