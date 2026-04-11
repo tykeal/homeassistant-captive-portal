@@ -129,3 +129,22 @@ async def test_discover_connection_error() -> None:
     with patch("httpx.AsyncClient", return_value=mock_client):
         with pytest.raises(OmadaClientError, match="Connection error"):
             await discover_controller_id("https://controller:443")
+
+
+@pytest.mark.asyncio
+async def test_discover_invalid_json() -> None:
+    """Non-JSON response raises OmadaClientError."""
+    resp = httpx.Response(
+        status_code=200,
+        content=b"<html>Not JSON</html>",
+        headers={"content-type": "text/html"},
+        request=httpx.Request("GET", "https://controller:443/api/info"),
+    )
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        with pytest.raises(OmadaClientError, match="Invalid JSON"):
+            await discover_controller_id("https://controller:443")

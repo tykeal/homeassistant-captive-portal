@@ -244,7 +244,10 @@ async def discover_controller_id(
         try:
             response = await client.get(url)
             response.raise_for_status()
-            data: dict[str, Any] = response.json()
+            try:
+                data: dict[str, Any] = response.json()
+            except (ValueError, UnicodeDecodeError) as e:
+                raise OmadaClientError(f"Invalid JSON from /api/info: {e}") from e
             if data.get("errorCode") != 0:
                 raise OmadaClientError(
                     f"Controller info request failed: {data.get('msg', 'Unknown error')}"
