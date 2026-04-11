@@ -81,7 +81,7 @@ A developer working on the captive portal runs the contract test suite. The exis
 ### Edge Cases
 
 - What happens when the Omada controller is configured but unreachable? The application should start normally (no startup health check). When a guest authorization or admin revocation is attempted, the operation should fail gracefully with a user-facing error message and an audit log entry.
-- What happens when the controller session expires mid-operation? The existing client's retry logic with re-authentication should handle this transparently.
+- What happens when the controller session expires mid-operation? The existing client treats 4xx responses (including 401/403 from expired sessions) as non-retryable errors. The wiring must handle these failures gracefully — logging the error and showing a user-facing message. If session-refresh behavior is needed in the future, it should be added to the OmadaClient as a separate enhancement.
 - What happens when a guest's MAC address cannot be extracted from request headers? The authorization flow should reject the request before attempting any controller call (existing behavior).
 - What happens when the admin revokes a grant that was created before the Omada integration was wired up (i.e., the grant has no controller grant ID or MAC)? The revocation should update the database only and skip the controller call.
 - What happens when two simultaneous authorization requests arrive for the same MAC address? The controller should handle idempotent authorization; the application should not need special deduplication logic.
@@ -95,9 +95,22 @@ A developer working on the captive portal runs the contract test suite. The exis
 
 - **FR-001**: The addon configuration schema MUST include optional fields for Omada controller connection: controller URL, username, password, site name, controller ID, and SSL verification toggle.
 - **FR-002**: The application settings model MUST include corresponding fields for all Omada configuration options with sensible defaults (empty/unset for connection details, enabled for SSL verification).
-- **FR-003**: The s6 service run scripts MUST read Omada configuration values from the addon options and export them as prefixed environment variables for the application to consume.
-- **FR-004**: The application MUST support configuring the Omada connection through both addon options (highest priority) and environment variables (for development/testing).
+- **FR-003**: The s6 service run scripts MUST read Omada configuration values from the addon options and export them as `CP_`-prefixed environment variables for the application to consume.
+- **FR-004**: The application MUST support configuring the Omada connection through both addon options and environment variables, with addon options taking precedence over environment variables when both are present; raw environment variables exist primarily for development/testing.
 - **FR-005**: The application MUST never log the Omada password value in any log level or output.
+
+The Omada configuration mapping for FR-003/FR-004 is:
+
+| Addon option key | Exported env var | `AppSettings` field |
+| --- | --- | --- |
+| `omada_controller_url` | `CP_OMADA_CONTROLLER_URL` | `omada_controller_url` |
+| `omada_username` | `CP_OMADA_USERNAME` | `omada_username` |
+| `omada_password` | `CP_OMADA_PASSWORD` | `omada_password` |
+| `omada_site_name` | `CP_OMADA_SITE_NAME` | `omada_site_name` |
+| `omada_controller_id` | `CP_OMADA_CONTROLLER_ID` | `omada_controller_id` |
+| `omada_verify_ssl` | `CP_OMADA_VERIFY_SSL` | `omada_verify_ssl` |
+
+Effective precedence order: addon option value → corresponding `CP_` environment variable → application default defined by `AppSettings`.
 
 #### Application Lifecycle
 
