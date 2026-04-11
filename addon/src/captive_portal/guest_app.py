@@ -93,15 +93,48 @@ def _make_guest_lifespan(
 
         # Configure Omada controller integration
         if settings.omada_configured:
-            app.state.omada_config = {
-                "base_url": settings.omada_controller_url,
-                "controller_id": settings.omada_controller_id,
-                "username": settings.omada_username,
-                "password": settings.omada_password,
-                "verify_ssl": settings.omada_verify_ssl,
-                "site_id": settings.omada_site_name,
-            }
-            logger.info("Omada controller configured for %s", settings.omada_controller_url)
+            controller_id = settings.omada_controller_id.strip()
+            if not controller_id:
+                from captive_portal.controllers.tp_omada.base_client import (
+                    OmadaClientError,
+                    discover_controller_id,
+                )
+
+                try:
+                    controller_id = await discover_controller_id(
+                        base_url=settings.omada_controller_url,
+                        verify_ssl=settings.omada_verify_ssl,
+                    )
+                    logger.info(
+                        "Auto-discovered Omada controller ID: %s",
+                        controller_id,
+                    )
+                except OmadaClientError:
+                    logger.error(
+                        "Failed to auto-discover Omada controller ID "
+                        "from %s — set omada_controller_id explicitly "
+                        "or check connectivity",
+                        settings.omada_controller_url,
+                    )
+                    app.state.omada_config = None
+                    controller_id = ""
+
+            if controller_id:
+                app.state.omada_config = {
+                    "base_url": settings.omada_controller_url,
+                    "controller_id": controller_id,
+                    "username": settings.omada_username,
+                    "password": settings.omada_password,
+                    "verify_ssl": settings.omada_verify_ssl,
+                    "site_id": settings.omada_site_name,
+                }
+                logger.info(
+                    "Omada controller configured for %s",
+                    settings.omada_controller_url,
+                )
+            else:
+                app.state.omada_config = None
+                logger.info("Omada controller not configured — controller calls will be skipped")
         else:
             app.state.omada_config = None
             logger.info("Omada controller not configured — controller calls will be skipped")

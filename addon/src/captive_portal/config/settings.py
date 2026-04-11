@@ -324,13 +324,13 @@ class AppSettings(BaseModel):
         """True only when all required Omada settings are present.
 
         Returns:
-            True when ``omada_controller_url``,
-            ``omada_controller_id``, ``omada_username``, and
+            True when ``omada_controller_url``, ``omada_username``, and
             ``omada_password`` are all non-empty stripped strings.
+            ``omada_controller_id`` is optional and will be
+            auto-discovered if not provided.
         """
         return bool(
             self.omada_controller_url.strip()
-            and self.omada_controller_id.strip()
             and self.omada_username.strip()
             and self.omada_password.strip()
         )
@@ -454,7 +454,10 @@ class AppSettings(BaseModel):
         log.info("  omada_username = %s", self.omada_username or "(not set)")
         log.info("  omada_password = %s", "(set)" if self.omada_password else "(not set)")
         log.info("  omada_site_name = %s", self.omada_site_name)
-        log.info("  omada_controller_id = %s", self.omada_controller_id or "(not set)")
+        log.info(
+            "  omada_controller_id = %s",
+            self.omada_controller_id or "(will auto-discover)",
+        )
         log.info("  omada_verify_ssl = %s", self.omada_verify_ssl)
 
     def validate_db_path(self) -> None:

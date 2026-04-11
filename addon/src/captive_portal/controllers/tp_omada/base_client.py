@@ -3,10 +3,13 @@
 """TP-Omada HTTP client with authentication and retry logic."""
 
 import asyncio
+import logging
 from typing import Any, Optional
 from urllib.parse import urljoin
 
 import httpx
+
+logger = logging.getLogger("captive_portal.controllers.tp_omada")
 
 
 class OmadaClientError(Exception):
@@ -216,3 +219,41 @@ class OmadaClient:
 
         # Should not reach here, but satisfy type checker
         raise OmadaRetryExhaustedError(f"Exhausted {max_retries} attempts")
+
+
+async def discover_controller_id(
+    base_url: str,
+    verify_ssl: bool = True,
+    timeout: float = 10.0,
+) -> str:
+    """Discover the Omada controller ID via the unauthenticated /api/info endpoint.
+
+    Args:
+        base_url: Controller base URL (e.g., https://controller:443)
+        verify_ssl: Whether to verify SSL certificates
+        timeout: HTTP request timeout in seconds
+
+    Returns:
+        The controller ID (omadacId)
+
+    Raises:
+        OmadaClientError: If discovery fails
+    """
+    url = urljoin(base_url.rstrip("/") + "/", "api/info")
+    async with httpx.AsyncClient(timeout=timeout, verify=verify_ssl) as client:
+        try:
+            response = await client.get(url)
+            response.raise_for_status()
+            data: dict[str, Any] = response.json()
+            if data.get("errorCode") != 0:
+                raise OmadaClientError(
+                    f"Controller info request failed: {data.get('msg', 'Unknown error')}"
+                )
+            omadac_id: str | None = data.get("result", {}).get("omadacId")
+            if not omadac_id:
+                raise OmadaClientError("omadacId not found in /api/info response")
+            return omadac_id
+        except httpx.HTTPStatusError as e:
+            raise OmadaClientError(f"HTTP {e.response.status_code} from /api/info: {e}") from e
+        except httpx.RequestError as e:
+            raise OmadaClientError(f"Connection error fetching /api/info: {e}") from e
