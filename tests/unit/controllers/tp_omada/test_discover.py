@@ -3,8 +3,8 @@
 """Tests for Omada controller ID auto-discovery.
 
 Validates ``discover_controller_id()`` against success, error-code,
-missing-field, HTTP-error, and connection-error scenarios using
-``httpx.MockTransport``.
+missing-field, HTTP-error, connection-error, and invalid-JSON scenarios
+by patching ``httpx.AsyncClient`` with async mocks.
 """
 
 from __future__ import annotations
