@@ -118,7 +118,7 @@ async with client:   (enters __aenter__)
     ↓
     client.post_with_retry(endpoint, payload)
     ↓ Uses active httpx client with CSRF header
-    ↓ Retries with exponential backoff [1s, 2s, 4s, 8s]
+    ↓ Retries with exponential backoff [1s, 2s, 4s]
     ↓
 (exits __aexit__)
     ↓ Closes httpx.AsyncClient
@@ -131,9 +131,8 @@ async with client:   (enters __aenter__)
 | 1 → 2 | 1,000 ms |
 | 2 → 3 | 2,000 ms |
 | 3 → 4 | 4,000 ms |
-| 4 → fail | 8,000 ms |
 
-Maximum total wait: 15 seconds (excludes request time).
+Maximum total wait: 7 seconds (excludes request time).
 
 ---
 
