@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Content Quality
 
-- [x] No implementation details in user stories or requirements (technical context is limited to Assumptions section)
+- [x] No hidden implementation details; explicitly required constraints are documented
 - [x] Focused on user value and business needs
 - [x] Written with user stories accessible to non-technical stakeholders
 - [x] All mandatory sections completed
@@ -30,7 +30,7 @@ SPDX-License-Identifier: Apache-2.0
 - [x] All functional requirements have clear acceptance criteria
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria
-- [x] No implementation details leak into specification
+- [x] No hidden implementation details; explicitly required constraints are documented
 
 ## Notes
 

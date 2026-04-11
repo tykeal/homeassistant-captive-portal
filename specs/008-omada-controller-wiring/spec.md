@@ -80,7 +80,7 @@ A developer working on the captive portal runs the contract test suite. The exis
 
 ### Edge Cases
 
-- What happens when the Omada controller is configured but unreachable at startup? The application should start anyway and log a warning; authorization attempts should fail gracefully with user-facing error messages.
+- What happens when the Omada controller is configured but unreachable? The application should start normally (no startup health check). When a guest authorization or admin revocation is attempted, the operation should fail gracefully with a user-facing error message and an audit log entry.
 - What happens when the controller session expires mid-operation? The existing client's retry logic with re-authentication should handle this transparently.
 - What happens when a guest's MAC address cannot be extracted from request headers? The authorization flow should reject the request before attempting any controller call (existing behavior).
 - What happens when the admin revokes a grant that was created before the Omada integration was wired up (i.e., the grant has no controller grant ID or MAC)? The revocation should update the database only and skip the controller call.
@@ -104,7 +104,7 @@ A developer working on the captive portal runs the contract test suite. The exis
 - **FR-006**: Both the admin application (port 8080) and guest application (port 8099) MUST initialize a controller client and adapter during startup when Omada configuration is present.
 - **FR-007**: Both applications MUST cleanly close the controller client connection during shutdown.
 - **FR-008**: When Omada configuration is absent (no controller URL), both applications MUST start normally without initializing any controller components and without producing errors.
-- **FR-009**: When Omada configuration is present but the controller is unreachable at startup, the application MUST still start and log a warning rather than crashing.
+- **FR-009**: When Omada configuration is present, the application MUST still start without performing a controller login or reachability check at startup; if the controller is unreachable, the resulting warning/error MUST be handled when the first authorize or revoke operation is attempted rather than during startup.
 
 #### Guest Authorization Flow
 
