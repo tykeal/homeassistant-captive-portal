@@ -80,52 +80,15 @@ def _make_lifespan(
         logger.info("HAClient initialized for %s", settings.ha_base_url)
 
         # Configure Omada controller integration
-        if settings.omada_configured:
-            controller_id = settings.omada_controller_id.strip()
-            if not controller_id:
-                from captive_portal.controllers.tp_omada.base_client import (
-                    OmadaClientError,
-                    discover_controller_id,
-                )
+        from captive_portal.config.omada_config import build_omada_config
 
-                try:
-                    controller_id = await discover_controller_id(
-                        base_url=settings.omada_controller_url,
-                        verify_ssl=settings.omada_verify_ssl,
-                    )
-                    logger.info(
-                        "Auto-discovered Omada controller ID: %s",
-                        controller_id,
-                    )
-                except OmadaClientError as exc:
-                    logger.error(
-                        "Failed to auto-discover Omada controller ID "
-                        "from %s — set omada_controller_id explicitly "
-                        "or check connectivity: %s",
-                        settings.omada_controller_url,
-                        exc,
-                    )
-                    app.state.omada_config = None
-                    controller_id = ""
-
-            if controller_id:
-                app.state.omada_config = {
-                    "base_url": settings.omada_controller_url,
-                    "controller_id": controller_id,
-                    "username": settings.omada_username,
-                    "password": settings.omada_password,
-                    "verify_ssl": settings.omada_verify_ssl,
-                    "site_id": settings.omada_site_name,
-                }
-                logger.info(
-                    "Omada controller configured for %s",
-                    settings.omada_controller_url,
-                )
-            else:
-                app.state.omada_config = None
-                logger.info("Omada controller not configured — controller calls will be skipped")
+        app.state.omada_config = await build_omada_config(settings, logger)
+        if app.state.omada_config:
+            logger.info(
+                "Omada controller configured for %s",
+                settings.omada_controller_url,
+            )
         else:
-            app.state.omada_config = None
             logger.info("Omada controller not configured — controller calls will be skipped")
 
         yield

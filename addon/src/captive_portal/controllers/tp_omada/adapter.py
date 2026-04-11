@@ -142,8 +142,8 @@ class OmadaAdapter:
                 - remaining_seconds: Optional remaining time (if available)
 
         Note:
-            This uses the optional /extportal/session endpoint if available.
-            May not be supported by all Omada versions.
+            This uses the ``/{controller_id}/api/v2/hotspot/extPortal/session``
+            endpoint.  May not be supported by all Omada versions.
         """
         payload = {"clientMac": mac, "site": self.site_id}
 
