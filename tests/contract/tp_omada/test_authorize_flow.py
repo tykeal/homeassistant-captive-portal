@@ -2,49 +2,150 @@
 # SPDX-License-Identifier: Apache-2.0
 """Contract test for TP-Omada authorize flow (fixture-driven)."""
 
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any
+from unittest.mock import AsyncMock
+
 import pytest
 
+from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
+from captive_portal.controllers.tp_omada.base_client import (
+    OmadaClient,
+    OmadaClientError,
+)
+
 
 @pytest.mark.contract
-def test_omada_authorize_request_structure() -> None:
+@pytest.mark.asyncio
+async def test_omada_authorize_request_structure() -> None:
     """Authorize request must include device MAC, expires_at, site_id."""
-    # GIVEN: TP-Omada controller client
-    # WHEN: calling authorize with required params
-    # THEN: request payload matches expected schema
-    pytest.skip("Controller adapter not implemented yet")
+    client = OmadaClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="test-ctrl",
+        username="user",
+        password="pass",
+        verify_ssl=False,
+    )
+    adapter = OmadaAdapter(client=client, site_id="TestSite")
+
+    # Mock the client's post_with_retry to capture payload
+    captured_payloads: list[dict[str, Any]] = []
+
+    async def mock_post(endpoint: str, payload: dict[str, Any], **kwargs: object) -> dict[str, Any]:
+        """Capture and validate payload."""
+        captured_payloads.append(payload)
+        return {"errorCode": 0, "result": {"clientId": "test-id", "authorized": True}}
+
+    client.post_with_retry = AsyncMock(side_effect=mock_post)  # type: ignore[method-assign]
+
+    expires = datetime(2026, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+    await adapter.authorize(mac="AA:BB:CC:DD:EE:FF", expires_at=expires)
+
+    assert len(captured_payloads) == 1
+    payload = captured_payloads[0]
+    assert payload["clientMac"] == "AA:BB:CC:DD:EE:FF"
+    assert payload["site"] == "TestSite"
+    assert "time" in payload
+    assert payload["authType"] == 4
+    assert "upKbps" in payload
+    assert "downKbps" in payload
 
 
 @pytest.mark.contract
-def test_omada_authorize_response_success() -> None:
+@pytest.mark.asyncio
+async def test_omada_authorize_response_success() -> None:
     """Successful authorize returns grant_id and status=active."""
-    # GIVEN: mocked Omada API response (fixture)
-    # WHEN: parsing authorize response
-    # THEN: grant_id extracted, status confirmed
-    pytest.skip("Controller adapter not implemented yet")
+    client = OmadaClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="test-ctrl",
+        username="user",
+        password="pass",
+    )
+    adapter = OmadaAdapter(client=client, site_id="Default")
+
+    client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
+        return_value={"errorCode": 0, "result": {"clientId": "grant-xyz", "authorized": True}}
+    )
+
+    result = await adapter.authorize(
+        mac="AA:BB:CC:DD:EE:FF",
+        expires_at=datetime(2026, 12, 31, tzinfo=timezone.utc),
+    )
+
+    assert result["grant_id"] == "grant-xyz"
+    assert result["status"] == "active"
+    assert result["mac"] == "AA:BB:CC:DD:EE:FF"
 
 
 @pytest.mark.contract
-def test_omada_authorize_response_error() -> None:
-    """Failed authorize returns error code and message."""
-    # GIVEN: mocked Omada error response (e.g., invalid MAC)
-    # WHEN: parsing response
-    # THEN: error code extracted, exception raised
-    pytest.skip("Controller adapter not implemented yet")
+@pytest.mark.asyncio
+async def test_omada_authorize_response_error() -> None:
+    """Failed authorize with 4xx raises OmadaClientError."""
+    client = OmadaClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="test-ctrl",
+        username="user",
+        password="pass",
+    )
+    adapter = OmadaAdapter(client=client, site_id="Default")
+
+    client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
+        side_effect=OmadaClientError("Client error 400: Invalid MAC", status_code=400)
+    )
+
+    with pytest.raises(OmadaClientError):
+        await adapter.authorize(
+            mac="INVALID",
+            expires_at=datetime(2026, 12, 31, tzinfo=timezone.utc),
+        )
 
 
 @pytest.mark.contract
-def test_omada_authorize_retry_on_timeout() -> None:
+@pytest.mark.asyncio
+async def test_omada_authorize_retry_on_timeout() -> None:
     """Authorize should retry with exponential backoff on timeout."""
-    # GIVEN: Omada API timing out first 2 attempts
-    # WHEN: calling authorize
-    # THEN: retries with 1s, 2s delays; succeeds on 3rd
-    pytest.skip("Controller adapter not implemented yet")
+    client = OmadaClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="test-ctrl",
+        username="user",
+        password="pass",
+    )
+    adapter = OmadaAdapter(client=client, site_id="Default")
+
+    # Mock post_with_retry to simulate successful post after retry
+    # (retry logic is in base_client, tested in adapter_error_retry)
+    client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
+        return_value={"errorCode": 0, "result": {"clientId": "retry-ok", "authorized": True}}
+    )
+
+    result = await adapter.authorize(
+        mac="AA:BB:CC:DD:EE:FF",
+        expires_at=datetime(2026, 12, 31, tzinfo=timezone.utc),
+    )
+    assert result["grant_id"] == "retry-ok"
 
 
 @pytest.mark.contract
-def test_omada_authorize_idempotent() -> None:
+@pytest.mark.asyncio
+async def test_omada_authorize_idempotent() -> None:
     """Repeated authorize calls with same MAC should be idempotent."""
-    # GIVEN: existing active grant for MAC
-    # WHEN: calling authorize again
-    # THEN: returns existing grant_id or updates expiry
-    pytest.skip("Controller adapter not implemented yet")
+    client = OmadaClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="test-ctrl",
+        username="user",
+        password="pass",
+    )
+    adapter = OmadaAdapter(client=client, site_id="Default")
+
+    client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
+        return_value={"errorCode": 0, "result": {"clientId": "grant-1", "authorized": True}}
+    )
+
+    expires = datetime(2026, 12, 31, tzinfo=timezone.utc)
+    result1 = await adapter.authorize(mac="AA:BB:CC:DD:EE:FF", expires_at=expires)
+    result2 = await adapter.authorize(mac="AA:BB:CC:DD:EE:FF", expires_at=expires)
+
+    assert result1["grant_id"] == result2["grant_id"]
+    assert client.post_with_retry.call_count == 2
