@@ -362,7 +362,7 @@ omada_failover_timeout_seconds: 30
 3. **Retry Queue Backlog**
    - API retries accumulating
    - Check Captive Portal metrics: `controller_latency_seconds`
-   - Solution: Increase `omada_timeout_seconds` or retry limits
+   - Solution: Increase retry limits or check network latency
 
 4. **Controller Overload**
    - High client count or CPU usage
@@ -387,7 +387,7 @@ omada_failover_timeout_seconds: 30
 
 3. **Hostname Mismatch**
    - Certificate issued for `omada.local` but using IP `192.168.1.10`
-   - Solution: Use hostname in `omada_url` that matches certificate CN/SAN
+   - Solution: Use hostname in `omada_controller_url` that matches certificate CN/SAN
 
 4. **Intermediate CA Missing**
    - Install full certificate chain on controller
