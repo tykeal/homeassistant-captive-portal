@@ -97,7 +97,7 @@ tests/
 | Principle | Status | Design Impact |
 |-----------|--------|---------------|
 | I. Code Quality | ✅ PASS | Data model uses existing Pydantic/SQLModel patterns. No new complex functions needed — wiring code is straightforward if/else branching. |
-| II. TDD | ✅ PASS | 16 contract test stubs exist. Settings tests will be added. Lifespan tests already have patterns in `test_addon_startup_wiring.py`. |
+| II. TDD | ✅ PASS | 16 contract test stubs exist. Settings tests will be added. Lifespan tests will follow existing FastAPI app startup/shutdown test patterns already used in the test suite. |
 | III. UX Consistency | ✅ PASS | Controller failure surfaces as actionable guest error message. Admin sees partial-failure notification on revoke. Graceful degradation when unconfigured. |
 | IV. Performance | ✅ PASS | No new blocking calls. Adapter uses async httpx. Lazy init prevents startup delay. Retry backoff is bounded at 7s max (3 sleeps: 1s + 2s + 4s). |
 | V. Atomic Commits | ✅ PASS | 9 gaps map cleanly to atomic commits: config, settings, s6, admin-lifespan, guest-lifespan, auth-flow, revoke-flow, tests, docs. |
