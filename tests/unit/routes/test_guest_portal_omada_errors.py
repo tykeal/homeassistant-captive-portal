@@ -110,7 +110,7 @@ class TestGuestAuthorizationErrorHandling:
             adapter=mock_adapter, grant=grant, mac_address="AA:BB:CC:DD:EE:FF"
         )
 
-        # Grant should be FAILED; the raw exception should not leak
+        # Grant should be FAILED; error_detail is diagnostic text for audit/logging
         assert result.status == GrantStatus.FAILED
         assert error_detail is not None
         assert "OmadaClientError" in error_detail

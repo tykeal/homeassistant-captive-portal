@@ -16,9 +16,8 @@ from captive_portal.config.settings import AppSettings
 class TestPasswordMasking:
     """Tests for password masking in log output."""
 
-    def test_password_never_in_log_output(self, caplog: object) -> None:
+    def test_password_never_in_log_output(self) -> None:
         """Password value should never appear in log output."""
-        assert hasattr(caplog, "records")
 
         test_password = "s3cret-p@ss!"
         settings = AppSettings(

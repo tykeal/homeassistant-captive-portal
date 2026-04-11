@@ -187,7 +187,8 @@ async def _authorize_with_controller(
 
     Returns:
         A tuple of (grant, error_detail) where error_detail is None
-        on success or a sanitized error string on failure.
+        on success or a diagnostic text string for audit/logging
+        on failure.  This value must NOT be surfaced to end users.
     """
     if adapter is None:
         grant.status = GrantStatus.ACTIVE

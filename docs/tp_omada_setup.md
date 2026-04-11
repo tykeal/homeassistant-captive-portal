@@ -180,6 +180,7 @@ docker run -d \
   -p 8099:8099 \
   -v ./data:/data \
   -e CP_OMADA_CONTROLLER_URL=https://192.168.1.10:8043 \
+  -e CP_OMADA_CONTROLLER_ID=your_controller_id_hex \
   -e CP_OMADA_USERNAME=captive_portal_api \
   -e CP_OMADA_PASSWORD=kD8#nQ2@mP5!xR7$ \
   -e CP_OMADA_SITE_NAME=Default \

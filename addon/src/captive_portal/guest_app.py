@@ -101,7 +101,7 @@ def _make_guest_lifespan(
                 "verify_ssl": settings.omada_verify_ssl,
                 "site_id": settings.omada_site_name,
             }
-            logger.info("OmadaClient configured for %s", settings.omada_controller_url)
+            logger.info("Omada controller configured for %s", settings.omada_controller_url)
         else:
             app.state.omada_config = None
             logger.info("Omada controller not configured — controller calls will be skipped")
