@@ -91,6 +91,21 @@ def _make_guest_lifespan(
             dispose_engine()
             raise
 
+        # Configure Omada controller integration
+        if settings.omada_configured:
+            app.state.omada_config = {
+                "base_url": settings.omada_controller_url,
+                "controller_id": settings.omada_controller_id,
+                "username": settings.omada_username,
+                "password": settings.omada_password,
+                "verify_ssl": settings.omada_verify_ssl,
+                "site_id": settings.omada_site_name,
+            }
+            logger.info("OmadaClient configured for %s", settings.omada_controller_url)
+        else:
+            app.state.omada_config = None
+            logger.info("Omada controller not configured — controller calls will be skipped")
+
         yield
 
         # --- Shutdown ---

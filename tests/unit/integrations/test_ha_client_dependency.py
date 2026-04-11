@@ -18,6 +18,7 @@ async def test_ha_client_created_during_lifespan_startup() -> None:
     settings.ha_base_url = "http://supervisor/core/api"
     settings.ha_token = "test_token_123"
     settings.db_path = "/fake/db.sqlite"
+    settings.omada_configured = False
     settings.to_log_config.return_value = {"level": "INFO"}
     settings.validate_db_path.return_value = None
     settings.log_effective.return_value = None
@@ -53,6 +54,7 @@ async def test_ha_client_closed_during_lifespan_shutdown() -> None:
     settings.ha_base_url = "http://supervisor/core/api"
     settings.ha_token = "test_token_123"
     settings.db_path = "/fake/db.sqlite"
+    settings.omada_configured = False
     settings.to_log_config.return_value = {"level": "INFO"}
     settings.validate_db_path.return_value = None
     settings.log_effective.return_value = None
