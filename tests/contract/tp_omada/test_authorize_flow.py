@@ -32,9 +32,11 @@ async def test_omada_authorize_request_structure() -> None:
 
     # Mock the client's post_with_retry to capture payload
     captured_payloads: list[dict[str, Any]] = []
+    captured_endpoints: list[str] = []
 
     async def mock_post(endpoint: str, payload: dict[str, Any], **kwargs: object) -> dict[str, Any]:
         """Capture and validate payload."""
+        captured_endpoints.append(endpoint)
         captured_payloads.append(payload)
         return {"errorCode": 0, "result": {"clientId": "test-id", "authorized": True}}
 
@@ -51,6 +53,9 @@ async def test_omada_authorize_request_structure() -> None:
     assert payload["authType"] == 4
     assert "upKbps" in payload
     assert "downKbps" in payload
+
+    # Verify correct API endpoint path
+    assert captured_endpoints[0] == "/test-ctrl/api/v2/hotspot/extPortal/auth"
 
 
 @pytest.mark.contract

@@ -300,3 +300,13 @@ class TestValidateMacAddress:
         for input_mac, expected in examples:
             result = validate_mac_address(input_mac)
             assert result == expected, f"Failed for {input_mac}"
+
+    def test_omada_controller_dash_separated_mac(self) -> None:
+        """Test Omada controller MAC format (e.g., 1E-4A-E7-40-5C-D8)."""
+        mac = validate_mac_address("1E-4A-E7-40-5C-D8")
+        assert mac == "1E:4A:E7:40:5C:D8"
+
+    def test_omada_gateway_mac(self) -> None:
+        """Test Omada gateway MAC format (e.g., EC-75-0C-2A-AC-BE)."""
+        mac = validate_mac_address("EC-75-0C-2A-AC-BE")
+        assert mac == "EC:75:0C:2A:AC:BE"
