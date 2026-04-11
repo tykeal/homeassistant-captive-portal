@@ -91,8 +91,8 @@ async def test_omada_revoke_response_not_found() -> None:
 
 @pytest.mark.contract
 @pytest.mark.asyncio
-async def test_omada_revoke_retry_on_timeout() -> None:
-    """Revoke should retry and succeed after transient failure."""
+async def test_omada_revoke_succeeds_via_post_with_retry() -> None:
+    """Revoke routes through post_with_retry for built-in retry support."""
     client = OmadaClient(
         base_url="https://ctrl.test:8043",
         controller_id="test-ctrl",
@@ -101,7 +101,7 @@ async def test_omada_revoke_retry_on_timeout() -> None:
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
 
-    # Simulate successful revoke after retry
+    # Simulate successful revoke via retry-capable path
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
         return_value={"errorCode": 0, "result": {}}
     )

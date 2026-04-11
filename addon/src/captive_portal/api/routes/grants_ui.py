@@ -47,10 +47,12 @@ def _recompute_status(grant: AccessGrant, now: datetime) -> str:
         now: Current UTC time for comparison.
 
     Returns:
-        Computed status string: pending, active, expired, or revoked.
+        Computed status string: pending, active, expired, revoked, or failed.
     """
     if grant.status == GrantStatus.REVOKED:
         return "revoked"
+    if grant.status == GrantStatus.FAILED:
+        return "failed"
     # Ensure timezone-aware comparison (SQLite may deserialize as naive)
     start = grant.start_utc
     end = grant.end_utc

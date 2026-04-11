@@ -161,7 +161,7 @@ Edit add-on config in **Settings** → **Add-ons** → **Captive Portal** → **
 # TP-Omada Controller Settings
 omada_controller_url: https://192.168.1.10:8043  # Controller HTTPS URL
 omada_username: captive_portal_api    # Hotspot operator username (Step 3)
-omada_password: kD8#nQ2@mP5!xR7$      # Hotspot operator password
+omada_password: "kD8#nQ2@mP5!xR7$"    # Hotspot operator password
 omada_site_name: Default              # Site name (case-sensitive, usually "Default")
 omada_controller_id: "a1b2c3d4e5f6"   # Required — hex string from controller URL
 
@@ -182,7 +182,7 @@ docker run -d \
   -e CP_OMADA_CONTROLLER_URL=https://192.168.1.10:8043 \
   -e CP_OMADA_CONTROLLER_ID=your_controller_id_hex \
   -e CP_OMADA_USERNAME=captive_portal_api \
-  -e CP_OMADA_PASSWORD=kD8#nQ2@mP5!xR7$ \
+  -e CP_OMADA_PASSWORD='kD8#nQ2@mP5!xR7$' \
   -e CP_OMADA_SITE_NAME=Default \
   -e CP_OMADA_VERIFY_SSL=true \
   ghcr.io/tykeal/homeassistant-captive-portal:latest

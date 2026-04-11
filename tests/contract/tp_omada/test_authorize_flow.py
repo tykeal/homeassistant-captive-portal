@@ -104,8 +104,8 @@ async def test_omada_authorize_response_error() -> None:
 
 @pytest.mark.contract
 @pytest.mark.asyncio
-async def test_omada_authorize_retry_on_timeout() -> None:
-    """Authorize should retry with exponential backoff on timeout."""
+async def test_omada_authorize_succeeds_via_post_with_retry() -> None:
+    """Authorize routes through post_with_retry for built-in retry support."""
     client = OmadaClient(
         base_url="https://ctrl.test:8043",
         controller_id="test-ctrl",
@@ -114,8 +114,7 @@ async def test_omada_authorize_retry_on_timeout() -> None:
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
 
-    # Mock post_with_retry to simulate successful post after retry
-    # (retry logic is in base_client, tested in adapter_error_retry)
+    # Adapter delegates to post_with_retry which handles retries
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
         return_value={"errorCode": 0, "result": {"clientId": "retry-ok", "authorized": True}}
     )
