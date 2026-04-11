@@ -100,7 +100,7 @@ tests/
 | II. TDD | ✅ PASS | 16 contract test stubs exist. Settings tests will be added. Lifespan tests already have patterns in `test_addon_startup_wiring.py`. |
 | III. UX Consistency | ✅ PASS | Controller failure surfaces as actionable guest error message. Admin sees partial-failure notification on revoke. Graceful degradation when unconfigured. |
 | IV. Performance | ✅ PASS | No new blocking calls. Adapter uses async httpx. Lazy init prevents startup delay. Retry backoff is bounded at 15s max. |
-| V. Atomic Commits | ✅ PASS | 8 gaps map cleanly to atomic commits: config, settings, s6, admin-lifespan, guest-lifespan, auth-flow, revoke-flow, tests, docs. |
+| V. Atomic Commits | ✅ PASS | 9 gaps map cleanly to atomic commits: config, settings, s6, admin-lifespan, guest-lifespan, auth-flow, revoke-flow, tests, docs. |
 | VI. Phased Development | ✅ PASS | Phase boundaries at: config/settings → lifecycle → flows → tests/docs. Each phase produces independently testable output. |
 | Security | ✅ PASS | Password field documented as never-logged in data-model.md. Contract documents adapter exceptions — no credential leakage in error messages. |
 
