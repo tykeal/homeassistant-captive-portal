@@ -54,6 +54,8 @@ async def build_omada_config(
 
     controller_id = settings.omada_controller_id.strip()
 
+    base_url = settings.omada_controller_url.strip()
+
     if not controller_id:
         from captive_portal.controllers.tp_omada.base_client import (
             OmadaClientError,
@@ -62,7 +64,7 @@ async def build_omada_config(
 
         try:
             controller_id = await discover_controller_id(
-                base_url=settings.omada_controller_url,
+                base_url=base_url,
                 verify_ssl=settings.omada_verify_ssl,
             )
             logger.info(
@@ -74,7 +76,7 @@ async def build_omada_config(
                 "Failed to auto-discover Omada controller ID "
                 "from %s — set omada_controller_id explicitly "
                 "or check connectivity: %s",
-                settings.omada_controller_url,
+                base_url,
                 exc,
             )
             return None
@@ -89,7 +91,7 @@ async def build_omada_config(
         return None
 
     return {
-        "base_url": settings.omada_controller_url.strip(),
+        "base_url": base_url,
         "controller_id": controller_id,
         "username": settings.omada_username.strip(),
         "password": settings.omada_password,
