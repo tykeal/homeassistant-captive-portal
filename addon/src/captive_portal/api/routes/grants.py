@@ -111,11 +111,9 @@ class GrantExtendResponse(BaseModel):
     status: GrantStatus
 
 
-class RevokeGrantResponse(BaseModel):
+class RevokeGrantResponse(GrantListResponse):
     """Response model for grant revocation."""
 
-    id: UUID
-    status: GrantStatus
     controller_error: str | None = None
 
 
@@ -313,7 +311,7 @@ async def revoke_grant(
         omada_adapter: Omada controller adapter (or None)
 
     Returns:
-        Revoke response with grant status and optional controller error
+        Full grant with optional controller error
 
     Raises:
         403: Invalid CSRF token
@@ -344,11 +342,9 @@ async def revoke_grant(
             metadata=audit_metadata if audit_metadata else None,
         )
 
-        return RevokeGrantResponse(
-            id=grant.id,
-            status=grant.status,
-            controller_error=revocation_result.controller_error,
-        )
+        resp = RevokeGrantResponse.model_validate(grant)
+        resp.controller_error = revocation_result.controller_error
+        return resp
 
     except GrantNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
