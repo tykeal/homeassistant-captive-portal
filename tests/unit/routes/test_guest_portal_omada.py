@@ -49,7 +49,7 @@ class TestGuestAuthorizationControllerWiring:
         # Simulate the wiring logic
         from captive_portal.api.routes.guest_portal import _authorize_with_controller
 
-        result = await _authorize_with_controller(
+        result, error_detail = await _authorize_with_controller(
             adapter=mock_adapter, grant=grant, mac_address="AA:BB:CC:DD:EE:FF"
         )
 
@@ -57,6 +57,7 @@ class TestGuestAuthorizationControllerWiring:
         mock_adapter.authorize.assert_awaited_once()
         assert result.status == GrantStatus.ACTIVE
         assert result.controller_grant_id == "ctrl-grant-1"
+        assert error_detail is None
 
     @pytest.mark.asyncio
     async def test_grant_active_without_controller(self) -> None:
@@ -71,12 +72,13 @@ class TestGuestAuthorizationControllerWiring:
 
         from captive_portal.api.routes.guest_portal import _authorize_with_controller
 
-        result = await _authorize_with_controller(
+        result, error_detail = await _authorize_with_controller(
             adapter=None, grant=grant, mac_address="AA:BB:CC:DD:EE:FF"
         )
 
         assert result.status == GrantStatus.ACTIVE
         assert result.controller_grant_id is None
+        assert error_detail is None
 
     @pytest.mark.asyncio
     async def test_per_operation_context_manager_used(self) -> None:
@@ -105,7 +107,7 @@ class TestGuestAuthorizationControllerWiring:
 
         from captive_portal.api.routes.guest_portal import _authorize_with_controller
 
-        await _authorize_with_controller(
+        _grant, _error_detail = await _authorize_with_controller(
             adapter=mock_adapter, grant=grant, mac_address="AA:BB:CC:DD:EE:FF"
         )
 

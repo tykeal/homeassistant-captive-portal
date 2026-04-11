@@ -46,11 +46,12 @@ class TestGuestAuthorizationErrorHandling:
 
         from captive_portal.api.routes.guest_portal import _authorize_with_controller
 
-        result = await _authorize_with_controller(
+        result, error_detail = await _authorize_with_controller(
             adapter=mock_adapter, grant=grant, mac_address="AA:BB:CC:DD:EE:FF"
         )
 
         assert result.status == GrantStatus.FAILED
+        assert error_detail is not None
 
     @pytest.mark.asyncio
     async def test_retry_exhausted_transitions_to_failed(self) -> None:
@@ -75,11 +76,12 @@ class TestGuestAuthorizationErrorHandling:
 
         from captive_portal.api.routes.guest_portal import _authorize_with_controller
 
-        result = await _authorize_with_controller(
+        result, error_detail = await _authorize_with_controller(
             adapter=mock_adapter, grant=grant, mac_address="AA:BB:CC:DD:EE:FF"
         )
 
         assert result.status == GrantStatus.FAILED
+        assert error_detail is not None
 
     @pytest.mark.asyncio
     async def test_error_returns_error_message(self) -> None:
@@ -104,9 +106,11 @@ class TestGuestAuthorizationErrorHandling:
 
         from captive_portal.api.routes.guest_portal import _authorize_with_controller
 
-        result = await _authorize_with_controller(
+        result, error_detail = await _authorize_with_controller(
             adapter=mock_adapter, grant=grant, mac_address="AA:BB:CC:DD:EE:FF"
         )
 
         # Grant should be FAILED; the raw exception should not leak
         assert result.status == GrantStatus.FAILED
+        assert error_detail is not None
+        assert "OmadaClientError" in error_detail

@@ -159,16 +159,14 @@ Edit add-on config in **Settings** → **Add-ons** → **Captive Portal** → **
 
 ```yaml
 # TP-Omada Controller Settings
-omada_url: https://192.168.1.10:8043  # Controller HTTPS URL
+omada_controller_url: https://192.168.1.10:8043  # Controller HTTPS URL
 omada_username: captive_portal_api    # Hotspot operator username (Step 3)
 omada_password: kD8#nQ2@mP5!xR7$      # Hotspot operator password
-omada_site: Default                   # Site name (case-sensitive, usually "Default")
+omada_site_name: Default              # Site name (case-sensitive, usually "Default")
+omada_controller_id: ""               # Auto-discovered if left empty
 
 # Connection Settings (optional)
 omada_verify_ssl: true                # Set false for self-signed certs (not recommended)
-omada_timeout_seconds: 30             # API request timeout
-omada_retry_attempts: 3               # Retry failed API calls
-omada_retry_backoff_seconds: 5        # Exponential backoff base
 ```
 
 ### Standalone Container Configuration
@@ -181,11 +179,11 @@ docker run -d \
   -p 8080:8080 \
   -p 8099:8099 \
   -v ./data:/data \
-  -e OMADA_URL=https://192.168.1.10:8043 \
-  -e OMADA_USERNAME=captive_portal_api \
-  -e OMADA_PASSWORD=kD8#nQ2@mP5!xR7$ \
-  -e OMADA_SITE=Default \
-  -e OMADA_VERIFY_SSL=true \
+  -e CP_OMADA_CONTROLLER_URL=https://192.168.1.10:8043 \
+  -e CP_OMADA_USERNAME=captive_portal_api \
+  -e CP_OMADA_PASSWORD=kD8#nQ2@mP5!xR7$ \
+  -e CP_OMADA_SITE_NAME=Default \
+  -e CP_OMADA_VERIFY_SSL=true \
   ghcr.io/tykeal/homeassistant-captive-portal:latest
 ```
 
@@ -198,12 +196,12 @@ If you manage multiple properties/sites in one Omada Controller:
 **Option 1: Separate Captive Portal Instances**
 ```yaml
 # Property 1 Instance
-omada_site: Property1
-omada_url: https://controller.local:8043
+omada_site_name: Property1
+omada_controller_url: https://controller.local:8043
 
 # Property 2 Instance (separate container)
-omada_site: Property2
-omada_url: https://controller.local:8043
+omada_site_name: Property2
+omada_controller_url: https://controller.local:8043
 ```
 
 **Option 2: Site Routing** (Future Feature)

@@ -169,7 +169,7 @@ async def _authorize_with_controller(
     adapter: OmadaAdapter | None,
     grant: AccessGrant,
     mac_address: str,
-) -> AccessGrant:
+) -> tuple[AccessGrant, Optional[str]]:
     """Authorize a grant with the Omada controller if configured.
 
     When the adapter is configured, enters the client async context and
@@ -186,12 +186,14 @@ async def _authorize_with_controller(
         mac_address: Device MAC address.
 
     Returns:
-        The grant with updated status.
+        A tuple of (grant, error_detail) where error_detail is None
+        on success or a sanitized error string on failure.
     """
     if adapter is None:
         grant.status = GrantStatus.ACTIVE
-        return grant
+        return grant, None
 
+    error_detail: Optional[str] = None
     try:
         async with adapter.client:
             result = await adapter.authorize(
@@ -207,9 +209,9 @@ async def _authorize_with_controller(
             exc,
         )
         grant.status = GrantStatus.FAILED
-        grant._controller_error_detail = f"{type(exc).__name__}: {exc}"
+        error_detail = f"{type(exc).__name__}: {exc}"
 
-    return grant
+    return grant, error_detail
 
 
 @router.get("/authorize", response_class=HTMLResponse)
@@ -578,7 +580,7 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         ) from e
 
     # --- Controller authorization ---
-    grant = await _authorize_with_controller(
+    grant, error_detail = await _authorize_with_controller(
         adapter=omada_adapter,
         grant=grant,
         mac_address=mac_address,
@@ -600,7 +602,7 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
                 "mac": mac_address,
                 "user_agent": request.headers.get("User-Agent", "unknown"),
                 "error": "controller_authorization_failed",
-                "detail": getattr(grant, "_controller_error_detail", None),
+                "detail": error_detail,
             },
         )
         raise HTTPException(
