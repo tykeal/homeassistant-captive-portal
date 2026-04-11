@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Admin API routes for access grant management."""
 
+import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, cast, Any
 from uuid import UUID
@@ -10,6 +12,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session, select
 
+from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
+from captive_portal.controllers.tp_omada.base_client import (
+    OmadaClientError,
+    OmadaRetryExhaustedError,
+)
+from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.persistence.database import get_session
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
@@ -21,7 +29,57 @@ from captive_portal.services.grant_service import (
     GrantService,
 )
 
+_logger = logging.getLogger("captive_portal.grants")
+
 router = APIRouter(prefix="/api/grants", tags=["grants"])
+
+
+@dataclass
+class RevocationResult:
+    """Result of a controller revocation attempt.
+
+    Attributes:
+        controller_error: Error message if controller call failed, else None.
+    """
+
+    controller_error: str | None = None
+
+
+async def _revoke_with_controller(
+    adapter: OmadaAdapter | None,
+    grant: AccessGrant,
+) -> RevocationResult:
+    """Attempt to revoke a grant on the Omada controller.
+
+    When the adapter is configured and the grant has a MAC address,
+    enters the client async context and calls ``adapter.revoke()``.
+    The DB grant is always kept as REVOKED regardless of controller
+    outcome.  On controller failure, returns an error message for
+    the admin notification.
+
+    Args:
+        adapter: OmadaAdapter instance or None.
+        grant: The revoked grant.
+
+    Returns:
+        RevocationResult with optional controller_error.
+    """
+    if adapter is None or not grant.mac:
+        return RevocationResult()
+
+    try:
+        async with adapter.client:
+            await adapter.revoke(mac=grant.mac)
+        return RevocationResult()
+    except (OmadaClientError, OmadaRetryExhaustedError) as exc:
+        _logger.error(
+            "Controller revocation failed for MAC %s: %s",
+            grant.mac,
+            exc,
+        )
+        return RevocationResult(
+            controller_error=("Database updated, controller revocation may need manual attention."),
+        )
 
 
 class GrantListResponse(BaseModel):
@@ -91,7 +149,7 @@ async def list_grants(
     # Update status for each grant based on current time
     current_time = datetime.now(timezone.utc)
     for grant in grants:
-        if grant.status != GrantStatus.REVOKED:
+        if grant.status not in (GrantStatus.REVOKED, GrantStatus.FAILED):
             # Ensure grant timestamps are timezone-aware for comparison
             start_utc = (
                 grant.start_utc
@@ -155,7 +213,7 @@ async def get_grant(
 
     # Update status based on current time
     current_time = datetime.now(timezone.utc)
-    if grant.status != GrantStatus.REVOKED:
+    if grant.status not in (GrantStatus.REVOKED, GrantStatus.FAILED):
         # Ensure grant timestamps are timezone-aware for comparison
         start_utc = (
             grant.start_utc
@@ -241,6 +299,7 @@ async def revoke_grant(
     session: Session = Depends(get_session),
     admin_id: UUID = Depends(require_admin),
     csrf: CSRFProtection = Depends(get_csrf_protection),
+    omada_adapter: OmadaAdapter | None = Depends(get_omada_adapter),
 ) -> AccessGrant:
     """Revoke access grant (admin only).
 
@@ -250,6 +309,7 @@ async def revoke_grant(
         session: Database session
         admin_id: Authenticated admin user ID
         csrf: CSRF protection
+        omada_adapter: Omada controller adapter (or None)
 
     Returns:
         Revoked grant
@@ -268,11 +328,19 @@ async def revoke_grant(
             current_time=datetime.now(timezone.utc),
         )
 
+        # Attempt controller revocation (best-effort)
+        revocation_result = await _revoke_with_controller(adapter=omada_adapter, grant=grant)
+
+        audit_metadata: dict[str, str | None] = {}
+        if revocation_result.controller_error:
+            audit_metadata["controller_error"] = revocation_result.controller_error
+
         await audit_service.log_admin_action(
             admin_id=admin_id,
             action="revoke_grant",
             target_type="access_grant",
             target_id=str(grant_id),
+            metadata=audit_metadata if audit_metadata else None,
         )
 
         return grant

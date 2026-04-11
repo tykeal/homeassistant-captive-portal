@@ -19,6 +19,7 @@ class GrantStatus(str, Enum):
     ACTIVE = "active"
     EXPIRED = "expired"
     REVOKED = "revoked"
+    FAILED = "failed"
 
 
 class AccessGrant(SQLModel, table=True):

@@ -32,6 +32,17 @@ from captive_portal.services.voucher_service import VoucherRedemptionError, Vouc
 from captive_portal.utils.network_utils import get_client_ip, validate_mac_address
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
+import logging
+
+from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
+from captive_portal.controllers.tp_omada.base_client import (
+    OmadaClientError,
+    OmadaRetryExhaustedError,
+)
+from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
+
+_logger = logging.getLogger("captive_portal.guest")
+
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 
 router = APIRouter(prefix="/guest", tags=["guest"])
@@ -156,6 +167,52 @@ def _sanitize_error_message(message: str | None) -> str:
     return message.strip() or "An error occurred. Please try again."
 
 
+async def _authorize_with_controller(
+    adapter: OmadaAdapter | None,
+    grant: AccessGrant,
+    mac_address: str,
+) -> AccessGrant:
+    """Authorize a grant with the Omada controller if configured.
+
+    When the adapter is configured, enters the client async context and
+    calls ``adapter.authorize()`` with the guest's MAC and grant expiry.
+    On success, transitions the grant to ACTIVE and stores the controller
+    grant ID.  On failure, transitions to FAILED.
+
+    When no adapter is configured, transitions directly to ACTIVE
+    (graceful degradation).
+
+    Args:
+        adapter: OmadaAdapter instance or None if not configured.
+        grant: The access grant in PENDING status.
+        mac_address: Device MAC address.
+
+    Returns:
+        The grant with updated status.
+    """
+    if adapter is None:
+        grant.status = GrantStatus.ACTIVE
+        return grant
+
+    try:
+        async with adapter.client:
+            result = await adapter.authorize(
+                mac=mac_address,
+                expires_at=grant.end_utc,
+            )
+        grant.status = GrantStatus.ACTIVE
+        grant.controller_grant_id = result.get("grant_id")
+    except (OmadaClientError, OmadaRetryExhaustedError) as exc:
+        _logger.error(
+            "Controller authorization failed for MAC %s: %s",
+            mac_address,
+            exc,
+        )
+        grant.status = GrantStatus.FAILED
+
+    return grant
+
+
 @router.get("/authorize", response_class=HTMLResponse)
 async def show_authorize_form(
     request: Request,
@@ -236,6 +293,7 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     session: Session = Depends(get_session),
     audit_service: AuditService = Depends(get_audit_service),
     portal_config: PortalConfig = Depends(get_portal_config_dep),
+    omada_adapter: OmadaAdapter | None = Depends(get_omada_adapter),
 ) -> RedirectResponse:
     """Process guest authorization code submission.
 
@@ -519,6 +577,36 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=str(e),
         ) from e
+
+    # --- Controller authorization ---
+    grant = await _authorize_with_controller(
+        adapter=omada_adapter,
+        grant=grant,
+        mac_address=mac_address,
+    )
+    session.add(grant)
+    session.commit()
+    session.refresh(grant)
+
+    if grant.status == GrantStatus.FAILED:
+        # Log controller failure
+        await audit_service.log(
+            actor=f"guest@{client_ip}",
+            action="guest.authorize",
+            outcome="error",
+            target_type="access_grant",
+            target_id=str(grant.id),
+            meta={
+                "client_ip": client_ip,
+                "mac": mac_address,
+                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "error": "controller_authorization_failed",
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="WiFi authorization could not be completed. Please try again or contact the host.",
+        )
 
     # Clear rate limit on successful authorization
     rate_limiter.clear(client_ip)
