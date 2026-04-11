@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Summary
 
-Wire the existing, fully-implemented `OmadaClient` and `OmadaAdapter` into the captive portal application lifecycle. This feature closes 8 integration gaps: addon config schema, application settings model, s6 service scripts, app lifespan (lazy initialization), guest authorization flow, admin grant revocation flow, documentation port fixes (8080→8099), and contract tests. No new controller client logic is written — this is purely about connecting existing components to the running application.
+Wire the existing, fully-implemented `OmadaClient` and `OmadaAdapter` into the captive portal application lifecycle. This feature closes 9 integration gaps: addon config schema, application settings model, s6 service scripts, admin app lifespan, guest app lifespan, guest authorization flow, admin grant revocation flow, documentation port fixes (8080→8099), and contract tests. No new controller client logic is written — this is purely about connecting existing components to the running application.
 
 **Technical approach**: Extend `AppSettings` with 6 Omada fields following the established three-tier precedence pattern. Construct `OmadaClient` + `OmadaAdapter` during app lifespan startup (no network I/O), store on `app.state`, and inject via FastAPI dependency injection into authorization and revocation routes. Authentication deferred to first controller operation (lazy init). Both admin (8080) and guest (8099) apps get independent instances.
 

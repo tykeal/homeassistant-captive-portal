@@ -86,4 +86,4 @@ uv run python -m uvicorn captive_portal.guest_app:create_guest_app --factory --h
 8. **Contract tests**: `uv run pytest tests/contract/tp_omada/ -v` → all pass, none skipped
 9. **Full suite**: `uv run pytest tests/` → no regressions
 10. **Linting**: `uv run ruff check addon/src/ tests/` → zero errors
-11. **Types**: `uv run mypy addon/src/` → zero errors
+11. **Types**: `uv run mypy addon/src/captive_portal` → zero errors
