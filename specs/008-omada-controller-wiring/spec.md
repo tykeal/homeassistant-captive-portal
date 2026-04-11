@@ -114,10 +114,10 @@ Effective precedence order: addon option value → corresponding `CP_` environme
 
 #### Application Lifecycle
 
-- **FR-006**: Both the admin application (port 8080) and guest application (port 8099) MUST initialize a controller client and adapter during startup when Omada configuration is present.
-- **FR-007**: Both applications MUST cleanly close the controller client connection during shutdown.
+- **FR-006**: Both the admin application (port 8080) and guest application (port 8099) MUST construct and store a controller client and adapter during startup when Omada configuration is present. "Initialize" means constructing/configuring only; startup MUST NOT open the client, enter an async context, authenticate, or otherwise perform controller network I/O.
+- **FR-007**: Both applications MUST cleanly close the controller client during shutdown if, and only if, a controller session/connection was previously opened during runtime.
 - **FR-008**: When Omada configuration is absent (no controller URL), both applications MUST start normally without initializing any controller components and without producing errors.
-- **FR-009**: When Omada configuration is present, the application MUST still start without performing a controller login or reachability check at startup; if the controller is unreachable, the resulting warning/error MUST be handled when the first authorize or revoke operation is attempted rather than during startup.
+- **FR-009**: When Omada configuration is present, the application MUST still start without performing a controller login or reachability check at startup; any controller authentication/session establishment MUST be performed lazily on the first authorize or revoke operation. If the controller is unreachable, the resulting warning/error MUST be handled when that first operation is attempted rather than during startup.
 
 #### Guest Authorization Flow
 
