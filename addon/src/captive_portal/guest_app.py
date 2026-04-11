@@ -109,12 +109,13 @@ def _make_guest_lifespan(
                         "Auto-discovered Omada controller ID: %s",
                         controller_id,
                     )
-                except OmadaClientError:
+                except OmadaClientError as exc:
                     logger.error(
                         "Failed to auto-discover Omada controller ID "
                         "from %s — set omada_controller_id explicitly "
-                        "or check connectivity",
+                        "or check connectivity: %s",
                         settings.omada_controller_url,
+                        exc,
                     )
                     app.state.omada_config = None
                     controller_id = ""

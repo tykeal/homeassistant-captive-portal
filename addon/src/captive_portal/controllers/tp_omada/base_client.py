@@ -3,13 +3,10 @@
 """TP-Omada HTTP client with authentication and retry logic."""
 
 import asyncio
-import logging
 from typing import Any, Optional
 from urllib.parse import urljoin
 
 import httpx
-
-logger = logging.getLogger("captive_portal.controllers.tp_omada")
 
 
 class OmadaClientError(Exception):

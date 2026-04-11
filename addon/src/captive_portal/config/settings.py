@@ -456,7 +456,7 @@ class AppSettings(BaseModel):
         log.info("  omada_site_name = %s", self.omada_site_name)
         log.info(
             "  omada_controller_id = %s",
-            self.omada_controller_id or "(will auto-discover)",
+            (self.omada_controller_id or "").strip() or "(will auto-discover)",
         )
         log.info("  omada_verify_ssl = %s", self.omada_verify_ssl)
 
