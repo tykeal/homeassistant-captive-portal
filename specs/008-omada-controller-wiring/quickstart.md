@@ -11,7 +11,7 @@ SPDX-License-Identifier: Apache-2.0
 - Python 3.12+
 - `uv` package manager installed
 - Repository cloned and on branch `008-omada-controller-wiring`
-- Dependencies installed: `uv sync`
+- Dependencies installed: `uv sync --group dev`
 
 ## Development Setup
 
@@ -19,7 +19,7 @@ SPDX-License-Identifier: Apache-2.0
 # Clone and setup
 cd /path/to/captive-portal
 git checkout 008-omada-controller-wiring
-uv sync
+uv sync --group dev
 
 # Run all tests
 uv run pytest tests/
@@ -29,7 +29,7 @@ uv run pytest tests/contract/tp_omada/ -v
 
 # Run linting + type checks
 uv run ruff check addon/src/ tests/
-uv run mypy addon/src/
+uv run mypy addon/src/captive_portal
 ```
 
 ## Configuration (Development)

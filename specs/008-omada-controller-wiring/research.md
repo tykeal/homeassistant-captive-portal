@@ -82,8 +82,8 @@ SPDX-License-Identifier: Apache-2.0
 
 **Decision**: After the grant is created and committed with `PENDING` status in `guest_portal.py`, add a post-creation step:
 1. If `omada_adapter is not None`:
-   a. Enter client async context if not already active
-   b. Call `adapter.authorize(mac, grant.end_utc)`
+   a. Enter the client async context for this authorize operation using `async with client:`
+   b. Call `adapter.authorize(mac, grant.end_utc)` within that context
    c. On success: update grant `status=ACTIVE`, store `controller_grant_id`
    d. On failure (`OmadaClientError`): update grant `status=FAILED`, log error, show user-friendly error
 2. If `omada_adapter is None`: set `status=ACTIVE` directly (current behavior preserved)
