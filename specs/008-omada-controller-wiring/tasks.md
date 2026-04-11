@@ -165,15 +165,17 @@ SPDX-License-Identifier: Apache-2.0
 
 **Purpose**: Documentation port fix, REUSE compliance, linting, full test suite validation, quickstart verification
 
-- [ ] T025 [P] Fix port 8080→8099 in guest-facing URLs in `docs/tp_omada_setup.md` — update all references where guests connect: external portal URL examples (`8080/guest/authorize` → `8099/guest/authorize`), landing page examples (`8080/success` → `8099/success`), guest-facing curl troubleshooting commands (`8080/guest/authorize` → `8099/guest/authorize`); keep admin/ingress references to 8080 where the context is administration; add 8099 port mapping in Docker examples alongside existing 8080 (FR-019)
+- [ ] T025 [P] Align spec and contract docs with per-request pattern — update `spec.md` FR-006/FR-007 and `contracts/controller-adapter.md` to reference `app.state.omada_config` dict and per-request `OmadaClient`/`OmadaAdapter` construction via `get_omada_adapter` dependency, replacing references to `app.state.omada_client` and `app.state.omada_adapter` as stored instances; document the concurrency rationale (shared `__aenter__` state races); update `data-model.md` app.state section accordingly
 
-- [ ] T026 [P] Verify REUSE compliance for all new files — ensure every new `.py` file (e.g., `dependencies.py`, new test files) has `SPDX-FileCopyrightText` and `SPDX-License-Identifier` headers; run `reuse lint` to confirm zero violations
+- [ ] T026 [P] Fix port 8080→8099 in guest-facing URLs in `docs/tp_omada_setup.md` — update all references where guests connect: external portal URL examples (`8080/guest/authorize` → `8099/guest/authorize`), landing page examples (`8080/success` → `8099/success`), guest-facing curl troubleshooting commands (`8080/guest/authorize` → `8099/guest/authorize`); keep admin/ingress references to 8080 where the context is administration; add 8099 port mapping in Docker examples alongside existing 8080 (FR-019)
 
-- [ ] T027 [P] Run full linting, type-checking, and docstring coverage — execute `ruff check addon/src/ tests/`, `mypy addon/src/captive_portal/` (strict mode), and `interrogate addon/src/captive_portal/` (fail-under per project config); fix any issues in new or modified code; verify zero errors/warnings across all three tools
+- [ ] T027 [P] Verify REUSE compliance for all new files — ensure every new `.py` file (e.g., `dependencies.py`, new test files) has `SPDX-FileCopyrightText` and `SPDX-License-Identifier` headers; run `reuse lint` to confirm zero violations
 
-- [ ] T028 Run full test suite `pytest tests/ -v` — verify no regressions across unit, integration, and contract tests; all new tests pass; all previously-passing tests still pass
+- [ ] T028 [P] Run full linting, type-checking, and docstring coverage — execute `ruff check addon/src/ tests/`, `mypy addon/src/captive_portal/` (strict mode), and `interrogate addon/src/captive_portal/` (fail-under per project config); fix any issues in new or modified code; verify zero errors/warnings across all three tools
 
-- [ ] T029 Run quickstart.md validation — walk through `specs/008-omada-controller-wiring/quickstart.md` verification checklist: (1) config schema, (2) settings tests, (3) s6 scripts, (4) app lifespan, (5) authorization flow, (6) revocation flow, (7) documentation port fix, (8) contract tests, (9) full suite, (10) linting, (11) types
+- [ ] T029 Run full test suite `pytest tests/ -v` — verify no regressions across unit, integration, and contract tests; all new tests pass; all previously-passing tests still pass
+
+- [ ] T030 Run quickstart.md validation — walk through `specs/008-omada-controller-wiring/quickstart.md` verification checklist: (1) config schema, (2) settings tests, (3) s6 scripts, (4) app lifespan, (5) authorization flow, (6) revocation flow, (7) documentation port fix, (8) contract tests, (9) full suite, (10) linting, (11) types
 
 > **Note (SC-001/SC-002)**: The 10-second authorization and revocation timing criteria require manual integration testing with a live Omada controller. These cannot be validated via automated tests.
 
@@ -277,13 +279,14 @@ Task T024: "Implement error/retry contract tests in test_adapter_error_retry.py"
 
 ```text
 # Launch independent tasks in parallel:
-Task T025: "Fix port 8080→8099 in docs/tp_omada_setup.md"
-Task T026: "Verify REUSE compliance for all new files"
-Task T027: "Run linting, type-checking, and docstring coverage"
+Task T025: "Align spec/contract docs with per-request pattern"
+Task T026: "Fix port 8080→8099 in docs/tp_omada_setup.md"
+Task T027: "Verify REUSE compliance for all new files"
+Task T028: "Run linting, type-checking, and docstring coverage"
 
 # Then sequential:
-Task T028: "Run full test suite — no regressions"
-Task T029: "Run quickstart.md validation"
+Task T029: "Run full test suite — no regressions"
+Task T030: "Run quickstart.md validation"
 ```
 
 ---
