@@ -254,6 +254,9 @@ async def discover_controller_id(
                 raise OmadaClientError("omadacId not found in /api/info response")
             return omadac_id
         except httpx.HTTPStatusError as e:
-            raise OmadaClientError(f"HTTP {e.response.status_code} from /api/info: {e}") from e
+            raise OmadaClientError(
+                f"HTTP {e.response.status_code} from /api/info: {e}",
+                status_code=e.response.status_code,
+            ) from e
         except httpx.RequestError as e:
             raise OmadaClientError(f"Connection error fetching /api/info: {e}") from e
