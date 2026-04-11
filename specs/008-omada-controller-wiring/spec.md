@@ -50,7 +50,7 @@ A Home Assistant administrator installs the captive portal addon and wants to co
 
 **Why this priority**: Configuration is a prerequisite for the other stories but is lower priority because the system must work without it (graceful degradation). The plumbing from addon config → environment variables → application settings is foundational infrastructure.
 
-**Independent Test**: Can be fully tested by setting Omada configuration options in the addon config, restarting the addon, and verifying that the application starts with the correct Omada settings loaded and an active controller connection.
+**Independent Test**: Can be fully tested by setting Omada configuration options in the addon config, restarting the addon, and verifying that the application starts with the correct Omada settings loaded and the controller client/adapter instantiated and ready for later use, without requiring an active controller connection at startup.
 
 **Acceptance Scenarios**:
 
@@ -159,12 +159,13 @@ Effective precedence order: addon option value → corresponding `CP_` environme
 - **SC-003**: 100% of previously-skipped Omada contract tests execute and pass in the test suite.
 - **SC-004**: The application starts and operates normally when no Omada controller is configured, with zero errors or warnings related to the missing controller.
 - **SC-005**: All 8 integration gaps (config schema, settings model, s6 scripts, app lifespan, authorization flow, revocation flow, documentation port references, contract tests) are closed and functionally connected.
-- **SC-006**: Controller authorization failures result in a user-facing error message within 30 seconds (accounting for retry backoff), never leaving the guest in an ambiguous state.
+- **SC-006**: Controller authorization failures result in a user-facing error message within 30 seconds of the initial controller call, never leaving the guest in an ambiguous state.
 - **SC-007**: The Omada password never appears in any application log output regardless of log level.
 
 ## Assumptions
 
 - The existing OmadaClient and OmadaAdapter implementations are correct, tested, and ready for production use — this feature is exclusively about wiring, not about modifying controller client logic.
+- This wiring feature does not add or require any application-layer retry/backoff behavior for controller authorization or revocation; it performs a single wiring-layer call and surfaces failure according to the existing client/adapter behavior.
 - The Omada controller's hotspot external portal API endpoint paths (`/extportal/auth`, `/extportal/revoke`, `/extportal/session`) are stable and match the existing client implementation.
 - Guest MAC addresses are available in HTTP request headers (set by the captive portal network infrastructure) — the existing MAC extraction logic in the guest portal route is sufficient.
 - The AccessGrant model already has (or can be extended to include) a field for storing the controller-assigned grant identifier (`controller_grant_id`).
