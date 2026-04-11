@@ -192,6 +192,17 @@ def _validate_non_empty_str(value: Any) -> bool:
 
 
 # Dispatch table for field validation
+# Omada optional string fields: empty string means "unset", not invalid
+_OMADA_OPTIONAL_STR_FIELDS: frozenset[str] = frozenset(
+    {
+        "omada_username",
+        "omada_password",
+        "omada_controller_id",
+        "omada_site_name",
+    }
+)
+
+# Dispatch table for field validation
 _FIELD_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "log_level": lambda v: isinstance(v, str) and v.lower() in _VALID_LOG_LEVELS,
     "db_path": lambda v: isinstance(v, str) and len(v) > 0,
@@ -259,6 +270,36 @@ def _coerce_field(field: str, value: Any) -> Any:
         s = str(value).lower()
         return s in ("true", "1")
     return value
+
+
+def _try_addon_option(field_name: str, addon_key: str, raw: Any) -> tuple[bool, Any]:
+    """Attempt to resolve a field from an addon option value.
+
+    Returns ``(True, coerced_value)`` when the value is valid, or
+    ``(False, None)`` when the caller should fall through to
+    environment / default resolution.  For optional Omada string
+    fields, empty strings are silently treated as unset.
+
+    Args:
+        field_name: AppSettings field name.
+        addon_key: Corresponding key in ``options.json``.
+        raw: Raw value read from addon options.
+
+    Returns:
+        Tuple of (resolved, value).
+    """
+    if field_name in _OMADA_OPTIONAL_STR_FIELDS and isinstance(raw, str) and raw.strip() == "":
+        return False, None
+
+    if _validate_field(field_name, raw):
+        return True, _coerce_field(field_name, raw)
+
+    logger.warning(
+        "Invalid addon option '%s': %r — ignoring, will try environment variable or default.",
+        addon_key,
+        raw,
+    )
+    return False, None
 
 
 class AppSettings(BaseModel):
@@ -333,17 +374,14 @@ class AppSettings(BaseModel):
             # --- Try addon option ---
             addon_key = _FIELD_TO_ADDON_KEY.get(field_name)
             if addon_key and addon_key in addon_options:
-                raw = addon_options[addon_key]
-                if _validate_field(field_name, raw):
-                    resolved[field_name] = _coerce_field(field_name, raw)
-                    continue
-                # Invalid addon option → log warning and fall through
-                logger.warning(
-                    "Invalid addon option '%s': %r — ignoring, will try "
-                    "environment variable or default.",
+                resolved_ok, value = _try_addon_option(
+                    field_name,
                     addon_key,
-                    raw,
+                    addon_options[addon_key],
                 )
+                if resolved_ok:
+                    resolved[field_name] = value
+                    continue
 
             # --- Try environment variable ---
             # ha_token has a special primary source: SUPERVISOR_TOKEN

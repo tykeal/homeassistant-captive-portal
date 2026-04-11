@@ -178,6 +178,7 @@ Set environment variables:
 ```bash
 docker run -d \
   --name captive-portal \
+  -p 8080:8080 \
   -p 8099:8099 \
   -v ./data:/data \
   -e OMADA_URL=https://192.168.1.10:8043 \

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Guest portal routes for authorization and welcome pages."""
 
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Optional
@@ -11,10 +12,16 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
-from captive_portal.persistence.database import get_session
+from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
+from captive_portal.controllers.tp_omada.base_client import (
+    OmadaClientError,
+    OmadaRetryExhaustedError,
+)
+from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.models.portal_config import PortalConfig
+from captive_portal.persistence.database import get_session
 from captive_portal.persistence.repositories import AccessGrantRepository
 from captive_portal.security.csrf import CSRFConfig, CSRFProtection
 from captive_portal.security.rate_limiter import RateLimiter
@@ -31,15 +38,6 @@ from captive_portal.services.unified_code_service import CodeType, UnifiedCodeSe
 from captive_portal.services.voucher_service import VoucherRedemptionError, VoucherService
 from captive_portal.utils.network_utils import get_client_ip, validate_mac_address
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
-
-import logging
-
-from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
-from captive_portal.controllers.tp_omada.base_client import (
-    OmadaClientError,
-    OmadaRetryExhaustedError,
-)
-from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
 
 _logger = logging.getLogger("captive_portal.guest")
 
@@ -209,6 +207,7 @@ async def _authorize_with_controller(
             exc,
         )
         grant.status = GrantStatus.FAILED
+        grant._controller_error_detail = f"{type(exc).__name__}: {exc}"
 
     return grant
 
@@ -601,6 +600,7 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
                 "mac": mac_address,
                 "user_agent": request.headers.get("User-Agent", "unknown"),
                 "error": "controller_authorization_failed",
+                "detail": getattr(grant, "_controller_error_detail", None),
             },
         )
         raise HTTPException(

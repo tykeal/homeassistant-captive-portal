@@ -116,6 +116,7 @@ class RevokeGrantResponse(BaseModel):
 
     id: UUID
     status: GrantStatus
+    controller_error: str | None = None
 
 
 @router.get("/", response_model=List[GrantListResponse])
@@ -300,7 +301,7 @@ async def revoke_grant(
     admin_id: UUID = Depends(require_admin),
     csrf: CSRFProtection = Depends(get_csrf_protection),
     omada_adapter: OmadaAdapter | None = Depends(get_omada_adapter),
-) -> AccessGrant:
+) -> RevokeGrantResponse:
     """Revoke access grant (admin only).
 
     Args:
@@ -312,7 +313,7 @@ async def revoke_grant(
         omada_adapter: Omada controller adapter (or None)
 
     Returns:
-        Revoked grant
+        Revoke response with grant status and optional controller error
 
     Raises:
         403: Invalid CSRF token
@@ -343,7 +344,11 @@ async def revoke_grant(
             metadata=audit_metadata if audit_metadata else None,
         )
 
-        return grant
+        return RevokeGrantResponse(
+            id=grant.id,
+            status=grant.status,
+            controller_error=revocation_result.controller_error,
+        )
 
     except GrantNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

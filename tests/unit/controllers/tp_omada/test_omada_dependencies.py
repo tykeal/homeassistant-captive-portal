@@ -8,13 +8,13 @@ returning ``None`` when config is absent or missing.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
-
-from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
 from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
 from captive_portal.controllers.tp_omada.base_client import OmadaClient
+from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
 
 
 def _make_request(
@@ -30,12 +30,10 @@ def _make_request(
         Mock Request object.
     """
     request = MagicMock()
-    state = MagicMock()
     if has_attr:
-        state.omada_config = omada_config
+        state = SimpleNamespace(omada_config=omada_config)
     else:
-        # Simulate missing attribute
-        del state.omada_config
+        state = SimpleNamespace()
     request.app.state = state
     return request
 
