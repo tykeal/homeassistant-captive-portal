@@ -87,9 +87,9 @@ SPDX-License-Identifier: Apache-2.0
 
 > **Write these tests FIRST; confirm they FAIL before implementing production code**
 
-- [ ] T013 [P] [US1] Write failing unit tests for guest authorization controller wiring in `tests/unit/api/routes/test_guest_portal_omada.py` — mock `OmadaAdapter` and `OmadaClient`; test: (a) when adapter is configured, `adapter.authorize()` is called within `async with adapter.client:` context with guest's MAC address and `grant.end_utc`, (b) on successful authorize, grant status transitions from PENDING to ACTIVE and `controller_grant_id` is set from response `grant_id`, (c) when adapter is `None` (no controller configured), grant transitions directly PENDING→ACTIVE with no controller call (graceful degradation per FR-013), (d) verify `async with adapter.client:` is used for each operation (per-operation context, not persistent connection per research R1) (RED 🔴)
+- [ ] T013 [P] [US1] Write failing unit tests for guest authorization controller wiring in `tests/unit/routes/test_guest_portal_omada.py` — mock `OmadaAdapter` and `OmadaClient`; test: (a) when adapter is configured, `adapter.authorize()` is called within `async with adapter.client:` context with guest's MAC address and `grant.end_utc`, (b) on successful authorize, grant status transitions from PENDING to ACTIVE and `controller_grant_id` is set from response `grant_id`, (c) when adapter is `None` (no controller configured), grant transitions directly PENDING→ACTIVE with no controller call (graceful degradation per FR-013), (d) verify `async with adapter.client:` is used for each operation (per-operation context, not persistent connection per research R1) (RED 🔴)
 
-- [ ] T014 [P] [US1] Write failing unit tests for guest authorization error handling in `tests/unit/api/routes/test_guest_portal_omada_errors.py` — mock `OmadaAdapter` to raise exceptions; test: (a) on `OmadaClientError`, grant transitions PENDING→FAILED (FR-012), (b) on `OmadaRetryExhaustedError`, grant transitions PENDING→FAILED, (c) user-friendly error message is returned to guest (not raw exception details), (d) failure is recorded in audit log with error details, (e) grant database record is consistent (committed) regardless of controller outcome (RED 🔴)
+- [ ] T014 [P] [US1] Write failing unit tests for guest authorization error handling in `tests/unit/routes/test_guest_portal_omada_errors.py` — mock `OmadaAdapter` to raise exceptions; test: (a) on `OmadaClientError`, grant transitions PENDING→FAILED (FR-012), (b) on `OmadaRetryExhaustedError`, grant transitions PENDING→FAILED, (c) user-friendly error message is returned to guest (not raw exception details), (d) failure is recorded in audit log with error details, (e) grant database record is consistent (committed) regardless of controller outcome (RED 🔴)
 
 ### Implementation for User Story 1 (GREEN) 🟢
 
@@ -109,9 +109,9 @@ SPDX-License-Identifier: Apache-2.0
 
 > **Write these tests FIRST; confirm they FAIL before implementing production code**
 
-- [ ] T016 [P] [US2] Write failing unit tests for grant revocation controller wiring in `tests/unit/api/routes/test_grants_omada.py` — mock `OmadaAdapter` and `OmadaClient`; test: (a) when adapter is configured and grant has MAC, `adapter.revoke(mac)` is called within `async with adapter.client:` context after DB revocation, (b) controller success → revocation complete, (c) controller "already revoked" response → treated as success (idempotent per FR-015), (d) when adapter is `None` → DB-only revocation (FR-017), (e) when grant has no MAC address (legacy grants) → skip controller call, DB-only revocation (FR-018), (f) verify DB grant is always REVOKED regardless of controller outcome (RED 🔴)
+- [ ] T016 [P] [US2] Write failing unit tests for grant revocation controller wiring in `tests/unit/routes/test_grants_omada.py` — mock `OmadaAdapter` and `OmadaClient`; test: (a) when adapter is configured and grant has MAC, `adapter.revoke(mac)` is called within `async with adapter.client:` context after DB revocation, (b) controller success → revocation complete, (c) controller "already revoked" response → treated as success (idempotent per FR-015), (d) when adapter is `None` → DB-only revocation (FR-017), (e) when grant has no MAC address (legacy grants) → skip controller call, DB-only revocation (FR-018), (f) verify DB grant is always REVOKED regardless of controller outcome (RED 🔴)
 
-- [ ] T017 [P] [US2] Write failing unit tests for revocation error handling in `tests/unit/api/routes/test_grants_omada_errors.py` — mock `OmadaAdapter` to raise exceptions; test: (a) on `OmadaClientError`, DB grant stays REVOKED (FR-016), error is logged, (b) admin response includes partial failure notification ("database updated, controller revocation may need manual attention"), (c) audit log records both DB revocation and controller failure, (d) on `OmadaRetryExhaustedError`, same behavior as `OmadaClientError` (RED 🔴)
+- [ ] T017 [P] [US2] Write failing unit tests for revocation error handling in `tests/unit/routes/test_grants_omada_errors.py` — mock `OmadaAdapter` to raise exceptions; test: (a) on `OmadaClientError`, DB grant stays REVOKED (FR-016), error is logged, (b) admin response includes partial failure notification ("database updated, controller revocation may need manual attention"), (c) audit log records both DB revocation and controller failure, (d) on `OmadaRetryExhaustedError`, same behavior as `OmadaClientError` (RED 🔴)
 
 ### Implementation for User Story 2 (GREEN) 🟢
 
@@ -123,17 +123,17 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Phase 5: User Story 3 — Addon Configuration for Omada Controller (Priority: P3)
 
-**Goal**: Validate the full configuration lifecycle: addon config panel → s6 env vars → AppSettings → client/adapter instantiation → graceful degradation when unconfigured → password masking → clean operation
+**Goal**: Validate the full configuration lifecycle: addon config panel → s6 env vars → AppSettings → `app.state.omada_config` persistence across restart → per-request client/adapter creation via `get_omada_adapter` → graceful degradation when unconfigured → password masking → clean operation
 
-**Independent Test**: Set Omada configuration options, restart the app, verify the client/adapter are instantiated with correct settings and the app operates correctly; verify it also starts cleanly with no Omada config
+**Independent Test**: Set Omada configuration options, restart the app, verify `app.state.omada_config` is populated with the correct settings and that request-scoped `OmadaClient`/`OmadaAdapter` creation uses those settings correctly; verify it also starts cleanly with no Omada config
 
-> **NOTE**: US3's implementation IS the foundational phase (Phase 2). This phase adds integration tests that validate the end-to-end configuration lifecycle specifically.
+> **NOTE**: US3's implementation IS the foundational phase (Phase 2). This phase adds integration tests that validate the end-to-end configuration lifecycle specifically, using the same per-request adapter lifecycle defined there.
 
 ### Tests for User Story 3 🔴
 
-- [ ] T019 [P] [US3] Write integration test for end-to-end Omada config lifecycle in `tests/integration/test_omada_config_lifecycle.py` — set `CP_OMADA_*` env vars in test fixture, create app via `create_app()` and `create_guest_app()` factories, verify: (a) `app.state.omada_client` is an `OmadaClient` instance with correct `base_url`, `controller_id`, `username`, `verify_ssl`, (b) `app.state.omada_adapter` is an `OmadaAdapter` instance with correct `site_id`, (c) no network I/O occurs at startup (mock httpx to detect any connection attempts), (d) app starts and serves HTTP requests normally
+- [ ] T019 [P] [US3] Write integration test for end-to-end Omada config lifecycle in `tests/integration/test_omada_config_lifecycle.py` — set `CP_OMADA_*` env vars in test fixture, create app via `create_app()` and `create_guest_app()` factories, verify: (a) `app.state.omada_config` is populated from env/AppSettings with correct `base_url`, `controller_id`, `username`, `verify_ssl`, and `site_id`, (b) resolving `get_omada_adapter` (directly or through a request path that depends on it) creates an `OmadaAdapter` backed by an `OmadaClient` with those settings, (c) no network I/O occurs at startup (mock httpx to detect any connection attempts), (d) app starts and serves HTTP requests normally
 
-- [ ] T020 [P] [US3] Write integration test for graceful degradation without Omada config in `tests/integration/test_omada_graceful_degradation.py` — start app with NO `CP_OMADA_*` env vars set, verify: (a) `app.state.omada_adapter` is `None`, (b) app starts without errors or warnings related to missing controller, (c) guest authorization flow creates grants with ACTIVE status without controller calls, (d) admin revocation flow updates DB without controller calls
+- [ ] T020 [P] [US3] Write integration test for graceful degradation without Omada config in `tests/integration/test_omada_graceful_degradation.py` — start app with NO `CP_OMADA_*` env vars set, verify: (a) `app.state.omada_config` is absent or `None` and `get_omada_adapter` yields no adapter/controller wiring, (b) app starts without errors or warnings related to missing controller, (c) guest authorization flow creates grants with ACTIVE status without controller calls, (d) admin revocation flow updates DB without controller calls
 
 - [ ] T021 [P] [US3] Write integration test for password masking in `tests/integration/test_omada_password_masking.py` — set `CP_OMADA_PASSWORD` to a known test value (e.g., `"s3cret-p@ss!"`) in test fixture, capture log output during app startup and `settings.log_effective()` at all log levels, verify the password value never appears in any log line — only `"(set)"` or `"(not set)"` is logged (FR-005)
 
@@ -336,9 +336,9 @@ With multiple developers:
 - [Story] label maps task to specific user story for traceability
 - **TDD is non-negotiable** — every production code task references which RED test it makes GREEN
 - **No new controller client logic** — this feature is purely wiring; `OmadaClient` and `OmadaAdapter` are existing, stable implementations
-- **Lazy init pattern** — construct at startup (no network I/O), authenticate on first `async with client:` operation
+- **Per-request construction pattern** — store only `omada_config` at startup; create `OmadaClient`/`OmadaAdapter` when handling a request/operation, with authentication occurring on first `async with client:` use
 - **Per-operation context** — route handlers use `async with adapter.client:` for each authorize/revoke, not a persistent connection
-- **Dual-port architecture** — admin app (8080) and guest app (8099) get independent client/adapter instances
+- **Dual-port architecture** — admin app (8080) and guest app (8099) have independent wiring/configuration paths; neither relies on a shared startup-created client/adapter instance
 - **Graceful degradation** — when Omada is not configured, all flows work exactly as before (DB-only grants)
 - **Password security** — `omada_password` is NEVER logged; `log_effective()` shows only `"(set)"` or `"(not set)"`
 - All commits require DCO sign-off (`git commit -s`) and SPDX headers on new files
