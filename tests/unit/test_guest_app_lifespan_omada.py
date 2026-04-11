@@ -69,11 +69,13 @@ class TestGuestLifespanOmadaConfigured:
         admin_settings = AppSettings(
             db_path=":memory:",
             omada_controller_url="https://admin-ctrl.local:8043",
+            omada_controller_id="admin-ctrl-id",
             omada_site_name="AdminSite",
         )
         guest_settings = AppSettings(
             db_path=":memory:",
             omada_controller_url="https://guest-ctrl.local:8043",
+            omada_controller_id="guest-ctrl-id",
             omada_site_name="GuestSite",
         )
 

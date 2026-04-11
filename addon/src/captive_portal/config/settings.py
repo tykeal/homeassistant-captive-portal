@@ -321,12 +321,13 @@ class AppSettings(BaseModel):
 
     @property
     def omada_configured(self) -> bool:
-        """Return whether Omada controller is configured.
+        """Return whether required Omada settings are present.
 
         Returns:
-            True if ``omada_controller_url`` is non-empty.
+            True when both ``omada_controller_url`` and
+            ``omada_controller_id`` are non-empty stripped strings.
         """
-        return bool(self.omada_controller_url)
+        return bool(self.omada_controller_url.strip() and self.omada_controller_id.strip())
 
     @classmethod
     def load(cls, options_path: str = "/data/options.json") -> AppSettings:

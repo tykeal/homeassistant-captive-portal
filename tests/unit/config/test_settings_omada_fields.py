@@ -263,14 +263,44 @@ class TestOmadaLogEffective:
 class TestOmadaConfigured:
     """Tests for the omada_configured property."""
 
-    def test_configured_when_url_present(self) -> None:
-        """omada_configured should be True when URL is non-empty."""
-        settings = AppSettings(omada_controller_url="https://ctrl.local:8043")
+    def test_configured_when_url_and_id_present(self) -> None:
+        """omada_configured should be True when URL and ID are non-empty."""
+        settings = AppSettings(
+            omada_controller_url="https://ctrl.local:8043",
+            omada_controller_id="abc123",
+        )
         assert settings.omada_configured is True
 
     def test_not_configured_when_url_empty(self) -> None:
         """omada_configured should be False when URL is empty."""
-        settings = AppSettings(omada_controller_url="")
+        settings = AppSettings(
+            omada_controller_url="",
+            omada_controller_id="abc123",
+        )
+        assert settings.omada_configured is False
+
+    def test_not_configured_when_id_empty(self) -> None:
+        """omada_configured should be False when controller_id is empty."""
+        settings = AppSettings(
+            omada_controller_url="https://ctrl.local:8043",
+            omada_controller_id="",
+        )
+        assert settings.omada_configured is False
+
+    def test_not_configured_when_id_whitespace(self) -> None:
+        """omada_configured should be False when controller_id is whitespace."""
+        settings = AppSettings(
+            omada_controller_url="https://ctrl.local:8043",
+            omada_controller_id="   ",
+        )
+        assert settings.omada_configured is False
+
+    def test_not_configured_when_url_whitespace(self) -> None:
+        """omada_configured should be False when URL is whitespace."""
+        settings = AppSettings(
+            omada_controller_url="   ",
+            omada_controller_id="abc123",
+        )
         assert settings.omada_configured is False
 
     def test_not_configured_by_default(self) -> None:

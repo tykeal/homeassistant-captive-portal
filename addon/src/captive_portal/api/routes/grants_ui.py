@@ -19,6 +19,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, col, select
 
+from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
+from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.persistence.database import get_session
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
@@ -214,8 +216,12 @@ async def revoke_grant(
     session: Annotated[Session, Depends(get_session)],
     admin_id: Annotated[UUID, Depends(require_admin)],
     csrf: Annotated[CSRFProtection, Depends(get_csrf_protection)],
+    omada_adapter: Annotated[OmadaAdapter | None, Depends(get_omada_adapter)],
 ) -> RedirectResponse:
     """Revoke a grant (idempotent for already-revoked grants).
+
+    Revokes the grant in the database and then attempts a
+    best-effort controller revocation via the Omada adapter.
 
     Args:
         request: Incoming HTTP request.
@@ -223,6 +229,7 @@ async def revoke_grant(
         session: Database session.
         admin_id: Authenticated admin user ID.
         csrf: CSRF protection instance.
+        omada_adapter: Omada controller adapter (or None).
 
     Returns:
         303 redirect to grants page with success or error message.
@@ -240,11 +247,12 @@ async def revoke_grant(
         )
 
     # Execute revoke
+    from captive_portal.api.routes.grants import _revoke_with_controller
     from captive_portal.persistence.repositories import AccessGrantRepository
 
     grant_service = GrantService(session=session, grant_repo=AccessGrantRepository(session))
     try:
-        await grant_service.revoke(grant_id)
+        grant = await grant_service.revoke(grant_id)
     except GrantNotFoundError:
         logger.warning("Grant not found for revoke: %s", grant_id)
         return RedirectResponse(
@@ -252,14 +260,36 @@ async def revoke_grant(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
+    # Best-effort controller revocation
+    revocation_result = await _revoke_with_controller(
+        adapter=omada_adapter,
+        grant=grant,
+    )
+
     # Audit log
+    audit_metadata: dict[str, str | None] = {}
+    if revocation_result.controller_error:
+        audit_metadata["controller_error"] = revocation_result.controller_error
+
     audit_service = AuditService(session)
     await audit_service.log_admin_action(
         admin_id=admin_id,
         action="grant.revoke",
         target_type="grant",
         target_id=str(grant_id),
+        metadata=audit_metadata if audit_metadata else None,
     )
+
+    if revocation_result.controller_error:
+        return RedirectResponse(
+            url=(
+                f"{root}/admin/grants/"
+                "?success=Grant+revoked+successfully"
+                "&error=Controller+revocation+failed"
+                "%3B+may+need+manual+attention"
+            ),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     return RedirectResponse(
         url=f"{root}/admin/grants/?success=Grant+revoked+successfully",

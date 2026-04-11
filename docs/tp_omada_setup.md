@@ -163,7 +163,7 @@ omada_controller_url: https://192.168.1.10:8043  # Controller HTTPS URL
 omada_username: captive_portal_api    # Hotspot operator username (Step 3)
 omada_password: kD8#nQ2@mP5!xR7$      # Hotspot operator password
 omada_site_name: Default              # Site name (case-sensitive, usually "Default")
-omada_controller_id: ""               # Auto-discovered if left empty
+omada_controller_id: "a1b2c3d4e5f6"   # Required — hex string from controller URL
 
 # Connection Settings (optional)
 omada_verify_ssl: true                # Set false for self-signed certs (not recommended)
@@ -331,7 +331,10 @@ omada_failover_timeout_seconds: 30
 
 4. **Controller ID Mismatch**
    - URL requires controller ID: `/[controller-id]/api/v2/hotspot/login`
-   - Captive Portal auto-discovers controller ID on first request
+   - Find the controller ID in your browser URL bar when logged into the
+     Omada web UI (the hex string after the hostname, e.g.
+     `https://controller:8043/a1b2c3d4e5f6/...`)
+   - Set ``omada_controller_id`` in configuration — this field is required
 
 5. **Session Expired**
    - Operator sessions expire after 30 minutes

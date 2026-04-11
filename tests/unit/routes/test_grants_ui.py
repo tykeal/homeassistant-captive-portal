@@ -44,6 +44,7 @@ from captive_portal.security.session_middleware import (
 def grants_app(db_engine: Engine) -> FastAPI:
     """App with grants UI routes for unit testing."""
     from captive_portal.api.routes import admin_auth, grants_ui
+    from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
 
     test_app = FastAPI()
     session_config = SessionConfig(cookie_secure=False)
@@ -60,6 +61,7 @@ def grants_app(db_engine: Engine) -> FastAPI:
             yield session
 
     test_app.dependency_overrides[get_session] = get_test_session
+    test_app.dependency_overrides[get_omada_adapter] = lambda: None
     return test_app
 
 
