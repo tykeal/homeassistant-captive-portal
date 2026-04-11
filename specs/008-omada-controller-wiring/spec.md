@@ -158,7 +158,7 @@ Effective precedence order: addon option value → corresponding `CP_` environme
 - **SC-002**: When an admin revokes an active grant, the guest's device loses network access within 10 seconds of the revocation action.
 - **SC-003**: 100% of previously-skipped Omada contract tests execute and pass in the test suite.
 - **SC-004**: The application starts and operates normally when no Omada controller is configured, with zero errors or warnings related to the missing controller.
-- **SC-005**: All 8 integration gaps (config schema, settings model, s6 scripts, app lifespan, authorization flow, revocation flow, documentation port references, contract tests) are closed and functionally connected.
+- **SC-005**: All 9 integration gaps (config schema, settings model, s6 scripts, admin app lifespan, guest app lifespan, authorization flow, revocation flow, documentation port references, contract tests) are closed and functionally connected.
 - **SC-006**: Controller authorization failures result in a user-facing error message within 30 seconds of the initial controller call, never leaving the guest in an ambiguous state.
 - **SC-007**: The Omada password never appears in any application log output regardless of log level.
 
