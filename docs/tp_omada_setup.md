@@ -38,12 +38,12 @@ The Captive Portal integrates with TP-Link Omada Controllers using the **Externa
    - **Portal Type**: Select **External Portal**
    - **Portal Name**: `Captive Portal Guest Access` (or your preference)
    - **External Portal URL**: Enter Captive Portal address
-     - Example: `https://captiveportal.local:8080/guest/authorize`
+     - Example: `https://captiveportal.local:8099/guest/authorize`
      - Must be reachable from clients (use public IP or hostname if needed)
 
 4. **Configure Portal Parameters**
    - **Landing Page**: URL to redirect after successful auth
-     - Example: `https://www.example.com` or `http://captiveportal.local:8080/success`
+     - Example: `https://www.example.com` or `http://captiveportal.local:8099/success`
    - **Authentication Timeout**: 5 minutes (default)
    - **Terms of Service**: Enable if required (optional)
 
@@ -139,7 +139,7 @@ If using VLANs or strict firewall policies:
 2. **Verify Portal Parameters**
    - Captive Portal should receive URL like:
      ```
-     https://captiveportal.local:8080/guest/authorize?clientMac=AA:BB:CC:DD:EE:FF&apMac=00:11:22:33:44:55&ssidName=Guest+WiFi&t=1711234567890123&radioId=1&site=Default&redirectUrl=https://www.example.com
+     https://captiveportal.local:8099/guest/authorize?clientMac=AA:BB:CC:DD:EE:FF&apMac=00:11:22:33:44:55&ssidName=Guest+WiFi&t=1711234567890123&radioId=1&site=Default&redirectUrl=https://www.example.com
      ```
    - Check Captive Portal logs for incoming requests
 
@@ -178,7 +178,7 @@ Set environment variables:
 ```bash
 docker run -d \
   --name captive-portal \
-  -p 8080:8080 \
+  -p 8099:8099 \
   -v ./data:/data \
   -e OMADA_URL=https://192.168.1.10:8043 \
   -e OMADA_USERNAME=captive_portal_api \
@@ -302,7 +302,7 @@ omada_failover_timeout_seconds: 30
 
 4. **Firewall Blocking Portal**
    - Verify guest VLAN can reach Captive Portal URL
-   - Check: `curl https://captiveportal.local:8080/guest/authorize` from guest network
+   - Check: `curl https://captiveportal.local:8099/guest/authorize` from guest network
 
 5. **iOS/Android Detection Failure**
    - Implement captive portal detection endpoints:

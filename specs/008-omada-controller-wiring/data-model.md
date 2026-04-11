@@ -131,8 +131,12 @@ New state attributes set during lifespan:
 
 | Attribute | Type | When Set | When `None` |
 |-----------|------|----------|-------------|
-| `app.state.omada_client` | `OmadaClient | None` | Startup (if configured) | No Omada URL |
-| `app.state.omada_adapter` | `OmadaAdapter | None` | Startup (if configured) | No Omada URL |
+| `app.state.omada_config` | `dict[str, Any] | None` | Startup (if configured) | No Omada URL |
+
+**Per-request pattern**: No shared `OmadaClient` or `OmadaAdapter` instances
+are stored on `app.state`. The `get_omada_adapter` dependency constructs fresh
+instances per request from the config dict, avoiding shared async session state
+races with `__aenter__` mutating shared state.
 
 **Shutdown behavior**: Since route handlers use `async with client:` per operation, no global shutdown cleanup is needed for the OmadaClient. The client's async context manager handles session cleanup after each operation. If a future optimization introduces persistent connections, add a public `is_open` property and corresponding shutdown logic.
 
