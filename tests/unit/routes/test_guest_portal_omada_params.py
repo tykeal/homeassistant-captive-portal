@@ -9,6 +9,7 @@ parameter to override the adapter site_id.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
@@ -16,6 +17,8 @@ import pytest
 
 from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
 from captive_portal.controllers.tp_omada.base_client import OmadaClient
+
+_SITE_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{16,64}$")
 
 
 class TestSiteIdOverride:
@@ -42,7 +45,12 @@ class TestSiteIdOverride:
 
         # Simulate what handle_authorization does
         site = "686982d482171c5562624ad1"
-        if mock_adapter is not None and site and isinstance(site, str) and site.strip():
+        if (
+            mock_adapter is not None
+            and site
+            and isinstance(site, str)
+            and _SITE_ID_PATTERN.match(site.strip())
+        ):
             mock_adapter.site_id = site.strip()
 
         assert mock_adapter.site_id == "686982d482171c5562624ad1"
@@ -54,7 +62,12 @@ class TestSiteIdOverride:
         mock_adapter.site_id = "Default"
 
         site = ""
-        if mock_adapter is not None and site and isinstance(site, str) and site.strip():
+        if (
+            mock_adapter is not None
+            and site
+            and isinstance(site, str)
+            and _SITE_ID_PATTERN.match(site.strip())
+        ):
             mock_adapter.site_id = site.strip()
 
         assert mock_adapter.site_id == "Default"
@@ -66,7 +79,12 @@ class TestSiteIdOverride:
         mock_adapter.site_id = "Default"
 
         site = None
-        if mock_adapter is not None and site and isinstance(site, str) and site.strip():
+        if (
+            mock_adapter is not None
+            and site
+            and isinstance(site, str)
+            and _SITE_ID_PATTERN.match(site.strip())
+        ):
             mock_adapter.site_id = site.strip()
 
         assert mock_adapter.site_id == "Default"
@@ -78,7 +96,12 @@ class TestSiteIdOverride:
         mock_adapter.site_id = "Default"
 
         site = "   "
-        if mock_adapter is not None and site and isinstance(site, str) and site.strip():
+        if (
+            mock_adapter is not None
+            and site
+            and isinstance(site, str)
+            and _SITE_ID_PATTERN.match(site.strip())
+        ):
             mock_adapter.site_id = site.strip()
 
         assert mock_adapter.site_id == "Default"

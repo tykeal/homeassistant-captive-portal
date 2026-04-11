@@ -25,7 +25,7 @@ class TestGuestLifespanOmadaConfigured:
         settings = AppSettings(
             db_path=":memory:",
             omada_controller_url="https://ctrl.local:8043",
-            omada_controller_id="ctrl-abc",
+            omada_controller_id="aabbccdd1122334455667788",
             omada_username="user1",
             omada_password="pass1",
             omada_verify_ssl=False,
@@ -39,7 +39,7 @@ class TestGuestLifespanOmadaConfigured:
             assert config is not None
             assert isinstance(config, dict)
             assert config["base_url"] == "https://ctrl.local:8043"
-            assert config["controller_id"] == "ctrl-abc"
+            assert config["controller_id"] == "aabbccdd1122334455667788"
             assert config["username"] == "user1"
             assert config["password"] == "pass1"
             assert config["verify_ssl"] is False
@@ -50,7 +50,7 @@ class TestGuestLifespanOmadaConfigured:
         settings = AppSettings(
             db_path=":memory:",
             omada_controller_url="https://ctrl.local:8043",
-            omada_controller_id="ctrl-abc",
+            omada_controller_id="aabbccdd1122334455667788",
             omada_username="user1",
             omada_password="pass1",
         )
@@ -69,7 +69,7 @@ class TestGuestLifespanOmadaConfigured:
         admin_settings = AppSettings(
             db_path=":memory:",
             omada_controller_url="https://admin-ctrl.local:8043",
-            omada_controller_id="admin-ctrl-id",
+            omada_controller_id="aa11bb22cc33dd44ee55ff66",
             omada_username="admin",
             omada_password="adminpass",
             omada_site_name="AdminSite",
@@ -77,7 +77,7 @@ class TestGuestLifespanOmadaConfigured:
         guest_settings = AppSettings(
             db_path=":memory:",
             omada_controller_url="https://guest-ctrl.local:8043",
-            omada_controller_id="guest-ctrl-id",
+            omada_controller_id="ff66ee55dd44cc33bb22aa11",
             omada_username="guest",
             omada_password="guestpass",
             omada_site_name="GuestSite",

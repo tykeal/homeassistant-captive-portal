@@ -3,6 +3,7 @@
 """Guest portal routes for authorization and welcome pages."""
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Optional
@@ -38,6 +39,8 @@ from captive_portal.services.unified_code_service import CodeType, UnifiedCodeSe
 from captive_portal.services.voucher_service import VoucherRedemptionError, VoucherService
 from captive_portal.utils.network_utils import get_client_ip, validate_mac_address
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
+
+_SITE_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{16,64}$")
 
 _logger = logging.getLogger("captive_portal.guest")
 
@@ -660,7 +663,12 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
 
     # --- Controller authorization ---
     # Override adapter site_id if Omada controller sent a site identifier
-    if omada_adapter is not None and site and isinstance(site, str) and site.strip():
+    if (
+        omada_adapter is not None
+        and site
+        and isinstance(site, str)
+        and _SITE_ID_PATTERN.match(site.strip())
+    ):
         omada_adapter.site_id = site.strip()
 
     grant, error_detail = await _authorize_with_controller(

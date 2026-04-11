@@ -10,9 +10,30 @@ place.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from captive_portal.config.settings import AppSettings
+
+_CONTROLLER_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{16,64}$")
+
+
+def _validate_controller_id(controller_id: str) -> str:
+    """Validate controller ID is a safe hex string.
+
+    Args:
+        controller_id: Raw controller ID value.
+
+    Returns:
+        Stripped, validated controller ID.
+
+    Raises:
+        ValueError: If the ID does not match the expected hex pattern.
+    """
+    stripped = controller_id.strip()
+    if not _CONTROLLER_ID_PATTERN.match(stripped):
+        raise ValueError(f"Invalid controller ID format: expected hex string, got '{stripped}'")
+    return stripped
 
 
 async def build_omada_config(
@@ -58,11 +79,20 @@ async def build_omada_config(
             )
             return None
 
+    try:
+        controller_id = _validate_controller_id(controller_id)
+    except ValueError:
+        logger.error(
+            "Omada controller ID failed validation: '%s'",
+            controller_id,
+        )
+        return None
+
     return {
-        "base_url": settings.omada_controller_url,
+        "base_url": settings.omada_controller_url.strip(),
         "controller_id": controller_id,
-        "username": settings.omada_username,
+        "username": settings.omada_username.strip(),
         "password": settings.omada_password,
         "verify_ssl": settings.omada_verify_ssl,
-        "site_id": settings.omada_site_name,
+        "site_id": settings.omada_site_name.strip(),
     }
