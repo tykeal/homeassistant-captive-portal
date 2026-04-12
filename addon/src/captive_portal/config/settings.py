@@ -51,6 +51,7 @@ _ADDON_OPTION_MAP: dict[str, str] = {
     "omada_site_name": "omada_site_name",
     "omada_controller_id": "omada_controller_id",
     "omada_verify_ssl": "omada_verify_ssl",
+    "debug_guest_portal": "debug_guest_portal",
 }
 
 # Mapping from env var names to AppSettings field names
@@ -68,6 +69,7 @@ _ENV_VAR_MAP: dict[str, str] = {
     "CP_OMADA_SITE_NAME": "omada_site_name",
     "CP_OMADA_CONTROLLER_ID": "omada_controller_id",
     "CP_OMADA_VERIFY_SSL": "omada_verify_ssl",
+    "CP_DEBUG_GUEST_PORTAL": "debug_guest_portal",
 }
 
 
@@ -217,6 +219,7 @@ _FIELD_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "omada_controller_id": _validate_non_empty_str,
     "omada_site_name": _validate_non_empty_str,
     "omada_verify_ssl": _validate_omada_bool,
+    "debug_guest_portal": _validate_omada_bool,
 }
 
 
@@ -264,7 +267,7 @@ def _coerce_field(field: str, value: Any) -> Any:
         "omada_controller_id",
     ):
         return str(value).strip()
-    if field == "omada_verify_ssl":
+    if field in ("omada_verify_ssl", "debug_guest_portal"):
         if isinstance(value, bool):
             return value
         s = str(value).lower()
@@ -318,6 +321,7 @@ class AppSettings(BaseModel):
     omada_site_name: str = "Default"
     omada_controller_id: str = ""
     omada_verify_ssl: bool = True
+    debug_guest_portal: bool = False
 
     @property
     def omada_configured(self) -> bool:
@@ -377,6 +381,7 @@ class AppSettings(BaseModel):
             "omada_site_name",
             "omada_controller_id",
             "omada_verify_ssl",
+            "debug_guest_portal",
         ):
             # --- Try addon option ---
             addon_key = _FIELD_TO_ADDON_KEY.get(field_name)
@@ -459,6 +464,7 @@ class AppSettings(BaseModel):
             (self.omada_controller_id or "").strip() or "(will auto-discover)",
         )
         log.info("  omada_verify_ssl = %s", self.omada_verify_ssl)
+        log.info("  debug_guest_portal = %s", self.debug_guest_portal)
 
     def validate_db_path(self) -> None:
         """Validate that the database path's parent directory exists and is writable.

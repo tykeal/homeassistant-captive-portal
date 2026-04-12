@@ -39,6 +39,10 @@ declare omada_verify_ssl
 omada_verify_ssl=$(bashio::config 'omada_verify_ssl' '')
 export CP_OMADA_VERIFY_SSL="${omada_verify_ssl}"
 
+declare debug_guest_portal
+debug_guest_portal=$(bashio::config 'debug_guest_portal' 'false')
+export CP_DEBUG_GUEST_PORTAL="${debug_guest_portal}"
+
 exec python -m uvicorn \
     captive_portal.app:create_app \
     --factory \

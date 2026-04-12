@@ -33,6 +33,10 @@ declare omada_verify_ssl
 omada_verify_ssl=$(bashio::config 'omada_verify_ssl' '')
 export CP_OMADA_VERIFY_SSL="${omada_verify_ssl}"
 
+declare debug_guest_portal
+debug_guest_portal=$(bashio::config 'debug_guest_portal' 'false')
+export CP_DEBUG_GUEST_PORTAL="${debug_guest_portal}"
+
 bashio::log.info "Starting guest captive portal listener on port 8099..."
 if [ -n "${guest_external_url}" ]; then
     bashio::log.info "Guest external URL: ${guest_external_url}"

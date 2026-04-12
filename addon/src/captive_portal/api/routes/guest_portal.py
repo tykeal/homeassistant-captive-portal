@@ -302,12 +302,13 @@ async def show_authorize_form(
         "redirect_url": redirect_url or "",
     }
 
-    # DEBUG: temporary logging for hardware testing
-    _logger.warning(
-        "DEBUG GET /authorize query_params=%s omada_params=%s",
-        dict(request.query_params),
-        omada_params,
-    )
+    # DEBUG: configurable logging for hardware testing
+    if getattr(request.app.state, "debug_guest_portal", False):
+        _logger.debug(
+            "GET /authorize query_params=%s omada_params=%s",
+            dict(request.query_params),
+            omada_params,
+        )
 
     # Use redirectUrl as continue_url if no explicit continue was provided
     effective_continue = (
@@ -434,13 +435,14 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     Raises:
         HTTPException: 403 for CSRF validation, 429 if rate limit exceeded, 400/404/409/410 for validation errors
     """
-    # DEBUG: temporary logging for hardware testing
-    _logger.warning(
-        "DEBUG POST /authorize client_mac=%r site=%r headers=%s",
-        client_mac,
-        site,
-        {k: v for k, v in request.headers.items() if "mac" in k.lower()},
-    )
+    # DEBUG: configurable logging for hardware testing
+    if getattr(request.app.state, "debug_guest_portal", False):
+        _logger.debug(
+            "POST /authorize client_mac=%r site=%r headers=%s",
+            client_mac,
+            site,
+            {k: v for k, v in request.headers.items() if "mac" in k.lower()},
+        )
 
     # Validate CSRF token
     await _guest_csrf.validate_token(request)

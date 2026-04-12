@@ -19,8 +19,10 @@ from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import FastAPI, Request, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException
 
 from captive_portal.api.routes import booking_authorize
 from captive_portal.config.settings import AppSettings
@@ -33,8 +35,12 @@ from captive_portal.web.middleware.security_headers import SecurityHeadersMiddle
 
 logger = logging.getLogger("captive_portal.guest")
 
-# Package-relative paths for static assets
+# Package-relative paths for static and template assets
 _THEMES_DIR = Path(__file__).resolve().parent / "web" / "themes"
+_TEMPLATES_DIR = Path(__file__).resolve().parent / "web" / "templates"
+
+templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+templates.env.autoescape = True
 
 # Guest-specific Content-Security-Policy (stricter than ingress: no framing)
 _GUEST_CSP = (
@@ -147,6 +153,9 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
     # Store guest external URL in app state for route handlers
     app.state.guest_external_url = settings.guest_external_url
 
+    # Store debug toggle in app state for route handlers
+    app.state.debug_guest_portal = settings.debug_guest_portal
+
     # Security headers middleware — stricter policy for guest listener
     app.add_middleware(
         SecurityHeadersMiddleware,
@@ -203,6 +212,53 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
         return RedirectResponse(
             url=f"{base}/guest/authorize",
             status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    # Custom exception handler: render error.html instead of JSON
+    _friendly_messages = {
+        400: "There was a problem with your request.",
+        403: "Access is not available at this time.",
+        404: "The requested resource was not found.",
+        409: "This device has already been authorized.",
+        410: "This code has expired or is no longer valid.",
+        429: "Too many attempts. Please wait a moment and try again.",
+        500: "An internal error occurred.",
+        502: "WiFi authorization could not be completed. Please try again or contact the host.",
+        503: "The service is temporarily unavailable. Please try again later.",
+    }
+
+    @app.exception_handler(HTTPException)
+    async def guest_http_exception_handler(
+        request: Request,
+        exc: HTTPException,
+    ) -> HTMLResponse:
+        """Render friendly HTML error page for guest portal errors.
+
+        Maps HTTP status codes to user-friendly titles and renders
+        the guest error template instead of returning raw JSON.
+
+        Args:
+            request: Incoming HTTP request.
+            exc: The HTTPException that was raised.
+
+        Returns:
+            HTMLResponse with the rendered error template.
+        """
+        error_message = str(exc.detail)
+        friendly_title = _friendly_messages.get(
+            exc.status_code,
+            "Something went wrong",
+        )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="guest/error.html",
+            context={
+                "error_message": error_message,
+                "error_title": friendly_title,
+                "status_code": exc.status_code,
+            },
+            status_code=exc.status_code,
         )
 
     return app
