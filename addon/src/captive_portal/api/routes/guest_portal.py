@@ -4,6 +4,7 @@
 
 import logging
 import re
+import urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Optional
@@ -461,6 +462,24 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             {k: v for k, v in request.headers.items() if "mac" in k.lower()},
         )
 
+    # Store retry URL query params so the error page can link back
+    # with the original Omada parameters preserved.
+    retry_params = {
+        k: v
+        for k, v in {
+            "clientMac": client_mac,
+            "site": site,
+            "gatewayMac": gateway_mac,
+            "apMac": ap_mac,
+            "vid": vid,
+            "ssidName": ssid_name,
+            "radioId": radio_id,
+            "continue": continue_url,
+        }.items()
+        if v
+    }
+    request.state.retry_query = urllib.parse.urlencode(retry_params) if retry_params else ""
+
     # Validate CSRF token
     await _guest_csrf.validate_token(request)
 
@@ -842,11 +861,15 @@ async def show_error(
     # Sanitize user-controlled error message to prevent XSS
     sanitized_message = _sanitize_error_message(message)
 
+    rp = request.scope.get("root_path", "")
+    retry_url = f"{rp}/guest/authorize"
+
     response = templates.TemplateResponse(
         request=request,
         name="guest/error.html",
         context={
             "error_message": sanitized_message,
+            "retry_url": retry_url,
         },
     )
     return _add_security_headers(response)
