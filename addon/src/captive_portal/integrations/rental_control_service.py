@@ -199,7 +199,7 @@ class RentalControlService:
 
         # Create event record with booking window (grace applied at grant time)
         event = RentalControlEvent(
-            integration_id=integration_config.id,
+            integration_id=integration_config.integration_id,
             event_index=event_index,
             slot_name=slot_name,
             slot_code=slot_code,
