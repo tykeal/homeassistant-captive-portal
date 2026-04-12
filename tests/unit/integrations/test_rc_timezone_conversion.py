@@ -465,3 +465,54 @@ class TestProcessEventsTimezoneIntegration:
             0,
             tzinfo=timezone.utc,
         )
+
+    @pytest.mark.asyncio
+    async def test_process_events_invalid_tz_falls_back_to_utc(
+        self,
+        integration_config,
+    ):
+        """Invalid HA timezone falls back to UTC without aborting."""
+        sensor = {
+            "entity_id": "sensor.rental_control_test_event_0",
+            "state": "Guest",
+            "attributes": {
+                "start": "2026-04-12T17:00:00Z",
+                "end": "2026-04-12T20:00:00Z",
+                "slot_code": "11111",
+                "summary": "Guest",
+            },
+        }
+        mock_client = MagicMock()
+        mock_client.get_all_states = AsyncMock(
+            return_value=[sensor],
+        )
+        mock_client.get_timezone = AsyncMock(
+            return_value="Invalid/Timezone",
+        )
+
+        mock_repo = MagicMock()
+        mock_repo.upsert = AsyncMock()
+        mock_session = MagicMock()
+        mock_session.exec.return_value.all.return_value = [
+            integration_config,
+        ]
+        mock_repo.session = mock_session
+
+        service = RentalControlService(
+            ha_client=mock_client,
+            event_repo=mock_repo,
+        )
+
+        await service.process_events()
+
+        # Should still process despite invalid tz
+        mock_repo.upsert.assert_called_once()
+        event = mock_repo.upsert.call_args[0][0]
+        assert event.start_utc == datetime(
+            2026,
+            4,
+            12,
+            17,
+            0,
+            tzinfo=timezone.utc,
+        )

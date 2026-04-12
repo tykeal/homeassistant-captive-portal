@@ -169,7 +169,12 @@ class HAClient:
                     user_message="Home Assistant returned an invalid response",
                     detail=f"JSON decode error from {url}: {exc}",
                 ) from exc
-            return str(data.get("time_zone", "UTC"))
+            time_zone = data.get("time_zone")
+            if isinstance(time_zone, str):
+                time_zone = time_zone.strip()
+                if time_zone:
+                    return time_zone
+            return "UTC"
 
         except (
             HAAuthenticationError,

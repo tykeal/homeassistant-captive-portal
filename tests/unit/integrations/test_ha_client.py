@@ -169,3 +169,45 @@ async def test_ha_client_get_timezone_500_raises() -> None:
         )
         with pytest.raises(HAServerError):
             await client.get_timezone()
+
+
+@pytest.mark.asyncio
+async def test_ha_client_get_timezone_null_defaults_utc() -> None:
+    """Test that null time_zone value defaults to UTC."""
+    from captive_portal.integrations.ha_client import HAClient
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"time_zone": None}
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_response
+
+        client = HAClient(
+            base_url="http://supervisor/core/api",
+            token="test_token",
+        )
+        result = await client.get_timezone()
+
+        assert result == "UTC"
+
+
+@pytest.mark.asyncio
+async def test_ha_client_get_timezone_empty_defaults_utc() -> None:
+    """Test that empty string time_zone defaults to UTC."""
+    from captive_portal.integrations.ha_client import HAClient
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"time_zone": "  "}
+
+    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
+        mock_get.return_value = mock_response
+
+        client = HAClient(
+            base_url="http://supervisor/core/api",
+            token="test_token",
+        )
+        result = await client.get_timezone()
+
+        assert result == "UTC"

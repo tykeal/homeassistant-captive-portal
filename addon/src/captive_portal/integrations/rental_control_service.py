@@ -66,7 +66,14 @@ class RentalControlService:
         all_states = await self.ha_client.get_all_states()
 
         ha_tz_str = await self.ha_client.get_timezone()
-        ha_tz: tzinfo = ZoneInfo(ha_tz_str)
+        try:
+            ha_tz: tzinfo = ZoneInfo(ha_tz_str)
+        except (KeyError, Exception):
+            logger.warning(
+                "Invalid HA timezone, falling back to UTC",
+                extra={"time_zone": ha_tz_str},
+            )
+            ha_tz = timezone.utc
 
         for config in configs:
             try:
