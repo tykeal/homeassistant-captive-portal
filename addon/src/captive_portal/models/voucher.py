@@ -67,7 +67,8 @@ class Voucher(SQLModel, table=True):
 
         When the voucher has been activated, expiration is calculated from
         ``activated_utc``; otherwise it falls back to ``created_utc`` as
-        an estimate for display before first use.
+        an estimate for display before first use.  The result is floored
+        to minute precision.
 
         Note: Ensures timezone awareness even if stored timestamps are
         naive (from DB).

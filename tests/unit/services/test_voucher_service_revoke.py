@@ -27,6 +27,7 @@ def _make_voucher(
     status: VoucherStatus = VoucherStatus.UNUSED,
     redeemed_count: int = 0,
     booking_ref: str | None = None,
+    activated_utc: datetime | None = None,
 ) -> Voucher:
     """Create and persist a voucher for testing."""
     voucher = Voucher(
@@ -35,6 +36,7 @@ def _make_voucher(
         status=status,
         redeemed_count=redeemed_count,
         booking_ref=booking_ref,
+        activated_utc=activated_utc,
     )
     session.add(voucher)
     session.commit()
@@ -114,10 +116,15 @@ class TestVoucherServiceRevoke:
     @pytest.mark.asyncio
     async def test_revoke_expired_voucher_raises(self, db_session: Session) -> None:
         """Verify revoking an expired voucher raises VoucherExpiredError."""
-        voucher = _make_voucher(db_session, code="REVEXPRD01")
+        now = datetime.now(timezone.utc)
+        voucher = _make_voucher(
+            db_session,
+            code="REVEXPRD01",
+            activated_utc=now,
+        )
         repo = VoucherRepository(db_session)
         service = VoucherService(session=db_session, voucher_repo=repo)
-        future = datetime.now(timezone.utc) + timedelta(days=365)
+        future = now + timedelta(days=365)
         with pytest.raises(VoucherExpiredError):
             await service.revoke("REVEXPRD01", current_time=future)
         db_session.delete(voucher)

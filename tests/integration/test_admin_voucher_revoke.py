@@ -55,6 +55,7 @@ def _create_voucher(
     status: VoucherStatus = VoucherStatus.UNUSED,
     redeemed_count: int = 0,
     created_utc: datetime | None = None,
+    activated_utc: datetime | None = None,
 ) -> Voucher:
     """Persist a voucher for integration testing."""
     kwargs: dict[str, Any] = dict(
@@ -65,6 +66,8 @@ def _create_voucher(
     )
     if created_utc is not None:
         kwargs["created_utc"] = created_utc
+    if activated_utc is not None:
+        kwargs["activated_utc"] = activated_utc
     voucher = Voucher(**kwargs)
     db_session.add(voucher)
     db_session.commit()
@@ -120,11 +123,13 @@ class TestAdminVoucherRevoke:
     ) -> None:
         """Expired voucher has a disabled revoke button."""
         client, _csrf = authenticated_client
+        past = datetime.now(timezone.utc) - timedelta(hours=24)
         v = _create_voucher(
             db_session,
             code="INTGEXP001",
             duration_minutes=1,
-            created_utc=datetime.now(timezone.utc) - timedelta(hours=24),
+            created_utc=past,
+            activated_utc=past,
         )
 
         page = client.get("/admin/vouchers/")

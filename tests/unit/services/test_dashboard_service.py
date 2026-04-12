@@ -58,6 +58,7 @@ def _make_voucher(
     duration_minutes: int = 1440,
     status: VoucherStatus = VoucherStatus.UNUSED,
     created_utc: datetime | None = None,
+    activated_utc: datetime | None = None,
 ) -> Voucher:
     """Create a test Voucher instance."""
     voucher = Voucher(
@@ -68,6 +69,8 @@ def _make_voucher(
     )
     if created_utc is not None:
         voucher.created_utc = created_utc
+    if activated_utc is not None:
+        voucher.activated_utc = activated_utc
     db_session.add(voucher)
     db_session.commit()
     db_session.refresh(voucher)
@@ -242,15 +245,28 @@ class TestGetStatsAvailableVouchers:
         assert stats.available_vouchers == 1
 
     def test_expired_unused_voucher_not_counted(self, db_session: Session) -> None:
-        """Verify expired unused voucher is not counted as available."""
+        """Verify activated-then-expired unused voucher is not counted."""
+        past = NOW - timedelta(hours=2)
         _make_voucher(
             db_session,
             code="VVVV0002",
             duration_minutes=60,
-            created_utc=NOW - timedelta(hours=2),
+            created_utc=past,
+            activated_utc=past,
         )
         stats = DashboardService(db_session).get_stats(current_time=NOW)
         assert stats.available_vouchers == 0
+
+    def test_unactivated_old_voucher_still_counted(self, db_session: Session) -> None:
+        """Unactivated voucher is available regardless of creation age."""
+        _make_voucher(
+            db_session,
+            code="VVVV0005",
+            duration_minutes=60,
+            created_utc=NOW - timedelta(hours=2),
+        )
+        stats = DashboardService(db_session).get_stats(current_time=NOW)
+        assert stats.available_vouchers == 1
 
     def test_active_voucher_not_counted(self, db_session: Session) -> None:
         """Verify active voucher is not counted as available."""

@@ -6,6 +6,7 @@ import logging
 from collections.abc import Generator
 from typing import Optional
 
+from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 from sqlmodel import create_engine, Session, SQLModel
 
@@ -59,6 +60,10 @@ def create_db_engine(database_url: str, echo: bool = False) -> Engine:
 def init_db(engine: Engine, drop_existing: bool = False) -> None:
     """Initialize database schema (create all tables).
 
+    After table creation, applies lightweight schema migrations for
+    columns added after the initial release so that existing SQLite
+    databases are upgraded in-place.
+
     Args:
         engine: SQLAlchemy engine
         drop_existing: Drop existing tables before creation (destructive)
@@ -66,6 +71,30 @@ def init_db(engine: Engine, drop_existing: bool = False) -> None:
     if drop_existing:
         SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
+    _migrate_voucher_activated_utc(engine)
+
+
+def _migrate_voucher_activated_utc(engine: Engine) -> None:
+    """Add activated_utc column to voucher table if missing.
+
+    SQLite's CREATE TABLE IF NOT EXISTS will not add columns to
+    an existing table.  This lightweight migration ensures the
+    column exists for databases created before the field was
+    introduced.
+
+    Args:
+        engine: SQLAlchemy engine to inspect and migrate.
+    """
+    insp = inspect(engine)
+    if "voucher" not in insp.get_table_names():
+        return
+    columns = {c["name"] for c in insp.get_columns("voucher")}
+    if "activated_utc" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE voucher ADD COLUMN activated_utc DATETIME"))
+        logging.getLogger("captive_portal.persistence").info(
+            "Migrated voucher table: added activated_utc column."
+        )
 
 
 def get_session() -> Generator[Session, None, None]:

@@ -185,12 +185,9 @@ class VoucherService:
         if voucher.status == VoucherStatus.REVOKED:
             raise VoucherRedemptionError(f"Voucher '{code}' has been revoked")
 
-        # Set activation time on first use (starts the expiry timer)
-        if voucher.activated_utc is None:
-            voucher.activated_utc = current_time
-
-        # Check expiration (now based on activated_utc)
-        if voucher.expires_utc < current_time:
+        # Check expiration (skip for unactivated vouchers — timer
+        # hasn't started yet and will be set below on first use)
+        if voucher.activated_utc is not None and voucher.expires_utc < current_time:
             raise VoucherRedemptionError(f"Voucher '{code}' expired at {voucher.expires_utc}")
 
         # Check for duplicate redemption (same voucher + MAC)
@@ -198,6 +195,10 @@ class VoucherService:
         for grant in existing_grants:
             if grant.voucher_code == code:
                 raise VoucherRedemptionError(f"Voucher '{code}' already redeemed for MAC '{mac}'")
+
+        # Set activation time on first use (starts the expiry timer)
+        if voucher.activated_utc is None:
+            voucher.activated_utc = current_time
 
         # Create access grant
         grant_start = floor_to_minute(current_time)
@@ -253,7 +254,9 @@ class VoucherService:
         expires = voucher.expires_utc
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
-        if current_time > expires:
+        # Only check expiration for activated vouchers — unactivated
+        # vouchers haven't started their timer yet.
+        if voucher.activated_utc is not None and current_time > expires:
             raise VoucherExpiredError(code)
 
         voucher.status = VoucherStatus.REVOKED
