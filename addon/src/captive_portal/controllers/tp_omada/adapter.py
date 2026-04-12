@@ -70,7 +70,12 @@ class OmadaAdapter:
         """
         # Calculate authorization duration in seconds
         now = datetime.now(tz=timezone.utc)
-        duration_seconds = max(int((expires_at - now).total_seconds()), 0)
+        expires_at_utc = (
+            expires_at.replace(tzinfo=timezone.utc)
+            if expires_at.tzinfo is None
+            else expires_at.astimezone(timezone.utc)
+        )
+        duration_seconds = max(int((expires_at_utc - now).total_seconds()), 0)
 
         payload: dict[str, Any] = {
             "clientMac": mac,
