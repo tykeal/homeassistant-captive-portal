@@ -37,7 +37,8 @@ def guest_client() -> Generator[TestClient, None, None]:
     os.close(fd)
     app = create_guest_app(settings=AppSettings(db_path=db_path))
     try:
-        yield TestClient(app)
+        with TestClient(app) as client:
+            yield client
     finally:
         database.dispose_engine()
         try:
@@ -54,14 +55,13 @@ class TestGuestPortalFormFlow:
         guest_client: TestClient,
     ) -> None:
         """GET with clientMac embeds client_mac hidden field."""
-        with guest_client:
-            resp = guest_client.get(
-                "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
-            )
-            assert resp.status_code == 200
-            text = resp.text
-            assert 'name="client_mac"' in text
-            assert 'value="AA-BB-CC-DD-EE-FF"' in text
+        resp = guest_client.get(
+            "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
+        )
+        assert resp.status_code == 200
+        text = resp.text
+        assert 'name="client_mac"' in text
+        assert 'value="AA-BB-CC-DD-EE-FF"' in text
 
     def test_post_authorize_receives_mac_from_form(
         self,
@@ -73,28 +73,27 @@ class TestGuestPortalFormFlow:
         (voucher not found) rather than 400 (MAC extraction
         failure), proving the form field was read correctly.
         """
-        with guest_client:
-            # Step 1: GET to obtain CSRF token cookie
-            get_resp = guest_client.get(
-                "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
-            )
-            csrf_token = get_resp.cookies.get("guest_csrftoken")
-            assert csrf_token is not None
+        # Step 1: GET to obtain CSRF token cookie
+        get_resp = guest_client.get(
+            "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
+        )
+        csrf_token = get_resp.cookies.get("guest_csrftoken")
+        assert csrf_token is not None
 
-            # Step 2: POST with form data including client_mac
-            post_resp = guest_client.post(
-                "/guest/authorize",
-                data={
-                    "client_mac": "AA-BB-CC-DD-EE-FF",
-                    "code": "TEST123",
-                    "csrf_token": csrf_token,
-                    "continue_url": "/guest/welcome",
-                },
-            )
+        # Step 2: POST with form data including client_mac
+        post_resp = guest_client.post(
+            "/guest/authorize",
+            data={
+                "client_mac": "AA-BB-CC-DD-EE-FF",
+                "code": "TEST123",
+                "csrf_token": csrf_token,
+                "continue_url": "/guest/welcome",
+            },
+        )
 
-            # Handler must pass MAC extraction (no 400) and
-            # reach code validation (410 = voucher not found).
-            assert post_resp.status_code == 410
-            body = post_resp.text.lower()
-            assert "unable to determine device mac" not in body
-            assert "not found" in body
+        # Handler must pass MAC extraction (no 400) and
+        # reach code validation (410 = voucher not found).
+        assert post_resp.status_code == 410
+        body = post_resp.text.lower()
+        assert "unable to determine device mac" not in body
+        assert "not found" in body
