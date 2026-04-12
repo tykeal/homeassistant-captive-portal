@@ -39,3 +39,4 @@ schema:
   omada_site_name: "str?"
   omada_controller_id: "str?"
   omada_verify_ssl: "bool?"
+  debug_guest_portal: "bool?"

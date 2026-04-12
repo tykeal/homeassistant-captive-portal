@@ -161,6 +161,9 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.state.session_config = session_config
     app.state.session_store = session_store
 
+    # Store debug toggle in app state for guest portal routes
+    app.state.debug_guest_portal = settings.debug_guest_portal
+
     # Add security headers middleware (outermost)
     app.add_middleware(SecurityHeadersMiddleware)
 

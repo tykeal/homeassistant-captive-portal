@@ -135,8 +135,9 @@ class TestDualPortGuestShared:
 class TestDualPortResponseFormat:
     """Test that guest app 404 responses have standard format."""
 
-    def test_guest_404_is_standard_json(self, guest_client: TestClient) -> None:
-        """Guest app 404 for admin route returns standard FastAPI JSON."""
+    def test_guest_404_is_friendly_html(self, guest_client: TestClient) -> None:
+        """Guest app 404 for admin route returns friendly HTML error page."""
         response = guest_client.get("/api/grants/")
         assert response.status_code == 404
-        assert response.json() == {"detail": "Not Found"}
+        assert "text/html" in response.headers["content-type"]
+        assert b"The requested resource was not found." in response.content
