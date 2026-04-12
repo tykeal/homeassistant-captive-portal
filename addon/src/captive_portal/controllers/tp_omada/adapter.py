@@ -74,19 +74,19 @@ class OmadaAdapter:
             OmadaClientError: On controller errors
             OmadaRetryExhaustedError: If retries exhausted
         """
-        # Calculate authorization duration in seconds
+        # Calculate authorization duration in milliseconds
         now = datetime.now(timezone.utc)
         expires_at_utc = (
             expires_at.replace(tzinfo=timezone.utc)
             if expires_at.tzinfo is None
             else expires_at.astimezone(timezone.utc)
         )
-        duration_seconds = max(math.ceil((expires_at_utc - now).total_seconds()), 0)
+        duration_ms = max(math.ceil((expires_at_utc - now).total_seconds() * 1000), 0)
 
         payload: dict[str, Any] = {
             "clientMac": mac,
             "site": self.site_id,
-            "time": duration_seconds,
+            "time": duration_ms,
             "authType": 4,  # External portal auth type
         }
 
