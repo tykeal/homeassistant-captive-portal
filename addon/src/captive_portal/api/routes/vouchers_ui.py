@@ -119,7 +119,7 @@ async def get_vouchers(
             is_expired = now > expires
         else:
             is_expired = False
-        can_revoke = voucher.status is not VoucherStatus.REVOKED and not is_expired
+        can_revoke = voucher.status != VoucherStatus.REVOKED and not is_expired
         can_delete = voucher.redeemed_count == 0
         voucher_actions[voucher.code] = VoucherActions(can_revoke=can_revoke, can_delete=can_delete)
 
