@@ -448,16 +448,6 @@ class TestProcessEventsErrorIsolation:
         """Error in one integration does not prevent processing others."""
         sensors = [
             _make_sensor(
-                "sensor.rental_control_test_event_0",
-                "Guest A",
-                _booking_attrs(
-                    slot_code=None,
-                    slot_name=None,
-                    last_four=None,
-                    summary="Guest A",
-                ),
-            ),
-            _make_sensor(
                 "sensor.rental_control_beach_event_0",
                 "Guest B",
                 _booking_attrs(summary="Guest B"),
@@ -468,9 +458,46 @@ class TestProcessEventsErrorIsolation:
         )
         mock_client.get_all_states = AsyncMock(return_value=sensors)
 
+        # Force exception in first integration only
+        original = service._process_integration
+        call_count = 0
+
+        async def _fail_first(config, states):
+            """Raise on first integration, pass-through on others."""
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise RuntimeError("simulated DB error")
+            await original(config, states)
+
+        service._process_integration = _fail_first
+
         await service.process_events()
 
+        # First integration should have been rolled back
+        assert integration_config.last_sync_utc is None
         # Second integration should still be synced
         assert second_integration_config.stale_count == 0
         assert second_integration_config.last_sync_utc is not None
-        mock_repo.session.commit.assert_called_once()
+        mock_repo.session.rollback.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_rollback_called_on_integration_failure(
+        self,
+        integration_config,
+    ):
+        """Session rollback is called when an integration fails."""
+        service, mock_client, mock_repo = _make_service(
+            configs=[integration_config],
+        )
+        mock_client.get_all_states = AsyncMock(
+            return_value=[],
+        )
+        service._process_integration = AsyncMock(
+            side_effect=RuntimeError("DB error"),
+        )
+
+        await service.process_events()
+
+        mock_repo.session.rollback.assert_called_once()
+        mock_repo.session.commit.assert_not_called()

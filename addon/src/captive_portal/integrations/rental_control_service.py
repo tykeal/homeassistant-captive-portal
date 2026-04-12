@@ -70,14 +70,14 @@ class RentalControlService:
                 config.last_sync_utc = datetime.now(timezone.utc)
                 config.stale_count = 0
                 session.add(config)
+                session.commit()
             except Exception:
+                session.rollback()
                 logger.error(
                     "Failed to process integration",
                     extra={"integration_id": config.integration_id},
                     exc_info=True,
                 )
-
-        session.commit()
 
     async def _process_integration(
         self,

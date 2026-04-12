@@ -107,17 +107,23 @@ def _make_lifespan(
             ha_client=ha_client,
             rental_service=rental_service,
         )
-        ha_poller._task = asyncio.create_task(ha_poller.start())
+        ha_poller_task = asyncio.create_task(ha_poller.start())
         app.state.ha_poller = ha_poller
-        app.state._poller_session = poller_session
+        app.state.ha_poller_task = ha_poller_task
+        app.state.poller_session = poller_session
         logger.info("HA poller started for Rental Control event sync")
 
         yield
 
         # --- Shutdown ---
         await app.state.ha_poller.stop()
+        app.state.ha_poller_task.cancel()
+        try:
+            await app.state.ha_poller_task
+        except asyncio.CancelledError:
+            pass
         logger.info("HA poller stopped.")
-        app.state._poller_session.close()
+        app.state.poller_session.close()
         await app.state.ha_client.close()
         logger.info("HAClient closed.")
         dispose_engine()

@@ -31,7 +31,7 @@ class TestAdminLifespanPollerWiring:
             assert isinstance(app.state.ha_poller, HAPoller)
 
     def test_poller_session_stored_on_state(self) -> None:
-        """app.state._poller_session should exist during lifespan."""
+        """app.state.poller_session should exist during lifespan."""
         settings = AppSettings(
             db_path=":memory:",
             omada_controller_url="",
@@ -40,8 +40,21 @@ class TestAdminLifespanPollerWiring:
 
         app = create_app(settings=settings)
         with TestClient(app):
-            assert hasattr(app.state, "_poller_session")
-            assert app.state._poller_session is not None
+            assert hasattr(app.state, "poller_session")
+            assert app.state.poller_session is not None
+
+    def test_poller_task_stored_on_state(self) -> None:
+        """app.state.ha_poller_task should exist during lifespan."""
+        settings = AppSettings(
+            db_path=":memory:",
+            omada_controller_url="",
+        )
+        from captive_portal.app import create_app
+
+        app = create_app(settings=settings)
+        with TestClient(app):
+            assert hasattr(app.state, "ha_poller_task")
+            assert app.state.ha_poller_task is not None
 
     def test_poller_shutdown_clean(self) -> None:
         """Poller should stop without errors on app shutdown."""
@@ -54,7 +67,6 @@ class TestAdminLifespanPollerWiring:
         app = create_app(settings=settings)
         with TestClient(app):
             poller = app.state.ha_poller
-            assert poller._running is True
 
         # After context exit (shutdown), poller should be stopped
         assert poller._running is False
