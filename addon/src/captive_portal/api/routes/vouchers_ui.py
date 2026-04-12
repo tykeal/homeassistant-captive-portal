@@ -112,14 +112,21 @@ async def get_vouchers(
     now = datetime.now(timezone.utc)
     voucher_actions: dict[str, VoucherActions] = {}
     for voucher in vouchers:
-        # Unactivated vouchers haven't started their expiry timer
-        if voucher.activated_utc is None:
-            is_expired = False
-        else:
+        # An activated voucher has started its expiry timer. Legacy
+        # rows may lack activated_utc, so also treat redeemed or
+        # non-UNUSED vouchers as activated.
+        is_activated = (
+            voucher.activated_utc is not None
+            or voucher.redeemed_count > 0
+            or voucher.status != VoucherStatus.UNUSED
+        )
+        if is_activated:
             expires = voucher.expires_utc
             if expires.tzinfo is None:
                 expires = expires.replace(tzinfo=timezone.utc)
             is_expired = now > expires
+        else:
+            is_expired = False
         can_revoke = voucher.status is not VoucherStatus.REVOKED and not is_expired
         can_delete = voucher.redeemed_count == 0
         voucher_actions[voucher.code] = VoucherActions(can_revoke=can_revoke, can_delete=can_delete)

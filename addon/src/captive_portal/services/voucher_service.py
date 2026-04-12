@@ -185,9 +185,12 @@ class VoucherService:
         if voucher.status == VoucherStatus.REVOKED:
             raise VoucherRedemptionError(f"Voucher '{code}' has been revoked")
 
-        # Check expiration (skip for unactivated vouchers — timer
-        # hasn't started yet and will be set below on first use)
-        if voucher.activated_utc is not None and voucher.expires_utc < current_time:
+        # Check expiration — skip only for truly unactivated vouchers.
+        # Legacy rows may have activated_utc == NULL despite being
+        # previously redeemed, so also treat redeemed_count > 0 as
+        # activated for expiration purposes.
+        is_activated = voucher.activated_utc is not None or voucher.redeemed_count > 0
+        if is_activated and voucher.expires_utc < current_time:
             raise VoucherRedemptionError(f"Voucher '{code}' expired at {voucher.expires_utc}")
 
         # Check for duplicate redemption (same voucher + MAC)
@@ -196,8 +199,10 @@ class VoucherService:
             if grant.voucher_code == code:
                 raise VoucherRedemptionError(f"Voucher '{code}' already redeemed for MAC '{mac}'")
 
-        # Set activation time on first use (starts the expiry timer)
-        if voucher.activated_utc is None:
+        # Set activation time on first use (starts the expiry timer).
+        # Guard with status check so legacy rows (redeemed_count > 0
+        # but activated_utc NULL) don't get their timer restarted.
+        if voucher.activated_utc is None and voucher.status == VoucherStatus.UNUSED:
             voucher.activated_utc = current_time
 
         # Create access grant
@@ -255,8 +260,14 @@ class VoucherService:
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
         # Only check expiration for activated vouchers — unactivated
-        # vouchers haven't started their timer yet.
-        if voucher.activated_utc is not None and current_time > expires:
+        # vouchers haven't started their timer yet.  Legacy rows may
+        # have activated_utc == NULL despite being previously redeemed.
+        is_activated = (
+            voucher.activated_utc is not None
+            or voucher.redeemed_count > 0
+            or voucher.status != VoucherStatus.UNUSED
+        )
+        if is_activated and current_time > expires:
             raise VoucherExpiredError(code)
 
         voucher.status = VoucherStatus.REVOKED

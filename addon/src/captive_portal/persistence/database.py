@@ -75,25 +75,41 @@ def init_db(engine: Engine, drop_existing: bool = False) -> None:
 
 
 def _migrate_voucher_activated_utc(engine: Engine) -> None:
-    """Add activated_utc column to voucher table if missing.
+    """Add activated_utc column and backfill legacy rows.
 
     SQLite's CREATE TABLE IF NOT EXISTS will not add columns to
     an existing table.  This lightweight migration ensures the
     column exists for databases created before the field was
-    introduced.
+    introduced, and backfills legacy activated vouchers so
+    upgraded databases preserve expiration behavior.
 
     Args:
         engine: SQLAlchemy engine to inspect and migrate.
     """
+    logger = logging.getLogger("captive_portal.persistence")
     insp = inspect(engine)
     if "voucher" not in insp.get_table_names():
         return
     columns = {c["name"] for c in insp.get_columns("voucher")}
-    if "activated_utc" not in columns:
-        with engine.begin() as conn:
+
+    with engine.begin() as conn:
+        if "activated_utc" not in columns:
             conn.execute(text("ALTER TABLE voucher ADD COLUMN activated_utc DATETIME"))
-        logging.getLogger("captive_portal.persistence").info(
-            "Migrated voucher table: added activated_utc column."
+            logger.info("Migrated voucher table: added activated_utc column.")
+
+        # Backfill activated_utc for legacy redeemed vouchers
+        conn.execute(
+            text(
+                "UPDATE voucher "
+                "SET activated_utc = COALESCE("
+                "  last_redeemed_utc, created_utc"
+                ") "
+                "WHERE activated_utc IS NULL "
+                "AND (redeemed_count > 0 OR status = 'active')"
+            )
+        )
+        logger.info(
+            "Migrated voucher table: backfilled activated_utc for legacy activated vouchers."
         )
 
 

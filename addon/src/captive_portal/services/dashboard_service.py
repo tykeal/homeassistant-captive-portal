@@ -115,14 +115,16 @@ class DashboardService:
         # expected to remain small.  If the volume grows, consider adding
         # an indexed ``expires_utc`` column.
         #
-        # Unactivated vouchers (activated_utc is None) are always counted
-        # as available — their expiry timer hasn't started yet.
+        # Unactivated vouchers (activated_utc is None and
+        # redeemed_count == 0) are always counted as available —
+        # their expiry timer hasn't started yet.
         all_unused = self._session.exec(
             select(Voucher).where(Voucher.status == VoucherStatus.UNUSED)
         ).all()
         available_count = 0
         for v in all_unused:
-            if v.activated_utc is None:
+            is_activated = v.activated_utc is not None or v.redeemed_count > 0
+            if not is_activated:
                 available_count += 1
                 continue
             expires = v.expires_utc
