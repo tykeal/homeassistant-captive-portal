@@ -98,7 +98,12 @@ def _migrate_voucher_activated_utc(engine: Engine) -> None:
             conn.execute(text("ALTER TABLE voucher ADD COLUMN activated_utc DATETIME"))
             logger.info("Migrated voucher table: added activated_utc column.")
 
-        # Backfill activated_utc for legacy redeemed vouchers
+        # Backfill activated_utc for legacy redeemed vouchers.
+        # Prefer created_utc because legacy expiry was calculated
+        # from creation time; last_redeemed_utc is only a fallback
+        # when created_utc is unexpectedly NULL.  The resulting
+        # value is an approximation — it may not reflect the
+        # actual first use.
         conn.execute(
             text(
                 "UPDATE voucher "
