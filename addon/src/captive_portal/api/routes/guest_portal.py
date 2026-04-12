@@ -275,16 +275,16 @@ async def show_authorize_form(
         HTMLResponse: Rendered authorization form with CSRF token
     """
     omada_params = {
-        "clientMac": client_mac or "",
-        "clientIp": client_ip or "",
+        "client_mac": client_mac or "",
+        "client_ip": client_ip or "",
         "site": site or "",
-        "apMac": ap_mac or "",
-        "gatewayMac": gateway_mac or "",
-        "radioId": radio_id or "",
-        "ssidName": ssid_name or "",
+        "ap_mac": ap_mac or "",
+        "gateway_mac": gateway_mac or "",
+        "radio_id": radio_id or "",
+        "ssid_name": ssid_name or "",
         "vid": vid or "",
         "t": t or "",
-        "redirectUrl": redirect_url or "",
+        "redirect_url": redirect_url or "",
     }
 
     # DEBUG: temporary logging for hardware testing
@@ -374,7 +374,7 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     request: Request,
     code: Annotated[str, Form()],
     continue_url: Annotated[Optional[str], Form(alias="continue")] = None,
-    client_mac: Annotated[Optional[str], Form(alias="clientMac")] = None,
+    client_mac: Annotated[Optional[str], Form()] = None,
     site: Annotated[Optional[str], Form()] = None,
     rate_limiter: RateLimiter = Depends(),
     unified_code_service: UnifiedCodeService = Depends(),
