@@ -67,7 +67,8 @@ class OmadaAdapter:
         }
 
         # Call controller authorize endpoint with retry
-        response = await self.client.post_with_retry("/extportal/auth", payload)
+        endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/auth"
+        response = await self.client.post_with_retry(endpoint, payload)
 
         # Extract result
         result = response.get("result", {})
@@ -99,7 +100,8 @@ class OmadaAdapter:
         }
 
         try:
-            await self.client.post_with_retry("/extportal/revoke", payload)
+            endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/revoke"
+            await self.client.post_with_retry(endpoint, payload)
             return {"success": True, "mac": mac}
         except OmadaClientError as e:
             # Treat 404 as success (already revoked/not found)
@@ -140,13 +142,14 @@ class OmadaAdapter:
                 - remaining_seconds: Optional remaining time (if available)
 
         Note:
-            This uses the optional /extportal/session endpoint if available.
-            May not be supported by all Omada versions.
+            This uses the ``/{controller_id}/api/v2/hotspot/extPortal/session``
+            endpoint.  May not be supported by all Omada versions.
         """
         payload = {"clientMac": mac, "site": self.site_id}
 
         try:
-            response = await self.client.post_with_retry("/extportal/session", payload)
+            endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/session"
+            response = await self.client.post_with_retry(endpoint, payload)
             result = response.get("result", {})
             return {
                 "mac": mac,

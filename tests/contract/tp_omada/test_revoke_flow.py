@@ -29,9 +29,11 @@ async def test_omada_revoke_request_structure() -> None:
     adapter = OmadaAdapter(client=client, site_id="TestSite")
 
     captured_payloads: list[dict[str, Any]] = []
+    captured_endpoints: list[str] = []
 
     async def mock_post(endpoint: str, payload: dict[str, Any], **kwargs: object) -> dict[str, Any]:
         """Capture and validate payload."""
+        captured_endpoints.append(endpoint)
         captured_payloads.append(payload)
         return {"errorCode": 0, "result": {}}
 
@@ -43,6 +45,9 @@ async def test_omada_revoke_request_structure() -> None:
     payload = captured_payloads[0]
     assert payload["clientMac"] == "AA:BB:CC:DD:EE:FF"
     assert payload["site"] == "TestSite"
+
+    # Verify correct API endpoint path
+    assert captured_endpoints[0] == "/test-ctrl/api/v2/hotspot/extPortal/revoke"
 
 
 @pytest.mark.contract

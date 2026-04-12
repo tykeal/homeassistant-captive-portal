@@ -92,18 +92,15 @@ def _make_guest_lifespan(
             raise
 
         # Configure Omada controller integration
-        if settings.omada_configured:
-            app.state.omada_config = {
-                "base_url": settings.omada_controller_url,
-                "controller_id": settings.omada_controller_id,
-                "username": settings.omada_username,
-                "password": settings.omada_password,
-                "verify_ssl": settings.omada_verify_ssl,
-                "site_id": settings.omada_site_name,
-            }
-            logger.info("Omada controller configured for %s", settings.omada_controller_url)
+        from captive_portal.config.omada_config import build_omada_config
+
+        app.state.omada_config = await build_omada_config(settings, logger)
+        if app.state.omada_config:
+            logger.info(
+                "Omada controller configured for %s",
+                settings.omada_controller_url,
+            )
         else:
-            app.state.omada_config = None
             logger.info("Omada controller not configured — controller calls will be skipped")
 
         yield

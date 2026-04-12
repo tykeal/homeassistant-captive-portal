@@ -3,6 +3,7 @@
 """Guest portal routes for authorization and welcome pages."""
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Optional
@@ -39,7 +40,30 @@ from captive_portal.services.voucher_service import VoucherRedemptionError, Vouc
 from captive_portal.utils.network_utils import get_client_ip, validate_mac_address
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
+_SITE_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{12,64}$")
+
 _logger = logging.getLogger("captive_portal.guest")
+
+
+def _apply_site_override(
+    site_from_form: str | None,
+    current_site: str,
+    pattern: re.Pattern[str],
+) -> str:
+    """Apply site override from form data if valid.
+
+    Args:
+        site_from_form: Site identifier from the submitted form.
+        current_site: Current adapter site ID.
+        pattern: Compiled regex for site ID validation.
+
+    Returns:
+        Overridden site if valid, otherwise the current site.
+    """
+    if site_from_form and site_from_form.strip() and pattern.match(site_from_form.strip()):
+        return site_from_form.strip()
+    return current_site
+
 
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 
@@ -157,8 +181,6 @@ def _sanitize_error_message(message: str | None) -> str:
 
     # Strip any HTML tags (basic sanitization)
     # Jinja2 auto-escape will handle the rest
-    import re
-
     message = re.sub(r"<[^>]*>", "", message)
 
     # If message becomes empty after sanitization, use default
@@ -218,17 +240,58 @@ async def _authorize_with_controller(
 @router.get("/authorize", response_class=HTMLResponse)
 async def show_authorize_form(
     request: Request,
+    client_mac: Annotated[Optional[str], Query(alias="clientMac")] = None,
+    client_ip: Annotated[Optional[str], Query(alias="clientIp")] = None,
+    site: Annotated[Optional[str], Query()] = None,
+    ap_mac: Annotated[Optional[str], Query(alias="apMac")] = None,
+    gateway_mac: Annotated[Optional[str], Query(alias="gatewayMac")] = None,
+    radio_id: Annotated[Optional[str], Query(alias="radioId")] = None,
+    ssid_name: Annotated[Optional[str], Query(alias="ssidName")] = None,
+    vid: Annotated[Optional[str], Query()] = None,
+    t: Annotated[Optional[str], Query()] = None,
+    redirect_url: Annotated[Optional[str], Query(alias="redirectUrl")] = None,
     continue_url: Annotated[Optional[str], Query(alias="continue")] = None,
 ) -> HTMLResponse:
     """Display guest authorization form.
 
+    Captures Omada controller redirect query parameters and passes them
+    through as hidden form fields so they survive the GET→POST transition.
+
     Args:
         request: FastAPI request object
+        client_mac: Device MAC address (from Omada redirect)
+        client_ip: Device IP address (from Omada redirect)
+        site: Omada site identifier hash (from Omada redirect)
+        ap_mac: Access point MAC (from Omada redirect)
+        gateway_mac: Gateway MAC (from Omada redirect)
+        radio_id: Radio identifier (from Omada redirect)
+        ssid_name: SSID name (from Omada redirect)
+        vid: VLAN ID (from Omada redirect)
+        t: Timestamp (from Omada redirect)
+        redirect_url: Original redirect URL (from Omada redirect)
         continue_url: Optional redirect destination after successful authorization
 
     Returns:
         HTMLResponse: Rendered authorization form with CSRF token
     """
+    omada_params = {
+        "clientMac": client_mac or "",
+        "clientIp": client_ip or "",
+        "site": site or "",
+        "apMac": ap_mac or "",
+        "gatewayMac": gateway_mac or "",
+        "radioId": radio_id or "",
+        "ssidName": ssid_name or "",
+        "vid": vid or "",
+        "t": t or "",
+        "redirectUrl": redirect_url or "",
+    }
+
+    # Use redirectUrl as continue_url if no explicit continue was provided
+    effective_continue = (
+        continue_url or redirect_url or f"{request.scope.get('root_path', '')}/guest/welcome"
+    )
+
     # Generate CSRF token
     csrf_token = _guest_csrf.generate_token()
 
@@ -236,8 +299,9 @@ async def show_authorize_form(
         request=request,
         name="guest/authorize.html",
         context={
-            "continue_url": continue_url or f"{request.scope.get('root_path', '')}/guest/welcome",
+            "continue_url": effective_continue,
             "csrf_token": csrf_token,
+            "omada_params": omada_params,
         },
     )
 
@@ -248,14 +312,19 @@ async def show_authorize_form(
     return _add_security_headers(response)
 
 
-def _extract_mac_address(request: Request) -> str:
+def _extract_mac_address(
+    request: Request,
+    form_mac: Optional[str] = None,
+) -> str:
     """Extract and validate MAC address from request.
 
-    Checks common MAC address headers set by captive portal controllers,
-    validates the format, and normalizes to uppercase colon-separated format.
+    Checks HTTP headers, form data, and query parameters for MAC address.
+    Supports both header-based injection (reverse proxies) and Omada
+    controller query parameter style (clientMac).
 
     Args:
         request: FastAPI request object
+        form_mac: MAC address from form data (clientMac hidden field)
 
     Returns:
         Validated and normalized MAC address (format: AA:BB:CC:DD:EE:FF)
@@ -263,15 +332,24 @@ def _extract_mac_address(request: Request) -> str:
     Raises:
         HTTPException: If MAC address cannot be determined or is invalid
     """
+    # 1. Check headers (reverse proxy / controller injection)
     mac = request.headers.get("X-MAC-Address")
     if not mac:
-        # Fallback: check alternate header names used by various controllers
         mac = request.headers.get("X-Client-Mac") or request.headers.get("Client-MAC")
+
+    # 2. Check form data (from our hidden field)
+    if not mac and form_mac and isinstance(form_mac, str) and form_mac.strip():
+        mac = form_mac.strip()
+
+    # 3. Check query parameters (direct GET redirect from controller)
+    if not mac:
+        mac = request.query_params.get("clientMac")
 
     if not mac:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unable to determine device MAC address. Please ensure you're connecting through the captive portal.",
+            detail="Unable to determine device MAC address. "
+            "Please ensure you're connecting through the captive portal.",
         )
 
     # Validate and normalize MAC address format
@@ -289,6 +367,8 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     request: Request,
     code: Annotated[str, Form()],
     continue_url: Annotated[Optional[str], Form(alias="continue")] = None,
+    client_mac: Annotated[Optional[str], Form(alias="clientMac")] = None,
+    site: Annotated[Optional[str], Form()] = None,
     rate_limiter: RateLimiter = Depends(),
     unified_code_service: UnifiedCodeService = Depends(),
     redirect_validator: RedirectValidator = Depends(),
@@ -306,11 +386,15 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         request: FastAPI request object
         code: Authorization code (voucher or booking code)
         continue_url: Optional redirect destination
+        client_mac: Device MAC from Omada controller redirect
+        site: Omada site identifier from controller redirect
         rate_limiter: Rate limiting service
         unified_code_service: Code validation and grant creation service
         redirect_validator: Redirect URL validation service
         session: Database session
+        audit_service: Audit logging service
         portal_config: Portal configuration
+        omada_adapter: Optional Omada controller adapter
 
     Returns:
         RedirectResponse: Redirect to success page or original destination
@@ -349,7 +433,7 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
 
     # Extract device MAC address
     try:
-        mac_address = _extract_mac_address(request)
+        mac_address = _extract_mac_address(request, form_mac=client_mac)
     except HTTPException as e:
         # Log MAC extraction failure
         await audit_service.log(
@@ -581,6 +665,10 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         ) from e
 
     # --- Controller authorization ---
+    # Override adapter site_id if Omada controller sent a site identifier
+    if omada_adapter is not None:
+        omada_adapter.site_id = _apply_site_override(site, omada_adapter.site_id, _SITE_ID_PATTERN)
+
     grant, error_detail = await _authorize_with_controller(
         adapter=omada_adapter,
         grant=grant,

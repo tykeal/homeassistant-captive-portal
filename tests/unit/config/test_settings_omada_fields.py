@@ -238,6 +238,17 @@ class TestOmadaLogEffective:
         log_text = caplog.text
         assert "(not set)" in log_text
 
+    def test_controller_id_logged_as_auto_discover_when_empty(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """log_effective should show '(will auto-discover)' when id is empty."""
+        settings = AppSettings(omada_controller_id="")
+        with caplog.at_level(logging.INFO):
+            settings.log_effective(logging.getLogger("test"))
+
+        log_text = caplog.text
+        assert "(will auto-discover)" in log_text
+
     def test_all_omada_fields_logged(self, caplog: pytest.LogCaptureFixture) -> None:
         """log_effective should log all 6 Omada fields."""
         settings = AppSettings(
@@ -264,10 +275,20 @@ class TestOmadaConfigured:
     """Tests for the omada_configured property."""
 
     def test_configured_when_all_four_fields_present(self) -> None:
-        """omada_configured needs url, id, username, and password."""
+        """omada_configured needs url, username, and password."""
         settings = AppSettings(
             omada_controller_url="https://ctrl.local:8043",
             omada_controller_id="abc123",
+            omada_username="admin",
+            omada_password="secret",
+        )
+        assert settings.omada_configured is True
+
+    def test_configured_without_controller_id(self) -> None:
+        """omada_configured should be True without controller_id (auto-discover)."""
+        settings = AppSettings(
+            omada_controller_url="https://ctrl.local:8043",
+            omada_controller_id="",
             omada_username="admin",
             omada_password="secret",
         )
@@ -278,16 +299,6 @@ class TestOmadaConfigured:
         settings = AppSettings(
             omada_controller_url="",
             omada_controller_id="abc123",
-            omada_username="admin",
-            omada_password="secret",
-        )
-        assert settings.omada_configured is False
-
-    def test_not_configured_when_id_empty(self) -> None:
-        """omada_configured should be False when controller_id is empty."""
-        settings = AppSettings(
-            omada_controller_url="https://ctrl.local:8043",
-            omada_controller_id="",
             omada_username="admin",
             omada_password="secret",
         )
@@ -310,16 +321,6 @@ class TestOmadaConfigured:
             omada_controller_id="abc123",
             omada_username="admin",
             omada_password="",
-        )
-        assert settings.omada_configured is False
-
-    def test_not_configured_when_id_whitespace(self) -> None:
-        """omada_configured should be False when controller_id is whitespace."""
-        settings = AppSettings(
-            omada_controller_url="https://ctrl.local:8043",
-            omada_controller_id="   ",
-            omada_username="admin",
-            omada_password="secret",
         )
         assert settings.omada_configured is False
 

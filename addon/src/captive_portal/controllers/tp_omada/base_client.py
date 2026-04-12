@@ -216,3 +216,48 @@ class OmadaClient:
 
         # Should not reach here, but satisfy type checker
         raise OmadaRetryExhaustedError(f"Exhausted {max_retries} attempts")
+
+
+async def discover_controller_id(
+    base_url: str,
+    verify_ssl: bool = True,
+    timeout: float = 10.0,
+) -> str:
+    """Discover the Omada controller ID via the unauthenticated /api/info endpoint.
+
+    Args:
+        base_url: Controller base URL (e.g., https://controller:443)
+        verify_ssl: Whether to verify SSL certificates
+        timeout: HTTP request timeout in seconds
+
+    Returns:
+        The controller ID (omadacId)
+
+    Raises:
+        OmadaClientError: If discovery fails
+    """
+    url = urljoin(base_url.rstrip("/") + "/", "api/info")
+    discovery_timeout = httpx.Timeout(timeout, connect=min(timeout, 3.0))
+    async with httpx.AsyncClient(timeout=discovery_timeout, verify=verify_ssl) as client:
+        try:
+            response = await client.get(url)
+            response.raise_for_status()
+            try:
+                data: dict[str, Any] = response.json()
+            except (ValueError, UnicodeDecodeError) as e:
+                raise OmadaClientError(f"Invalid JSON from /api/info: {e}") from e
+            if data.get("errorCode") != 0:
+                raise OmadaClientError(
+                    f"Controller info request failed: {data.get('msg', 'Unknown error')}"
+                )
+            omadac_id: str | None = data.get("result", {}).get("omadacId")
+            if not omadac_id:
+                raise OmadaClientError("omadacId not found in /api/info response")
+            return omadac_id
+        except httpx.HTTPStatusError as e:
+            raise OmadaClientError(
+                f"HTTP {e.response.status_code} from /api/info: {e}",
+                status_code=e.response.status_code,
+            ) from e
+        except httpx.RequestError as e:
+            raise OmadaClientError(f"Connection error fetching /api/info: {e}") from e
