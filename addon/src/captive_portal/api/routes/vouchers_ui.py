@@ -112,10 +112,14 @@ async def get_vouchers(
     now = datetime.now(timezone.utc)
     voucher_actions: dict[str, VoucherActions] = {}
     for voucher in vouchers:
-        expires = voucher.expires_utc
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
-        can_revoke = voucher.status is not VoucherStatus.REVOKED and now <= expires
+        if voucher.is_activated_for_expiry:
+            expires = voucher.expires_utc
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+            is_expired = now > expires
+        else:
+            is_expired = False
+        can_revoke = voucher.status is not VoucherStatus.REVOKED and not is_expired
         can_delete = voucher.redeemed_count == 0
         voucher_actions[voucher.code] = VoucherActions(can_revoke=can_revoke, can_delete=can_delete)
 

@@ -107,17 +107,25 @@ class DashboardService:
         ).one()
 
         # Available vouchers: unused and not expired.
-        # NOTE: Voucher.expires_utc is a computed property (created_utc +
-        # duration_minutes), not a stored DB column, so the expiry check
-        # cannot be pushed into SQL without duplicating the calculation in a
-        # SQLite expression.  Filtering in Python is acceptable here because
-        # the number of UNUSED vouchers is expected to remain small.  If the
-        # volume grows, consider adding an indexed ``expires_utc`` column.
+        # NOTE: Voucher.expires_utc is a computed property (activated_utc
+        # or created_utc + duration_minutes), not a stored DB column, so
+        # the expiry check cannot be pushed into SQL without duplicating
+        # the calculation in a SQLite expression.  Filtering in Python is
+        # acceptable here because the number of UNUSED vouchers is
+        # expected to remain small.  If the volume grows, consider adding
+        # an indexed ``expires_utc`` column.
+        #
+        # Unactivated vouchers (activated_utc is None and
+        # redeemed_count == 0) are always counted as available —
+        # their expiry timer hasn't started yet.
         all_unused = self._session.exec(
             select(Voucher).where(Voucher.status == VoucherStatus.UNUSED)
         ).all()
         available_count = 0
         for v in all_unused:
+            if not v.is_activated_for_expiry:
+                available_count += 1
+                continue
             expires = v.expires_utc
             if expires.tzinfo is None:
                 expires = expires.replace(tzinfo=timezone.utc)

@@ -6,6 +6,7 @@ import logging
 from collections.abc import Generator
 from typing import Optional
 
+from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 from sqlmodel import create_engine, Session, SQLModel
 
@@ -59,6 +60,10 @@ def create_db_engine(database_url: str, echo: bool = False) -> Engine:
 def init_db(engine: Engine, drop_existing: bool = False) -> None:
     """Initialize database schema (create all tables).
 
+    After table creation, applies lightweight schema migrations for
+    columns added after the initial release so that existing SQLite
+    databases are upgraded in-place.
+
     Args:
         engine: SQLAlchemy engine
         drop_existing: Drop existing tables before creation (destructive)
@@ -66,6 +71,47 @@ def init_db(engine: Engine, drop_existing: bool = False) -> None:
     if drop_existing:
         SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
+    _migrate_voucher_activated_utc(engine)
+
+
+def _migrate_voucher_activated_utc(engine: Engine) -> None:
+    """Add activated_utc column and backfill legacy rows.
+
+    SQLite's CREATE TABLE IF NOT EXISTS will not add columns to
+    an existing table.  This lightweight migration ensures the
+    column exists for databases created before the field was
+    introduced, and backfills legacy activated vouchers using
+    ``created_utc`` as a best-effort approximation so upgraded
+    databases preserve their original expiration behavior.
+
+    Args:
+        engine: SQLAlchemy engine to inspect and migrate.
+    """
+    logger = logging.getLogger("captive_portal.persistence")
+    insp = inspect(engine)
+    if "voucher" not in insp.get_table_names():
+        return
+    columns = {c["name"] for c in insp.get_columns("voucher")}
+
+    with engine.begin() as conn:
+        if "activated_utc" not in columns:
+            conn.execute(text("ALTER TABLE voucher ADD COLUMN activated_utc DATETIME"))
+            logger.info("Migrated voucher table: added activated_utc column.")
+
+        # Backfill activated_utc for legacy redeemed vouchers
+        conn.execute(
+            text(
+                "UPDATE voucher "
+                "SET activated_utc = COALESCE("
+                "  created_utc, last_redeemed_utc"
+                ") "
+                "WHERE activated_utc IS NULL "
+                "AND (redeemed_count > 0 OR status = 'active')"
+            )
+        )
+        logger.info(
+            "Migrated voucher table: backfilled activated_utc for legacy activated vouchers."
+        )
 
 
 def get_session() -> Generator[Session, None, None]:

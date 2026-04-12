@@ -55,6 +55,7 @@ def _create_voucher(
     status: VoucherStatus = VoucherStatus.UNUSED,
     redeemed_count: int = 0,
     created_utc: datetime | None = None,
+    activated_utc: datetime | None = None,
 ) -> Voucher:
     """Persist a voucher for integration testing."""
     kwargs: dict[str, Any] = dict(
@@ -65,6 +66,8 @@ def _create_voucher(
     )
     if created_utc is not None:
         kwargs["created_utc"] = created_utc
+    if activated_utc is not None:
+        kwargs["activated_utc"] = activated_utc
     voucher = Voucher(**kwargs)
     db_session.add(voucher)
     db_session.commit()
@@ -117,12 +120,14 @@ class TestBulkRevokeIntegration:
         """Mix of unused + expired + revoked -> partial success summary."""
         client, csrf = authenticated_client
         codes = ["BLKMIX001", "BLKMIX002", "BLKMIX003"]
+        past = datetime.now(timezone.utc) - timedelta(hours=24)
         _create_voucher(db_session, code="BLKMIX001")
         _create_voucher(
             db_session,
             code="BLKMIX002",
             duration_minutes=1,
-            created_utc=datetime.now(timezone.utc) - timedelta(hours=24),
+            created_utc=past,
+            activated_utc=past,
         )
         _create_voucher(db_session, code="BLKMIX003", status=VoucherStatus.REVOKED)
 

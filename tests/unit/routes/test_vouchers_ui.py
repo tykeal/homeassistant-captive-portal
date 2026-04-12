@@ -504,10 +504,12 @@ class TestVoucherActionsContext:
     ) -> None:
         """Expired voucher: revoke disabled, delete enabled (unredeemed)."""
         client, _csrf = authenticated_client
+        past = datetime.now(timezone.utc) - timedelta(hours=24)
         v = Voucher(
             code="ACTEXPRD01",
             duration_minutes=1,
-            created_utc=datetime.now(timezone.utc) - timedelta(hours=24),
+            created_utc=past,
+            activated_utc=past,
         )
         db_session.add(v)
         db_session.commit()
@@ -654,10 +656,12 @@ class TestRevokeVoucher:
     ) -> None:
         """Revoking an expired voucher should redirect with error."""
         client, csrf_token = authenticated_client
+        past = datetime.now(timezone.utc) - timedelta(hours=24)
         v = Voucher(
             code="REVOKEEXP1",
             duration_minutes=1,
-            created_utc=datetime.now(timezone.utc) - timedelta(hours=24),
+            created_utc=past,
+            activated_utc=past,
         )
         db_session.add(v)
         db_session.commit()
