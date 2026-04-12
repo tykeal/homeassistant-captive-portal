@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """TP-Omada controller adapter for grant authorization and revocation."""
 
+import math
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -74,13 +75,13 @@ class OmadaAdapter:
             OmadaRetryExhaustedError: If retries exhausted
         """
         # Calculate authorization duration in seconds
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(timezone.utc)
         expires_at_utc = (
             expires_at.replace(tzinfo=timezone.utc)
             if expires_at.tzinfo is None
             else expires_at.astimezone(timezone.utc)
         )
-        duration_seconds = max(int((expires_at_utc - now).total_seconds()), 0)
+        duration_seconds = max(math.ceil((expires_at_utc - now).total_seconds()), 0)
 
         payload: dict[str, Any] = {
             "clientMac": mac,
