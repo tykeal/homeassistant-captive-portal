@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """TP-Omada controller adapter for grant authorization and revocation."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from captive_portal.controllers.tp_omada.base_client import (
@@ -68,13 +68,14 @@ class OmadaAdapter:
             OmadaClientError: On controller errors
             OmadaRetryExhaustedError: If retries exhausted
         """
-        # Convert datetime to microseconds since epoch
-        time_micros = int(expires_at.timestamp() * 1_000_000)
+        # Calculate authorization duration in seconds
+        now = datetime.now(tz=timezone.utc)
+        duration_seconds = max(int((expires_at - now).total_seconds()), 0)
 
         payload: dict[str, Any] = {
             "clientMac": mac,
             "site": self.site_id,
-            "time": time_micros,
+            "time": duration_seconds,
             "authType": 4,  # External portal auth type
         }
 

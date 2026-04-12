@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -42,14 +42,15 @@ async def test_omada_authorize_request_structure() -> None:
 
     client.post_with_retry = AsyncMock(side_effect=mock_post)  # type: ignore[method-assign]
 
-    expires = datetime(2026, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+    expires = datetime.now(tz=timezone.utc) + timedelta(minutes=15)
     await adapter.authorize(mac="AA:BB:CC:DD:EE:FF", expires_at=expires)
 
     assert len(captured_payloads) == 1
     payload = captured_payloads[0]
     assert payload["clientMac"] == "AA:BB:CC:DD:EE:FF"
     assert payload["site"] == "TestSite"
-    assert "time" in payload
+    assert isinstance(payload["time"], int)
+    assert 800 <= payload["time"] <= 1000
     assert payload["authType"] == 4
     # upKbps/downKbps omitted when zero (not in TP-Link spec)
     assert "upKbps" not in payload
