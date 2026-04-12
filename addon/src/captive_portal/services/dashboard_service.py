@@ -123,8 +123,7 @@ class DashboardService:
         ).all()
         available_count = 0
         for v in all_unused:
-            is_activated = v.activated_utc is not None or v.redeemed_count > 0
-            if not is_activated:
+            if not v.is_activated_for_expiry:
                 available_count += 1
                 continue
             expires = v.expires_utc

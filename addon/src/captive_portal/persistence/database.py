@@ -102,7 +102,7 @@ def _migrate_voucher_activated_utc(engine: Engine) -> None:
             text(
                 "UPDATE voucher "
                 "SET activated_utc = COALESCE("
-                "  last_redeemed_utc, created_utc"
+                "  created_utc, last_redeemed_utc"
                 ") "
                 "WHERE activated_utc IS NULL "
                 "AND (redeemed_count > 0 OR status = 'active')"

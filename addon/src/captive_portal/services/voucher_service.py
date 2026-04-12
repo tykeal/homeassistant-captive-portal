@@ -186,11 +186,7 @@ class VoucherService:
             raise VoucherRedemptionError(f"Voucher '{code}' has been revoked")
 
         # Check expiration — skip only for truly unactivated vouchers.
-        # Legacy rows may have activated_utc == NULL despite being
-        # previously redeemed, so also treat redeemed_count > 0 as
-        # activated for expiration purposes.
-        is_activated = voucher.activated_utc is not None or voucher.redeemed_count > 0
-        if is_activated and voucher.expires_utc < current_time:
+        if voucher.is_activated_for_expiry and voucher.expires_utc < current_time:
             raise VoucherRedemptionError(f"Voucher '{code}' expired at {voucher.expires_utc}")
 
         # Check for duplicate redemption (same voucher + MAC)
@@ -259,15 +255,7 @@ class VoucherService:
         expires = voucher.expires_utc
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
-        # Only check expiration for activated vouchers — unactivated
-        # vouchers haven't started their timer yet.  Legacy rows may
-        # have activated_utc == NULL despite being previously redeemed.
-        is_activated = (
-            voucher.activated_utc is not None
-            or voucher.redeemed_count > 0
-            or voucher.status != VoucherStatus.UNUSED
-        )
-        if is_activated and current_time > expires:
+        if voucher.is_activated_for_expiry and current_time > expires:
             raise VoucherExpiredError(code)
 
         voucher.status = VoucherStatus.REVOKED

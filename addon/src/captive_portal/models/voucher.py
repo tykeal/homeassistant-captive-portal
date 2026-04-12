@@ -80,3 +80,19 @@ class Voucher(SQLModel, table=True):
         expiry = base + timedelta(minutes=self.duration_minutes)
         # Floor to minute precision
         return expiry.replace(second=0, microsecond=0)
+
+    @property
+    def is_activated_for_expiry(self) -> bool:
+        """Whether the voucher's expiry timer has started.
+
+        Returns True when the voucher has been activated (via
+        ``activated_utc``), has been redeemed at least once, or
+        has moved beyond UNUSED status.  Legacy upgraded rows may
+        lack ``activated_utc`` even after redemption, so the
+        fallback checks ensure correct expiration enforcement.
+        """
+        return (
+            self.activated_utc is not None
+            or self.redeemed_count > 0
+            or self.status != VoucherStatus.UNUSED
+        )

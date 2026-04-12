@@ -112,15 +112,7 @@ async def get_vouchers(
     now = datetime.now(timezone.utc)
     voucher_actions: dict[str, VoucherActions] = {}
     for voucher in vouchers:
-        # An activated voucher has started its expiry timer. Legacy
-        # rows may lack activated_utc, so also treat redeemed or
-        # non-UNUSED vouchers as activated.
-        is_activated = (
-            voucher.activated_utc is not None
-            or voucher.redeemed_count > 0
-            or voucher.status != VoucherStatus.UNUSED
-        )
-        if is_activated:
+        if voucher.is_activated_for_expiry:
             expires = voucher.expires_utc
             if expires.tzinfo is None:
                 expires = expires.replace(tzinfo=timezone.utc)
