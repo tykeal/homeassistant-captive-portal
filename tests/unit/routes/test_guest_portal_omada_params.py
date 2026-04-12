@@ -9,17 +9,14 @@ parameter to override the adapter site_id.
 
 from __future__ import annotations
 
-import re
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 import pytest
 
-from captive_portal.api.routes.guest_portal import _apply_site_override
+from captive_portal.api.routes.guest_portal import _SITE_ID_PATTERN, _apply_site_override
 from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
 from captive_portal.controllers.tp_omada.base_client import OmadaClient
-
-_SITE_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{16,64}$")
 
 
 class TestSiteIdOverride:

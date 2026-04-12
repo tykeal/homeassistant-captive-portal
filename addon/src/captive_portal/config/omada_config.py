@@ -83,10 +83,11 @@ async def build_omada_config(
 
     try:
         controller_id = _validate_controller_id(controller_id)
-    except ValueError:
+    except ValueError as exc:
         logger.error(
-            "Omada controller ID failed validation: %r",
+            "Omada controller ID failed validation: %r: %s",
             controller_id,
+            exc,
         )
         return None
 
