@@ -55,7 +55,7 @@ def _truncate(value: str | None, max_length: int) -> str | None:
         max_length: Maximum allowed length after stripping.
 
     Returns:
-        Sanitised string or None.
+        Sanitized string or None.
     """
     if not value or not value.strip():
         return None
@@ -739,11 +739,11 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         adapter=omada_adapter,
         grant=grant,
         mac_address=mac_address,
-        gateway_mac=gateway_mac or None,
-        ap_mac=ap_mac or None,
-        ssid_name=ssid_name or None,
-        radio_id=radio_id or None,
-        vid=vid or None,
+        gateway_mac=grant.omada_gateway_mac,
+        ap_mac=grant.omada_ap_mac,
+        ssid_name=grant.omada_ssid_name,
+        radio_id=grant.omada_radio_id,
+        vid=grant.omada_vid,
     )
     session.add(grant)
     session.commit()
