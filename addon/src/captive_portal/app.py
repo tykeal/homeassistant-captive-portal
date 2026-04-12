@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -13,14 +14,18 @@ from typing import Any, Callable
 from fastapi import Depends, FastAPI, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from sqlmodel import Session
 
 from captive_portal.config.settings import AppSettings
 from captive_portal.integrations.ha_client import HAClient
+from captive_portal.integrations.ha_poller import HAPoller
+from captive_portal.integrations.rental_control_service import RentalControlService
 from captive_portal.persistence.database import (
     create_db_engine,
     dispose_engine,
     init_db,
 )
+from captive_portal.persistence.repositories import RentalControlEventRepository
 from captive_portal.security.session_middleware import (
     SessionMiddleware,
 )
@@ -91,9 +96,34 @@ def _make_lifespan(
         else:
             logger.info("Omada controller not configured — controller calls will be skipped")
 
+        # Start background poller for Rental Control event sync
+        poller_session = Session(engine)
+        event_repo = RentalControlEventRepository(poller_session)
+        rental_service = RentalControlService(
+            ha_client=ha_client,
+            event_repo=event_repo,
+        )
+        ha_poller = HAPoller(
+            ha_client=ha_client,
+            rental_service=rental_service,
+        )
+        ha_poller_task = asyncio.create_task(ha_poller.start())
+        app.state.ha_poller = ha_poller
+        app.state.ha_poller_task = ha_poller_task
+        app.state.poller_session = poller_session
+        logger.info("HA poller started for Rental Control event sync")
+
         yield
 
         # --- Shutdown ---
+        await app.state.ha_poller.stop()
+        app.state.ha_poller_task.cancel()
+        try:
+            await app.state.ha_poller_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("HA poller stopped.")
+        app.state.poller_session.close()
         await app.state.ha_client.close()
         logger.info("HAClient closed.")
         dispose_engine()
