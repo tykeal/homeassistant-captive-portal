@@ -185,7 +185,11 @@ class VoucherService:
         if voucher.status == VoucherStatus.REVOKED:
             raise VoucherRedemptionError(f"Voucher '{code}' has been revoked")
 
-        # Check expiration
+        # Set activation time on first use (starts the expiry timer)
+        if voucher.activated_utc is None:
+            voucher.activated_utc = current_time
+
+        # Check expiration (now based on activated_utc)
         if voucher.expires_utc < current_time:
             raise VoucherRedemptionError(f"Voucher '{code}' expired at {voucher.expires_utc}")
 

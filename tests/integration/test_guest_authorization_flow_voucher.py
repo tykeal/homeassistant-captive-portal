@@ -4,7 +4,7 @@
 
 """Integration tests for guest authorization flow with voucher."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,7 +24,6 @@ class TestGuestAuthorizationFlowVoucher:
         voucher = Voucher(
             code="ABCD1234",
             created_utc=datetime.now(timezone.utc),
-            expires_utc=datetime.now(timezone.utc) + timedelta(days=7),
             duration_minutes=1440,  # 24 hours
         )
         db_session.add(voucher)
@@ -56,7 +55,6 @@ class TestGuestAuthorizationFlowVoucher:
         voucher = Voucher(
             code="XYZ789AB",
             created_utc=datetime.now(timezone.utc),
-            expires_utc=datetime.now(timezone.utc) + timedelta(days=7),
             duration_minutes=1440,  # 24 hours
         )
         db_session.add(voucher)

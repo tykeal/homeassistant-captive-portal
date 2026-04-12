@@ -32,6 +32,7 @@ class Voucher(SQLModel, table=True):
         booking_ref: Optional case-sensitive booking reference
         redeemed_count: Number of times redeemed
         last_redeemed_utc: Timestamp of last redemption (nullable)
+        activated_utc: Timestamp of first redemption (nullable)
     """
 
     code: str = Field(primary_key=True, max_length=24, min_length=4)
@@ -43,6 +44,7 @@ class Voucher(SQLModel, table=True):
     booking_ref: Optional[str] = Field(default=None, max_length=128)
     redeemed_count: int = Field(default=0, ge=0)
     last_redeemed_utc: Optional[datetime] = Field(default=None)
+    activated_utc: Optional[datetime] = Field(default=None)
 
     @field_validator("code")
     @classmethod
@@ -61,15 +63,19 @@ class Voucher(SQLModel, table=True):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def expires_utc(self) -> datetime:
-        """Computed expiration timestamp (created + duration, floored to minute).
+        """Computed expiration timestamp (activation or creation + duration).
 
-        Note: Ensures timezone awareness even if created_utc is naive (from DB).
+        When the voucher has been activated, expiration is calculated from
+        ``activated_utc``; otherwise it falls back to ``created_utc`` as
+        an estimate for display before first use.
+
+        Note: Ensures timezone awareness even if stored timestamps are
+        naive (from DB).
         """
-        # Ensure created_utc is timezone-aware (SQLite may deserialize as naive)
-        created = self.created_utc
-        if created.tzinfo is None:
-            created = created.replace(tzinfo=timezone.utc)
+        base = self.activated_utc if self.activated_utc is not None else self.created_utc
+        if base.tzinfo is None:
+            base = base.replace(tzinfo=timezone.utc)
 
-        expiry = created + timedelta(minutes=self.duration_minutes)
+        expiry = base + timedelta(minutes=self.duration_minutes)
         # Floor to minute precision
         return expiry.replace(second=0, microsecond=0)
