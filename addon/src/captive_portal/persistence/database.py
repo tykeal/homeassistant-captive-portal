@@ -80,8 +80,9 @@ def _migrate_voucher_activated_utc(engine: Engine) -> None:
     SQLite's CREATE TABLE IF NOT EXISTS will not add columns to
     an existing table.  This lightweight migration ensures the
     column exists for databases created before the field was
-    introduced, and backfills legacy activated vouchers so
-    upgraded databases preserve expiration behavior.
+    introduced, and backfills legacy activated vouchers using
+    ``created_utc`` as a best-effort approximation so upgraded
+    databases preserve their original expiration behavior.
 
     Args:
         engine: SQLAlchemy engine to inspect and migrate.

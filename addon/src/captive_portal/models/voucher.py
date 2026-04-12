@@ -32,7 +32,7 @@ class Voucher(SQLModel, table=True):
         booking_ref: Optional case-sensitive booking reference
         redeemed_count: Number of times redeemed
         last_redeemed_utc: Timestamp of last redemption (nullable)
-        activated_utc: Timestamp of first redemption (nullable)
+        activated_utc: Timestamp when expiry timer started (nullable)
     """
 
     code: str = Field(primary_key=True, max_length=24, min_length=4)
