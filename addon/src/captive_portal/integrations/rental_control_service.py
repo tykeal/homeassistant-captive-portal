@@ -4,8 +4,9 @@
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, tzinfo
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 from sqlmodel import select
 
@@ -64,9 +65,19 @@ class RentalControlService:
 
         all_states = await self.ha_client.get_all_states()
 
+        ha_tz_str = await self.ha_client.get_timezone()
+        try:
+            ha_tz: tzinfo = ZoneInfo(ha_tz_str)
+        except (KeyError, Exception):
+            logger.warning(
+                "Invalid HA timezone, falling back to UTC",
+                extra={"time_zone": ha_tz_str},
+            )
+            ha_tz = timezone.utc
+
         for config in configs:
             try:
-                await self._process_integration(config, all_states)
+                await self._process_integration(config, all_states, ha_tz=ha_tz)
                 config.last_sync_utc = datetime.now(timezone.utc)
                 config.stale_count = 0
                 session.add(config)
@@ -83,6 +94,8 @@ class RentalControlService:
         self,
         config: HAIntegrationConfig,
         all_states: List[Dict[str, Any]],
+        *,
+        ha_tz: Optional[tzinfo] = None,
     ) -> None:
         """Process sensor events for a single integration.
 
@@ -93,6 +106,7 @@ class RentalControlService:
         Args:
             config: Integration configuration
             all_states: All HA entity states (pre-fetched)
+            ha_tz: HA configured timezone for naive datetime handling
         """
         sensor_prefix = self._derive_sensor_prefix(config.integration_id)
 
@@ -128,7 +142,7 @@ class RentalControlService:
                 )
                 continue
 
-            await self.process_single_event(config, event_index, entity)
+            await self.process_single_event(config, event_index, entity, ha_tz=ha_tz)
 
     @staticmethod
     def _derive_sensor_prefix(integration_id: str) -> str:
@@ -150,6 +164,8 @@ class RentalControlService:
         integration_config: HAIntegrationConfig,
         event_index: int,
         event_data: Dict[str, Any],
+        *,
+        ha_tz: Optional[tzinfo] = None,
     ) -> None:
         """Process a single Rental Control event.
 
@@ -157,6 +173,9 @@ class RentalControlService:
             integration_config: Integration configuration
             event_index: Event position (0-N)
             event_data: Event data from HA entity state
+            ha_tz: HA configured timezone used to interpret naive
+                datetime strings.  Defaults to ``timezone.utc`` when
+                ``None``.
 
         Raises:
             ValueError: On missing required attributes
@@ -177,8 +196,21 @@ class RentalControlService:
             )
             return
 
-        start_utc = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
-        end_utc = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
+        fallback_tz = ha_tz if ha_tz is not None else timezone.utc
+
+        parsed_start = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+        parsed_end = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
+
+        # Convert to UTC – aware datetimes shift; naive ones assume HA tz
+        if parsed_start.tzinfo is not None:
+            start_utc = parsed_start.astimezone(timezone.utc)
+        else:
+            start_utc = parsed_start.replace(tzinfo=fallback_tz).astimezone(timezone.utc)
+
+        if parsed_end.tzinfo is not None:
+            end_utc = parsed_end.astimezone(timezone.utc)
+        else:
+            end_utc = parsed_end.replace(tzinfo=fallback_tz).astimezone(timezone.utc)
         # Note: Grace period NOT applied here - applied at grant creation time
 
         # Extract identifiers
