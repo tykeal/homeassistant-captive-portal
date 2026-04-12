@@ -47,9 +47,14 @@ class OmadaAdapter:
         - Gateway auth: includes ``gatewayMac`` and ``vid``
         - EAP auth: includes ``apMac``, ``ssidName``, ``radioId``
 
+        The ``expires_at`` timestamp is converted to an authorization
+        duration in seconds (relative to now) for the Omada payload.
+
         Args:
             mac: Device MAC address (AA:BB:CC:DD:EE:FF format)
-            expires_at: Grant expiration timestamp (UTC)
+            expires_at: Grant expiration timestamp (UTC).
+                Converted to a duration in seconds for the
+                controller.
             upload_limit_kbps: Upload bandwidth limit in kbps (0 = unlimited)
             download_limit_kbps: Download bandwidth limit in kbps (0 = unlimited)
             gateway_mac: Gateway MAC for Gateway auth mode
