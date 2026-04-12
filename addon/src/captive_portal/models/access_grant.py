@@ -41,6 +41,11 @@ class AccessGrant(SQLModel, table=True):
         status: Current grant status
         created_utc: Creation timestamp (UTC)
         updated_utc: Last update timestamp (UTC)
+        omada_gateway_mac: Omada gateway MAC for revocation (nullable)
+        omada_ap_mac: Omada access-point MAC for revocation (nullable)
+        omada_vid: Omada VLAN ID for revocation (nullable)
+        omada_ssid_name: Omada SSID name for revocation (nullable)
+        omada_radio_id: Omada radio identifier for revocation (nullable)
     """
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
@@ -54,6 +59,12 @@ class AccessGrant(SQLModel, table=True):
     start_utc: datetime = Field(index=True)
     end_utc: datetime = Field(index=True)
     controller_grant_id: Optional[str] = Field(default=None, max_length=128)
+    # Omada controller connection params (for revocation)
+    omada_gateway_mac: Optional[str] = Field(default=None, max_length=17)
+    omada_ap_mac: Optional[str] = Field(default=None, max_length=17)
+    omada_vid: Optional[str] = Field(default=None, max_length=8)
+    omada_ssid_name: Optional[str] = Field(default=None, max_length=64)
+    omada_radio_id: Optional[str] = Field(default=None, max_length=2)
     status: GrantStatus = Field(default=GrantStatus.PENDING)
     created_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

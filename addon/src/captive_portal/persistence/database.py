@@ -72,6 +72,7 @@ def init_db(engine: Engine, drop_existing: bool = False) -> None:
         SQLModel.metadata.drop_all(engine)
     SQLModel.metadata.create_all(engine)
     _migrate_voucher_activated_utc(engine)
+    _migrate_accessgrant_omada_params(engine)
 
 
 def _migrate_voucher_activated_utc(engine: Engine) -> None:
@@ -117,6 +118,40 @@ def _migrate_voucher_activated_utc(engine: Engine) -> None:
         logger.info(
             "Migrated voucher table: backfilled activated_utc for legacy activated vouchers."
         )
+
+
+def _migrate_accessgrant_omada_params(engine: Engine) -> None:
+    """Add Omada connection-parameter columns to the accessgrant table.
+
+    These columns store the gateway/AP context that was used when the
+    grant was originally authorized, so the same parameters can be
+    replayed during revocation (re-auth with ``time=1``).
+
+    Args:
+        engine: SQLAlchemy engine to inspect and migrate.
+    """
+    logger = logging.getLogger("captive_portal.persistence")
+    insp = inspect(engine)
+    if "accessgrant" not in insp.get_table_names():
+        return
+    columns = {c["name"] for c in insp.get_columns("accessgrant")}
+
+    new_columns = {
+        "omada_gateway_mac": "VARCHAR(17)",
+        "omada_ap_mac": "VARCHAR(17)",
+        "omada_vid": "VARCHAR(8)",
+        "omada_ssid_name": "VARCHAR(64)",
+        "omada_radio_id": "VARCHAR(2)",
+    }
+
+    with engine.begin() as conn:
+        for col, col_type in new_columns.items():
+            if col not in columns:
+                conn.execute(text(f"ALTER TABLE accessgrant ADD COLUMN {col} {col_type}"))
+                logger.info(
+                    "Migrated accessgrant table: added %s column.",
+                    col,
+                )
 
 
 def get_session() -> Generator[Session, None, None]:
