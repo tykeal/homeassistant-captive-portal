@@ -120,12 +120,30 @@ class OmadaAdapter:
             "mac": mac,
         }
 
-    async def revoke(self, mac: str, grant_id: Optional[str] = None) -> dict[str, Any]:
-        """Revoke device authorization on controller.
+    async def revoke(
+        self,
+        mac: str,
+        grant_id: Optional[str] = None,
+        gateway_mac: str | None = None,
+        ap_mac: str | None = None,
+        vid: str | None = None,
+        ssid_name: str | None = None,
+        radio_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Revoke device authorization by re-authorizing with minimal duration.
+
+        The Omada controller does not expose a dedicated deauth endpoint.
+        Instead, revocation is performed by re-authorizing the client with
+        ``time=1`` (1 ms), which expires the session immediately.
 
         Args:
             mac: Device MAC address
-            grant_id: Optional controller grant ID (unused, for signature compatibility)
+            grant_id: Optional controller grant ID (unused)
+            gateway_mac: Gateway MAC for Gateway auth mode
+            ap_mac: Access point MAC for EAP auth mode
+            vid: VLAN ID for Gateway auth mode
+            ssid_name: SSID name for EAP auth mode
+            radio_id: Radio identifier for EAP auth mode
 
         Returns:
             dict with keys:
@@ -133,20 +151,32 @@ class OmadaAdapter:
                 - mac: Echo of revoked MAC
 
         Raises:
-            OmadaClientError: On controller errors (except 404 not found)
+            OmadaClientError: On controller errors
             OmadaRetryExhaustedError: If retries exhausted
         """
-        payload = {
+        payload: dict[str, Any] = {
             "clientMac": mac,
             "site": self.site_id,
+            "time": 1,  # 1 ms — expires immediately
+            "authType": 4,
         }
 
+        # Gateway auth mode
+        if gateway_mac:
+            payload["gatewayMac"] = gateway_mac
+            payload["vid"] = vid or ""
+        elif ap_mac:
+            payload["apMac"] = ap_mac
+            if ssid_name:
+                payload["ssidName"] = ssid_name
+            if radio_id:
+                payload["radioId"] = radio_id
+
         try:
-            endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/deauth"
+            endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/auth"
             await self.client.post_with_retry(endpoint, payload)
             return {"success": True, "mac": mac}
         except OmadaClientError as e:
-            # Treat 404 as success (already revoked/not found)
             if hasattr(e, "status_code") and e.status_code == 404:
                 return {"success": True, "mac": mac, "note": "Already revoked"}
             raise

@@ -39,6 +39,11 @@ class TestGrantRevocationControllerWiring:
             start_utc=datetime.now(timezone.utc),
             end_utc=datetime(2026, 12, 31, tzinfo=timezone.utc),
             status=GrantStatus.REVOKED,
+            omada_gateway_mac="00:11:22:33:44:55",
+            omada_ap_mac=None,
+            omada_vid="100",
+            omada_ssid_name=None,
+            omada_radio_id=None,
         )
 
         from captive_portal.api.routes.grants import _revoke_with_controller
@@ -46,7 +51,14 @@ class TestGrantRevocationControllerWiring:
         result = await _revoke_with_controller(adapter=mock_adapter, grant=grant)
 
         mock_client.__aenter__.assert_called_once()
-        mock_adapter.revoke.assert_awaited_once_with(mac="AA:BB:CC:DD:EE:FF")
+        mock_adapter.revoke.assert_awaited_once_with(
+            mac="AA:BB:CC:DD:EE:FF",
+            gateway_mac="00:11:22:33:44:55",
+            ap_mac=None,
+            vid="100",
+            ssid_name=None,
+            radio_id=None,
+        )
         assert result.controller_error is None
 
     @pytest.mark.asyncio

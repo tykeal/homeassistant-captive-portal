@@ -52,7 +52,9 @@ async def _revoke_with_controller(
     """Attempt to revoke a grant on the Omada controller.
 
     When the adapter is configured and the grant has a MAC address,
-    enters the client async context and calls ``adapter.revoke()``.
+    enters the client async context and calls ``adapter.revoke()``,
+    passing any stored Omada connection parameters so the controller
+    receives the same gateway/AP context used at authorization time.
     The DB grant is always kept as REVOKED regardless of controller
     outcome.  On controller failure, returns an error message for
     the admin notification.
@@ -69,7 +71,14 @@ async def _revoke_with_controller(
 
     try:
         async with adapter.client:
-            await adapter.revoke(mac=grant.mac)
+            await adapter.revoke(
+                mac=grant.mac,
+                gateway_mac=grant.omada_gateway_mac,
+                ap_mac=grant.omada_ap_mac,
+                vid=grant.omada_vid,
+                ssid_name=grant.omada_ssid_name,
+                radio_id=grant.omada_radio_id,
+            )
         return RevocationResult()
     except (OmadaClientError, OmadaRetryExhaustedError) as exc:
         _logger.error(

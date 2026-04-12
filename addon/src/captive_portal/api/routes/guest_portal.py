@@ -707,6 +707,13 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         ) from e
 
     # --- Controller authorization ---
+    # Store Omada connection params for future revocation
+    grant.omada_gateway_mac = gateway_mac or None
+    grant.omada_ap_mac = ap_mac or None
+    grant.omada_vid = vid or None
+    grant.omada_ssid_name = ssid_name or None
+    grant.omada_radio_id = radio_id or None
+
     # Override adapter site_id if Omada controller sent a site identifier
     if omada_adapter is not None:
         omada_adapter.site_id = _apply_site_override(site, omada_adapter.site_id, _SITE_ID_PATTERN)
