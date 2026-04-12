@@ -27,8 +27,13 @@ class TestValidateControllerId:
         assert _validate_controller_id(cid) == cid
 
     def test_valid_16_char_hex(self) -> None:
-        """Accept the minimum 16-character hex controller ID."""
+        """Accept a 16-character hex controller ID."""
         cid = "aabbccdd11223344"
+        assert _validate_controller_id(cid) == cid
+
+    def test_valid_12_char_hex(self) -> None:
+        """Accept the minimum 12-character hex controller ID."""
+        cid = "aabbccdd1122"
         assert _validate_controller_id(cid) == cid
 
     def test_valid_64_char_hex(self) -> None:
@@ -62,9 +67,9 @@ class TestValidateControllerId:
             _validate_controller_id("ctrl-test-123-xyz")
 
     def test_rejects_too_short(self) -> None:
-        """Reject controller IDs shorter than 16 characters."""
+        """Reject controller IDs shorter than 12 characters."""
         with pytest.raises(ValueError, match="Invalid controller ID"):
-            _validate_controller_id("aabbccdd")
+            _validate_controller_id("aabbccdd112")
 
     def test_rejects_too_long(self) -> None:
         """Reject controller IDs longer than 64 characters."""

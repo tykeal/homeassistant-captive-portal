@@ -15,7 +15,7 @@ from typing import Any
 
 from captive_portal.config.settings import AppSettings
 
-_CONTROLLER_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{16,64}$")
+_CONTROLLER_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{12,64}$")
 
 
 def _validate_controller_id(controller_id: str) -> str:

@@ -40,7 +40,7 @@ from captive_portal.services.voucher_service import VoucherRedemptionError, Vouc
 from captive_portal.utils.network_utils import get_client_ip, validate_mac_address
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
-_SITE_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{16,64}$")
+_SITE_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{12,64}$")
 
 _logger = logging.getLogger("captive_portal.guest")
 
@@ -48,7 +48,7 @@ _logger = logging.getLogger("captive_portal.guest")
 def _apply_site_override(
     site_from_form: str | None,
     current_site: str,
-    pattern: re.Pattern,  # type: ignore[type-arg]
+    pattern: re.Pattern[str],
 ) -> str:
     """Apply site override from form data if valid.
 

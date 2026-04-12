@@ -237,7 +237,7 @@ async def discover_controller_id(
         OmadaClientError: If discovery fails
     """
     url = urljoin(base_url.rstrip("/") + "/", "api/info")
-    discovery_timeout = httpx.Timeout(5.0, connect=3.0)
+    discovery_timeout = httpx.Timeout(timeout, connect=min(timeout, 3.0))
     async with httpx.AsyncClient(timeout=discovery_timeout, verify=verify_ssl) as client:
         try:
             response = await client.get(url)
