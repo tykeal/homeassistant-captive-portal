@@ -3,7 +3,8 @@
 """Unit tests for guest app custom HTTPException handler.
 
 Verifies that guest portal errors return friendly HTML error pages
-instead of raw JSON responses.
+instead of raw JSON responses, and that the retry URL preserves
+original Omada query parameters.
 """
 
 from __future__ import annotations
@@ -59,3 +60,16 @@ class TestGuestHTTPExceptionHandler:
         """Error responses must not be JSON."""
         response = guest_client.get("/nonexistent-path")
         assert "application/json" not in response.headers.get("content-type", "")
+
+    def test_error_page_retry_url_defaults_to_authorize(self, guest_client: TestClient) -> None:
+        """Without retry_query state the retry URL is /guest/authorize."""
+        response = guest_client.get("/nonexistent-path")
+        content = response.content.decode()
+        assert 'href="/guest/authorize"' in content
+
+    def test_error_page_has_no_go_back_button(self, guest_client: TestClient) -> None:
+        """The Go Back button with history.back() is removed."""
+        response = guest_client.get("/nonexistent-path")
+        content = response.content.decode()
+        assert "history.back()" not in content
+        assert "Go Back" not in content

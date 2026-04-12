@@ -97,3 +97,68 @@ class TestGuestPortalFormFlow:
         body = post_resp.text.lower()
         assert "unable to determine device mac" not in body
         assert "not found" in body
+
+    def test_error_page_retry_url_preserves_omada_params(
+        self,
+        guest_client: TestClient,
+    ) -> None:
+        """Error pages after POST include Omada params in retry URL.
+
+        When a POST /authorize fails the rendered error page must link
+        back to /guest/authorize with the original Omada query
+        parameters so the guest can try again without losing context.
+        """
+        # Step 1: GET to obtain CSRF token cookie
+        get_resp = guest_client.get(
+            "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF"
+            "&site=abc123&gatewayMac=11-22-33-44-55-66&vid=100",
+        )
+        csrf_token = get_resp.cookies.get("guest_csrftoken")
+        assert csrf_token is not None
+
+        # Step 2: POST with form data – code is invalid → error
+        post_resp = guest_client.post(
+            "/guest/authorize",
+            data={
+                "client_mac": "AA-BB-CC-DD-EE-FF",
+                "site": "abc123",
+                "gateway_mac": "11-22-33-44-55-66",
+                "vid": "100",
+                "code": "BADCODE",
+                "csrf_token": csrf_token,
+            },
+        )
+
+        body = post_resp.text
+        # The retry URL must contain the original Omada params
+        assert "clientMac=AA-BB-CC-DD-EE-FF" in body
+        assert "site=abc123" in body
+        assert "gatewayMac=11-22-33-44-55-66" in body
+        assert "vid=100" in body
+        assert "Try Again" in body
+
+    def test_error_page_retry_url_without_optional_params(
+        self,
+        guest_client: TestClient,
+    ) -> None:
+        """Only non-empty Omada params appear in the retry URL."""
+        get_resp = guest_client.get(
+            "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
+        )
+        csrf_token = get_resp.cookies.get("guest_csrftoken")
+        assert csrf_token is not None
+
+        post_resp = guest_client.post(
+            "/guest/authorize",
+            data={
+                "client_mac": "AA-BB-CC-DD-EE-FF",
+                "code": "BADCODE",
+                "csrf_token": csrf_token,
+            },
+        )
+
+        body = post_resp.text
+        assert "clientMac=AA-BB-CC-DD-EE-FF" in body
+        # Params that were not provided should be absent
+        assert "gatewayMac=" not in body
+        assert "vid=" not in body

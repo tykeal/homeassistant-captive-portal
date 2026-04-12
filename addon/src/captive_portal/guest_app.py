@@ -251,6 +251,13 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
             "Something went wrong",
         )
 
+        # Build retry URL preserving original Omada query params
+        retry_query = getattr(request.state, "retry_query", "")
+        rp = request.scope.get("root_path", "")
+        retry_url = f"{rp}/guest/authorize"
+        if retry_query:
+            retry_url += f"?{retry_query}"
+
         return templates.TemplateResponse(
             request=request,
             name="guest/error.html",
@@ -258,6 +265,7 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
                 "error_message": error_message,
                 "error_title": friendly_title,
                 "status_code": exc.status_code,
+                "retry_url": retry_url,
             },
             status_code=exc.status_code,
         )

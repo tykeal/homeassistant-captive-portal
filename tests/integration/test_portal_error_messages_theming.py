@@ -47,11 +47,12 @@ class TestErrorMessageClarity:
         assert "Try Again" in content
         assert "/guest/authorize" in content
 
-    def test_error_page_contains_go_back_action(self, client: TestClient) -> None:
-        """Error page offers a 'Go Back' action."""
+    def test_error_page_no_go_back_button(self, client: TestClient) -> None:
+        """Error page no longer has unreliable Go Back button."""
         response = client.get("/guest/error")
         content = response.content.decode()
-        assert "Go Back" in content
+        assert "Go Back" not in content
+        assert "history.back()" not in content
 
     def test_long_error_message_truncated(self, client: TestClient) -> None:
         """Excessively long messages are truncated to prevent UI breakage."""

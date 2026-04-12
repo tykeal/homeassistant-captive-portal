@@ -156,6 +156,4 @@ def test_no_inline_scripts_in_templates(client: TestClient) -> None:
 
         # Should not contain inline script tags
         content = response.content.decode().lower()
-        # Allow javascript: protocol in links (e.g., history.back())
-        # but no <script> tags with code
-        assert "<script>" not in content or "javascript:history.back()" in content
+        assert "<script>" not in content
