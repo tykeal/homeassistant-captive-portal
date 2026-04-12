@@ -87,7 +87,38 @@ async def test_omada_revoke_includes_gateway_params() -> None:
 
 @pytest.mark.contract
 @pytest.mark.asyncio
-async def test_omada_revoke_response_success() -> None:
+async def test_omada_revoke_includes_eap_params() -> None:
+    """Revoke with EAP params includes apMac, ssidName, and radioId."""
+    client = OmadaClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="test-ctrl",
+        username="user",
+        password="pass",
+    )
+    adapter = OmadaAdapter(client=client, site_id="TestSite")
+
+    captured_payloads: list[dict[str, Any]] = []
+
+    async def mock_post(endpoint: str, payload: dict[str, Any], **kwargs: object) -> dict[str, Any]:
+        """Capture payload."""
+        captured_payloads.append(payload)
+        return {"errorCode": 0, "result": {}}
+
+    client.post_with_retry = AsyncMock(side_effect=mock_post)  # type: ignore[method-assign]
+
+    await adapter.revoke(
+        mac="AA:BB:CC:DD:EE:FF",
+        ap_mac="66:77:88:99:AA:BB",
+        ssid_name="GuestWiFi",
+        radio_id="0",
+    )
+
+    payload = captured_payloads[0]
+    assert payload["apMac"] == "66:77:88:99:AA:BB"
+    assert payload["ssidName"] == "GuestWiFi"
+    assert payload["radioId"] == "0"
+    assert payload["time"] == 1
+    assert "gatewayMac" not in payload
     """Successful revoke returns success=True and mac."""
     client = OmadaClient(
         base_url="https://ctrl.test:8043",
