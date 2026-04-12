@@ -112,7 +112,7 @@ class TestAdapterEndpointPaths:
 
     @pytest.mark.asyncio
     async def test_revoke_endpoint_includes_controller_id(self) -> None:
-        """Revoke should use /{controllerId}/api/v2/hotspot/extPortal/revoke."""
+        """Revoke should use /{controllerId}/api/v2/hotspot/extPortal/deauth."""
         mock_client = AsyncMock(spec=OmadaClient)
         mock_client.controller_id = "abc123"
 
@@ -130,7 +130,7 @@ class TestAdapterEndpointPaths:
         adapter = OmadaAdapter(client=mock_client, site_id="Default")
         await adapter.revoke(mac="AA:BB:CC:DD:EE:FF")
 
-        assert captured_endpoints[0] == "/abc123/api/v2/hotspot/extPortal/revoke"
+        assert captured_endpoints[0] == "/abc123/api/v2/hotspot/extPortal/deauth"
 
     @pytest.mark.asyncio
     async def test_get_status_endpoint_includes_controller_id(self) -> None:
