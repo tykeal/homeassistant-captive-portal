@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """TP-Omada controller adapter for grant authorization and revocation."""
 
-from datetime import datetime
+import math
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from captive_portal.controllers.tp_omada.base_client import (
@@ -47,9 +48,14 @@ class OmadaAdapter:
         - Gateway auth: includes ``gatewayMac`` and ``vid``
         - EAP auth: includes ``apMac``, ``ssidName``, ``radioId``
 
+        The ``expires_at`` timestamp is converted to an authorization
+        duration in seconds (relative to now) for the Omada payload.
+
         Args:
             mac: Device MAC address (AA:BB:CC:DD:EE:FF format)
-            expires_at: Grant expiration timestamp (UTC)
+            expires_at: Grant expiration timestamp (UTC).
+                Converted to a duration in seconds for the
+                controller.
             upload_limit_kbps: Upload bandwidth limit in kbps (0 = unlimited)
             download_limit_kbps: Download bandwidth limit in kbps (0 = unlimited)
             gateway_mac: Gateway MAC for Gateway auth mode
@@ -68,13 +74,19 @@ class OmadaAdapter:
             OmadaClientError: On controller errors
             OmadaRetryExhaustedError: If retries exhausted
         """
-        # Convert datetime to microseconds since epoch
-        time_micros = int(expires_at.timestamp() * 1_000_000)
+        # Calculate authorization duration in seconds
+        now = datetime.now(timezone.utc)
+        expires_at_utc = (
+            expires_at.replace(tzinfo=timezone.utc)
+            if expires_at.tzinfo is None
+            else expires_at.astimezone(timezone.utc)
+        )
+        duration_seconds = max(math.ceil((expires_at_utc - now).total_seconds()), 0)
 
         payload: dict[str, Any] = {
             "clientMac": mac,
             "site": self.site_id,
-            "time": time_micros,
+            "time": duration_seconds,
             "authType": 4,  # External portal auth type
         }
 

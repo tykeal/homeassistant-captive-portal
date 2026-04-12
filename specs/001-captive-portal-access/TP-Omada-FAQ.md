@@ -218,7 +218,7 @@ For Gateway:
 
 |     |     |     |
 | --- | --- | --- |
-| time | **_EXPIRE\_TIME_** | Authentication Expiration time. Unit here is microsecond. |
+| time | **_EXPIRE\_TIME_** | Authorization duration. Unit here is second. |
 
 PHP Code Template for EAP:
 

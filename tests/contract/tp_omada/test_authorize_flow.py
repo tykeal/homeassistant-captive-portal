@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -42,14 +42,22 @@ async def test_omada_authorize_request_structure() -> None:
 
     client.post_with_retry = AsyncMock(side_effect=mock_post)  # type: ignore[method-assign]
 
-    expires = datetime(2026, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
-    await adapter.authorize(mac="AA:BB:CC:DD:EE:FF", expires_at=expires)
+    fixed_now = datetime(2026, 6, 15, 12, 0, 0, tzinfo=timezone.utc)
+    expires = datetime(2026, 6, 15, 12, 15, 0, tzinfo=timezone.utc)
+
+    with patch(
+        "captive_portal.controllers.tp_omada.adapter.datetime",
+    ) as mock_dt:
+        mock_dt.now.return_value = fixed_now
+        mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+        await adapter.authorize(mac="AA:BB:CC:DD:EE:FF", expires_at=expires)
 
     assert len(captured_payloads) == 1
     payload = captured_payloads[0]
     assert payload["clientMac"] == "AA:BB:CC:DD:EE:FF"
     assert payload["site"] == "TestSite"
-    assert "time" in payload
+    assert isinstance(payload["time"], int)
+    assert payload["time"] == 900
     assert payload["authType"] == 4
     # upKbps/downKbps omitted when zero (not in TP-Link spec)
     assert "upKbps" not in payload
