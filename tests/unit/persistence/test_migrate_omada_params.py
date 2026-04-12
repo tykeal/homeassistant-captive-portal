@@ -62,9 +62,8 @@ def test_migration_adds_omada_columns_to_legacy_table() -> None:
         migrated = {c["name"] for c in insp.get_columns("accessgrant")}
         for col in omada_cols:
             assert col in migrated, f"{col} should be added by migration"
-
-        dispose_engine()
     finally:
+        dispose_engine()
         try:
             os.unlink(db_path)
         except OSError:
@@ -85,9 +84,8 @@ def test_migration_is_idempotent() -> None:
         insp = inspect(engine)
         cols = {c["name"] for c in insp.get_columns("accessgrant")}
         assert "omada_gateway_mac" in cols
-
-        dispose_engine()
     finally:
+        dispose_engine()
         try:
             os.unlink(db_path)
         except OSError:

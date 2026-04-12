@@ -724,7 +724,7 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         ) from e
 
     # --- Controller authorization ---
-    # Store Omada connection params for future revocation (sanitised)
+    # Store Omada connection params for future revocation (sanitized)
     grant.omada_gateway_mac = _truncate(gateway_mac, 17)
     grant.omada_ap_mac = _truncate(ap_mac, 17)
     grant.omada_vid = _truncate(vid, 8)
