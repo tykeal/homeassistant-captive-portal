@@ -57,7 +57,7 @@ async def test_omada_authorize_request_structure() -> None:
     assert payload["clientMac"] == "AA:BB:CC:DD:EE:FF"
     assert payload["site"] == "TestSite"
     assert isinstance(payload["time"], int)
-    assert payload["time"] == 900
+    assert payload["time"] == 900_000
     assert payload["authType"] == 4
     # upKbps/downKbps omitted when zero (not in TP-Link spec)
     assert "upKbps" not in payload

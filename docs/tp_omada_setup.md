@@ -486,7 +486,7 @@ Csrf-Token: {token_from_login_response}
 {
   "clientMac": "AA:BB:CC:DD:EE:FF",
   "site": "Default",
-  "time": 1711234567890123,  // Expiry timestamp (microseconds)
+  "time": 900000,             // Authorization duration (milliseconds)
   "authType": 4,              // External portal auth
   "upKbps": 10240,            // Upload limit (0 = unlimited)
   "downKbps": 51200           // Download limit (0 = unlimited)
