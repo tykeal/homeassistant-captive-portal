@@ -94,7 +94,7 @@ async def build_omada_config(
         "base_url": base_url,
         "controller_id": controller_id,
         "username": settings.omada_username.strip(),
-        "password": settings.omada_password,
+        "password": settings.omada_password.strip(),
         "verify_ssl": settings.omada_verify_ssl,
         "site_id": settings.omada_site_name.strip(),
     }
