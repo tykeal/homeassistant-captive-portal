@@ -373,7 +373,7 @@ def _extract_mac_address(
 async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complexity
     request: Request,
     code: Annotated[str, Form()],
-    continue_url: Annotated[Optional[str], Form(alias="continue")] = None,
+    continue_url: Annotated[Optional[str], Form()] = None,
     client_mac: Annotated[Optional[str], Form()] = None,
     site: Annotated[Optional[str], Form()] = None,
     rate_limiter: RateLimiter = Depends(),
