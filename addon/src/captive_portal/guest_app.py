@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -259,6 +260,34 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
                 "status_code": exc.status_code,
             },
             status_code=exc.status_code,
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def guest_validation_exception_handler(
+        request: Request,
+        exc: RequestValidationError,
+    ) -> HTMLResponse:
+        """Render friendly HTML for request validation errors.
+
+        Catches FastAPI 422 validation errors (missing/invalid query
+        or form parameters) and renders the guest error template.
+
+        Args:
+            request: Incoming HTTP request.
+            exc: The RequestValidationError that was raised.
+
+        Returns:
+            HTMLResponse with the rendered error template.
+        """
+        return templates.TemplateResponse(
+            request=request,
+            name="guest/error.html",
+            context={
+                "error_message": "There was a problem with your request.",
+                "error_title": "There was a problem with your request.",
+                "status_code": 422,
+            },
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         )
 
     return app
