@@ -23,3 +23,12 @@ path = [".specify/**", ".github/*/speckit.**", ".vscode/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Andrew Grimberg <tykeal@bardicgrove.org>"
 SPDX-License-Identifier = "MIT"
+
+# Add-on artwork (binary files, no inline headers)
+[[annotations]]
+path = [
+    "addon/icon.png",
+    "addon/logo.png"
+]
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileCopyrightText = "2026 Andrew Grimberg <tykeal@bardicgrove.org>"
