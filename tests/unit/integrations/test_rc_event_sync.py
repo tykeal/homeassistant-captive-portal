@@ -118,6 +118,7 @@ def _make_service(
     if ha_client is None:
         ha_client = MagicMock()
         ha_client.get_all_states = AsyncMock(return_value=[])
+        ha_client.get_timezone = AsyncMock(return_value="UTC")
 
     if event_repo is None:
         event_repo = MagicMock()
@@ -462,13 +463,13 @@ class TestProcessEventsErrorIsolation:
         original = service._process_integration
         call_count = 0
 
-        async def _fail_first(config, states):
+        async def _fail_first(config, states, *, ha_tz=None):
             """Raise on first integration, pass-through on others."""
             nonlocal call_count
             call_count += 1
             if call_count == 1:
                 raise RuntimeError("simulated DB error")
-            await original(config, states)
+            await original(config, states, ha_tz=ha_tz)
 
         service._process_integration = _fail_first
 
