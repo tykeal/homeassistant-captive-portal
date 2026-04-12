@@ -9,48 +9,75 @@ extract the device MAC address without falling back to header sniffing.
 
 from __future__ import annotations
 
+import os
+import tempfile
+from collections.abc import Generator
+
 import pytest
 from fastapi.testclient import TestClient
 
 from captive_portal.config.settings import AppSettings
 from captive_portal.guest_app import create_guest_app
+from captive_portal.persistence import database
 
 
 @pytest.fixture
-def guest_client() -> TestClient:
-    """Create a guest-app TestClient with an in-memory DB.
+def guest_client() -> Generator[TestClient, None, None]:
+    """Create a guest-app TestClient with a file-backed DB.
 
-    Uses raise_server_exceptions=False because the POST test
-    intentionally hits downstream errors (missing portal_config
-    table) after MAC extraction succeeds.  We only assert the
-    MAC-specific error is absent.
+    A file-backed DB is used instead of ``:memory:`` because
+    SQLite in-memory databases are per-connection, causing
+    tables created during lifespan ``init_db`` to be invisible
+    to subsequent request sessions.
+
+    Yields:
+        TestClient wired to a fully initialised guest app.
     """
-    app = create_guest_app(settings=AppSettings(db_path=":memory:"))
-    return TestClient(app, raise_server_exceptions=False)
+    fd, db_path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    app = create_guest_app(settings=AppSettings(db_path=db_path))
+    try:
+        yield TestClient(app)
+    finally:
+        database.dispose_engine()
+        try:
+            os.unlink(db_path)
+        except OSError:
+            pass
 
 
 class TestGuestPortalFormFlow:
     """GET → POST MAC passthrough integration tests."""
 
-    def test_get_authorize_renders_client_mac(self, guest_client: TestClient) -> None:
+    def test_get_authorize_renders_client_mac(
+        self,
+        guest_client: TestClient,
+    ) -> None:
         """GET with clientMac embeds client_mac hidden field."""
         with guest_client:
-            resp = guest_client.get("/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF")
+            resp = guest_client.get(
+                "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
+            )
             assert resp.status_code == 200
             text = resp.text
             assert 'name="client_mac"' in text
             assert 'value="AA-BB-CC-DD-EE-FF"' in text
 
-    def test_post_authorize_receives_mac_from_form(self, guest_client: TestClient) -> None:
-        """POST with client_mac form field does not fail on MAC extraction.
+    def test_post_authorize_receives_mac_from_form(
+        self,
+        guest_client: TestClient,
+    ) -> None:
+        """POST with client_mac form field passes MAC extraction.
 
-        The POST will fail for other reasons (invalid code, missing
-        tables in the in-memory DB), but should NOT fail with
-        "Unable to determine device MAC address".
+        The handler should reach voucher look-up and return 410
+        (voucher not found) rather than 400 (MAC extraction
+        failure), proving the form field was read correctly.
         """
         with guest_client:
             # Step 1: GET to obtain CSRF token cookie
-            get_resp = guest_client.get("/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF")
+            get_resp = guest_client.get(
+                "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
+            )
             csrf_token = get_resp.cookies.get("guest_csrftoken")
             assert csrf_token is not None
 
@@ -65,9 +92,9 @@ class TestGuestPortalFormFlow:
                 },
             )
 
-            # MAC extraction must not be the failure reason.
-            # The response may be 400 (bad code) or 500 (missing
-            # tables in the lightweight in-memory DB) — both are
-            # acceptable as long as MAC extraction itself worked.
+            # Handler must pass MAC extraction (no 400) and
+            # reach code validation (410 = voucher not found).
+            assert post_resp.status_code == 410
             body = post_resp.text.lower()
             assert "unable to determine device mac" not in body
+            assert "not found" in body
