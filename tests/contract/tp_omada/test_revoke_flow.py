@@ -47,7 +47,7 @@ async def test_omada_revoke_request_structure() -> None:
     assert payload["site"] == "TestSite"
 
     # Verify correct API endpoint path
-    assert captured_endpoints[0] == "/test-ctrl/api/v2/hotspot/extPortal/revoke"
+    assert captured_endpoints[0] == "/test-ctrl/api/v2/hotspot/extPortal/deauth"
 
 
 @pytest.mark.contract

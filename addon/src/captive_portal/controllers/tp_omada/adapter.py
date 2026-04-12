@@ -130,7 +130,7 @@ class OmadaAdapter:
         }
 
         try:
-            endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/revoke"
+            endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/deauth"
             await self.client.post_with_retry(endpoint, payload)
             return {"success": True, "mac": mac}
         except OmadaClientError as e:
