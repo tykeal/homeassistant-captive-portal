@@ -191,6 +191,11 @@ async def _authorize_with_controller(
     adapter: OmadaAdapter | None,
     grant: AccessGrant,
     mac_address: str,
+    gateway_mac: str | None = None,
+    ap_mac: str | None = None,
+    ssid_name: str | None = None,
+    radio_id: str | None = None,
+    vid: str | None = None,
 ) -> tuple[AccessGrant, Optional[str]]:
     """Authorize a grant with the Omada controller if configured.
 
@@ -206,6 +211,11 @@ async def _authorize_with_controller(
         adapter: OmadaAdapter instance or None if not configured.
         grant: The access grant in PENDING status.
         mac_address: Device MAC address.
+        gateway_mac: Gateway MAC for Gateway auth mode.
+        ap_mac: Access point MAC for EAP auth mode.
+        ssid_name: SSID name for EAP auth mode.
+        radio_id: Radio identifier for EAP auth mode.
+        vid: VLAN ID for Gateway auth mode.
 
     Returns:
         A tuple of (grant, error_detail) where error_detail is None
@@ -222,6 +232,11 @@ async def _authorize_with_controller(
             result = await adapter.authorize(
                 mac=mac_address,
                 expires_at=grant.end_utc,
+                gateway_mac=gateway_mac,
+                ap_mac=ap_mac,
+                ssid_name=ssid_name,
+                radio_id=radio_id,
+                vid=vid,
             )
         grant.status = GrantStatus.ACTIVE
         grant.controller_grant_id = result.get("grant_id")
@@ -376,6 +391,11 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     continue_url: Annotated[Optional[str], Form()] = None,
     client_mac: Annotated[Optional[str], Form()] = None,
     site: Annotated[Optional[str], Form()] = None,
+    gateway_mac: Annotated[Optional[str], Form()] = None,
+    ap_mac: Annotated[Optional[str], Form()] = None,
+    vid: Annotated[Optional[str], Form()] = None,
+    ssid_name: Annotated[Optional[str], Form()] = None,
+    radio_id: Annotated[Optional[str], Form()] = None,
     rate_limiter: RateLimiter = Depends(),
     unified_code_service: UnifiedCodeService = Depends(),
     redirect_validator: RedirectValidator = Depends(),
@@ -395,6 +415,11 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         continue_url: Optional redirect destination
         client_mac: Device MAC from Omada controller redirect
         site: Omada site identifier from controller redirect
+        gateway_mac: Gateway MAC for Gateway auth mode
+        ap_mac: Access point MAC for EAP auth mode
+        vid: VLAN ID for Gateway auth mode
+        ssid_name: SSID name for EAP auth mode
+        radio_id: Radio identifier for EAP auth mode
         rate_limiter: Rate limiting service
         unified_code_service: Code validation and grant creation service
         redirect_validator: Redirect URL validation service
@@ -688,6 +713,11 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         adapter=omada_adapter,
         grant=grant,
         mac_address=mac_address,
+        gateway_mac=gateway_mac or None,
+        ap_mac=ap_mac or None,
+        ssid_name=ssid_name or None,
+        radio_id=radio_id or None,
+        vid=vid or None,
     )
     session.add(grant)
     session.commit()

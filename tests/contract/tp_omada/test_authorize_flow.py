@@ -51,8 +51,9 @@ async def test_omada_authorize_request_structure() -> None:
     assert payload["site"] == "TestSite"
     assert "time" in payload
     assert payload["authType"] == 4
-    assert "upKbps" in payload
-    assert "downKbps" in payload
+    # upKbps/downKbps omitted when zero (not in TP-Link spec)
+    assert "upKbps" not in payload
+    assert "downKbps" not in payload
 
     # Verify correct API endpoint path
     assert captured_endpoints[0] == "/test-ctrl/api/v2/hotspot/extPortal/auth"

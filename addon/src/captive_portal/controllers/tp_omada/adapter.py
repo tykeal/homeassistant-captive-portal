@@ -35,14 +35,28 @@ class OmadaAdapter:
         expires_at: datetime,
         upload_limit_kbps: int = 0,
         download_limit_kbps: int = 0,
+        gateway_mac: str | None = None,
+        ap_mac: str | None = None,
+        ssid_name: str | None = None,
+        radio_id: str | None = None,
+        vid: str | None = None,
     ) -> dict[str, Any]:
         """Authorize device on controller with expiration time.
+
+        Builds the payload conditionally for Gateway or EAP auth:
+        - Gateway auth: includes ``gatewayMac`` and ``vid``
+        - EAP auth: includes ``apMac``, ``ssidName``, ``radioId``
 
         Args:
             mac: Device MAC address (AA:BB:CC:DD:EE:FF format)
             expires_at: Grant expiration timestamp (UTC)
             upload_limit_kbps: Upload bandwidth limit in kbps (0 = unlimited)
             download_limit_kbps: Download bandwidth limit in kbps (0 = unlimited)
+            gateway_mac: Gateway MAC for Gateway auth mode
+            ap_mac: Access point MAC for EAP auth mode
+            ssid_name: SSID name for EAP auth mode
+            radio_id: Radio identifier for EAP auth mode
+            vid: VLAN ID for Gateway auth mode
 
         Returns:
             dict with keys:
@@ -57,14 +71,30 @@ class OmadaAdapter:
         # Convert datetime to microseconds since epoch
         time_micros = int(expires_at.timestamp() * 1_000_000)
 
-        payload = {
+        payload: dict[str, Any] = {
             "clientMac": mac,
             "site": self.site_id,
             "time": time_micros,
             "authType": 4,  # External portal auth type
-            "upKbps": upload_limit_kbps,
-            "downKbps": download_limit_kbps,
         }
+
+        # Gateway auth mode (takes precedence over EAP)
+        if gateway_mac:
+            payload["gatewayMac"] = gateway_mac
+            payload["vid"] = vid or ""
+        elif ap_mac:
+            # EAP auth mode
+            payload["apMac"] = ap_mac
+            if ssid_name:
+                payload["ssidName"] = ssid_name
+            if radio_id:
+                payload["radioId"] = radio_id
+
+        # Only include bandwidth limits when non-zero
+        if upload_limit_kbps:
+            payload["upKbps"] = upload_limit_kbps
+        if download_limit_kbps:
+            payload["downKbps"] = download_limit_kbps
 
         # Call controller authorize endpoint with retry
         endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/auth"
