@@ -8,7 +8,6 @@ from typing import Any, Optional
 
 from captive_portal.controllers.tp_omada.base_client import (
     OmadaClient,
-    OmadaClientError,
 )
 
 
@@ -172,14 +171,9 @@ class OmadaAdapter:
             if radio_id:
                 payload["radioId"] = radio_id
 
-        try:
-            endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/auth"
-            await self.client.post_with_retry(endpoint, payload)
-            return {"success": True, "mac": mac}
-        except OmadaClientError as e:
-            if hasattr(e, "status_code") and e.status_code == 404:
-                return {"success": True, "mac": mac, "note": "Already revoked"}
-            raise
+        endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/auth"
+        await self.client.post_with_retry(endpoint, payload)
+        return {"success": True, "mac": mac}
 
     async def update(
         self, mac: str, expires_at: datetime, grant_id: Optional[str] = None

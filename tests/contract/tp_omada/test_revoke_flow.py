@@ -109,7 +109,7 @@ async def test_omada_revoke_response_success() -> None:
 @pytest.mark.contract
 @pytest.mark.asyncio
 async def test_omada_revoke_response_not_found() -> None:
-    """Revoke on non-existent grant (404) treated as success (idempotent)."""
+    """Revoke on 404 should raise OmadaClientError (not swallowed)."""
     client = OmadaClient(
         base_url="https://ctrl.test:8043",
         controller_id="test-ctrl",
@@ -118,15 +118,13 @@ async def test_omada_revoke_response_not_found() -> None:
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
 
-    # 404 should be caught and treated as success
+    # 404 on a fixed endpoint indicates misconfiguration, not idempotency
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
         side_effect=OmadaClientError("Not found", status_code=404)
     )
 
-    result = await adapter.revoke(mac="AA:BB:CC:DD:EE:FF")
-    assert result["success"] is True
-    assert result["mac"] == "AA:BB:CC:DD:EE:FF"
-    assert result.get("note") == "Already revoked"
+    with pytest.raises(OmadaClientError):
+        await adapter.revoke(mac="AA:BB:CC:DD:EE:FF")
 
 
 @pytest.mark.contract

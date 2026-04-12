@@ -136,18 +136,18 @@ def _migrate_accessgrant_omada_params(engine: Engine) -> None:
         return
     columns = {c["name"] for c in insp.get_columns("accessgrant")}
 
-    new_columns = [
-        "omada_gateway_mac",
-        "omada_ap_mac",
-        "omada_vid",
-        "omada_ssid_name",
-        "omada_radio_id",
-    ]
+    new_columns = {
+        "omada_gateway_mac": "VARCHAR(17)",
+        "omada_ap_mac": "VARCHAR(17)",
+        "omada_vid": "VARCHAR(8)",
+        "omada_ssid_name": "VARCHAR(64)",
+        "omada_radio_id": "VARCHAR(2)",
+    }
 
     with engine.begin() as conn:
-        for col in new_columns:
+        for col, col_type in new_columns.items():
             if col not in columns:
-                conn.execute(text(f"ALTER TABLE accessgrant ADD COLUMN {col} VARCHAR"))
+                conn.execute(text(f"ALTER TABLE accessgrant ADD COLUMN {col} {col_type}"))
                 logger.info(
                     "Migrated accessgrant table: added %s column.",
                     col,
