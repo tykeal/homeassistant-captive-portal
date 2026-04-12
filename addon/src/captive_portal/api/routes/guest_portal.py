@@ -331,7 +331,7 @@ def _extract_mac_address(
 
     Args:
         request: FastAPI request object
-        form_mac: MAC address from form data (clientMac hidden field)
+        form_mac: MAC address from form data (client_mac hidden field)
 
     Returns:
         Validated and normalized MAC address (format: AA:BB:CC:DD:EE:FF)

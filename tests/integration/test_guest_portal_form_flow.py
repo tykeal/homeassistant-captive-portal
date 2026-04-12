@@ -18,7 +18,13 @@ from captive_portal.guest_app import create_guest_app
 
 @pytest.fixture
 def guest_client() -> TestClient:
-    """Create a guest-app TestClient with an in-memory DB."""
+    """Create a guest-app TestClient with an in-memory DB.
+
+    Uses raise_server_exceptions=False because the POST test
+    intentionally hits downstream errors (missing portal_config
+    table) after MAC extraction succeeds.  We only assert the
+    MAC-specific error is absent.
+    """
     app = create_guest_app(settings=AppSettings(db_path=":memory:"))
     return TestClient(app, raise_server_exceptions=False)
 
@@ -38,8 +44,9 @@ class TestGuestPortalFormFlow:
     def test_post_authorize_receives_mac_from_form(self, guest_client: TestClient) -> None:
         """POST with client_mac form field does not fail on MAC extraction.
 
-        The POST will fail for other reasons (invalid code), but should
-        NOT fail with "Unable to determine device MAC address".
+        The POST will fail for other reasons (invalid code, missing
+        tables in the in-memory DB), but should NOT fail with
+        "Unable to determine device MAC address".
         """
         with guest_client:
             # Step 1: GET to obtain CSRF token cookie
@@ -58,7 +65,9 @@ class TestGuestPortalFormFlow:
                 },
             )
 
-            # Should NOT be 400 with MAC error
-            if post_resp.status_code == 400:
-                body = post_resp.text.lower()
-                assert "unable to determine device mac" not in body
+            # MAC extraction must not be the failure reason.
+            # The response may be 400 (bad code) or 500 (missing
+            # tables in the lightweight in-memory DB) — both are
+            # acceptable as long as MAC extraction itself worked.
+            body = post_resp.text.lower()
+            assert "unable to determine device mac" not in body
