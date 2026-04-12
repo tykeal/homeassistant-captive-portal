@@ -45,6 +45,23 @@ _SITE_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{12,64}$")
 _logger = logging.getLogger("captive_portal.guest")
 
 
+def _truncate(value: str | None, max_length: int) -> str | None:
+    """Strip whitespace and truncate a value to ``max_length``.
+
+    Returns ``None`` when the input is empty/whitespace-only.
+
+    Args:
+        value: Raw input string (may be None or empty).
+        max_length: Maximum allowed length after stripping.
+
+    Returns:
+        Sanitised string or None.
+    """
+    if not value or not value.strip():
+        return None
+    return value.strip()[:max_length]
+
+
 def _apply_site_override(
     site_from_form: str | None,
     current_site: str,
@@ -707,12 +724,12 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         ) from e
 
     # --- Controller authorization ---
-    # Store Omada connection params for future revocation
-    grant.omada_gateway_mac = gateway_mac or None
-    grant.omada_ap_mac = ap_mac or None
-    grant.omada_vid = vid or None
-    grant.omada_ssid_name = ssid_name or None
-    grant.omada_radio_id = radio_id or None
+    # Store Omada connection params for future revocation (sanitised)
+    grant.omada_gateway_mac = _truncate(gateway_mac, 17)
+    grant.omada_ap_mac = _truncate(ap_mac, 17)
+    grant.omada_vid = _truncate(vid, 8)
+    grant.omada_ssid_name = _truncate(ssid_name, 64)
+    grant.omada_radio_id = _truncate(radio_id, 2)
 
     # Override adapter site_id if Omada controller sent a site identifier
     if omada_adapter is not None:

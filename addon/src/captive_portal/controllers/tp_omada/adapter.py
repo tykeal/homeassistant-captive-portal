@@ -29,6 +29,38 @@ class OmadaAdapter:
         self.client = client
         self.site_id = site_id
 
+    @staticmethod
+    def _apply_auth_mode_params(
+        payload: dict[str, Any],
+        *,
+        gateway_mac: str | None = None,
+        ap_mac: str | None = None,
+        vid: str | None = None,
+        ssid_name: str | None = None,
+        radio_id: str | None = None,
+    ) -> None:
+        """Apply Gateway or EAP auth-mode parameters to a payload.
+
+        Gateway auth mode takes precedence over EAP.
+
+        Args:
+            payload: Mutable dict to extend in-place.
+            gateway_mac: Gateway MAC for Gateway auth mode.
+            ap_mac: Access point MAC for EAP auth mode.
+            vid: VLAN ID for Gateway auth mode.
+            ssid_name: SSID name for EAP auth mode.
+            radio_id: Radio identifier for EAP auth mode.
+        """
+        if gateway_mac:
+            payload["gatewayMac"] = gateway_mac
+            payload["vid"] = vid or ""
+        elif ap_mac:
+            payload["apMac"] = ap_mac
+            if ssid_name:
+                payload["ssidName"] = ssid_name
+            if radio_id:
+                payload["radioId"] = radio_id
+
     async def authorize(
         self,
         mac: str,
@@ -89,17 +121,14 @@ class OmadaAdapter:
             "authType": 4,  # External portal auth type
         }
 
-        # Gateway auth mode (takes precedence over EAP)
-        if gateway_mac:
-            payload["gatewayMac"] = gateway_mac
-            payload["vid"] = vid or ""
-        elif ap_mac:
-            # EAP auth mode
-            payload["apMac"] = ap_mac
-            if ssid_name:
-                payload["ssidName"] = ssid_name
-            if radio_id:
-                payload["radioId"] = radio_id
+        self._apply_auth_mode_params(
+            payload,
+            gateway_mac=gateway_mac,
+            ap_mac=ap_mac,
+            vid=vid,
+            ssid_name=ssid_name,
+            radio_id=radio_id,
+        )
 
         # Only include bandwidth limits when non-zero
         if upload_limit_kbps:
@@ -160,16 +189,14 @@ class OmadaAdapter:
             "authType": 4,
         }
 
-        # Gateway auth mode
-        if gateway_mac:
-            payload["gatewayMac"] = gateway_mac
-            payload["vid"] = vid or ""
-        elif ap_mac:
-            payload["apMac"] = ap_mac
-            if ssid_name:
-                payload["ssidName"] = ssid_name
-            if radio_id:
-                payload["radioId"] = radio_id
+        self._apply_auth_mode_params(
+            payload,
+            gateway_mac=gateway_mac,
+            ap_mac=ap_mac,
+            vid=vid,
+            ssid_name=ssid_name,
+            radio_id=radio_id,
+        )
 
         endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/auth"
         await self.client.post_with_retry(endpoint, payload)
