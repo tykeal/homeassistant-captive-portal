@@ -119,6 +119,7 @@ class VoucherService:
                 expires = expires.replace(tzinfo=timezone.utc)
             if current_time > expires:
                 voucher.status = VoucherStatus.EXPIRED
+                voucher.status_changed_utc = current_time
                 count += 1
 
         if count:
@@ -319,10 +320,12 @@ class VoucherService:
             expires = expires.replace(tzinfo=timezone.utc)
         if voucher.is_activated_for_expiry and current_time > expires:
             voucher.status = VoucherStatus.EXPIRED
+            voucher.status_changed_utc = current_time
             self.voucher_repo.commit()
             raise VoucherExpiredError(code)
 
         voucher.status = VoucherStatus.REVOKED
+        voucher.status_changed_utc = current_time
         self.voucher_repo.commit()
         return voucher
 

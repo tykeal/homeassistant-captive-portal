@@ -4,6 +4,7 @@
 
 import logging
 from collections.abc import Generator
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import inspect, text
@@ -75,6 +76,7 @@ def init_db(engine: Engine, drop_existing: bool = False) -> None:
     _migrate_accessgrant_omada_params(engine)
     _migrate_vlan_allowed_vlans(engine)
     _migrate_voucher_max_devices(engine)
+    _migrate_voucher_status_changed_utc(engine)
 
 
 def _migrate_voucher_activated_utc(engine: Engine) -> None:
@@ -243,3 +245,91 @@ def _migrate_voucher_max_devices(engine: Engine) -> None:
                     "Migrated voucher table: backfilled %d NULL max_devices values to 1.",
                     result.rowcount,
                 )
+
+
+def _migrate_voucher_status_changed_utc(engine: Engine) -> None:
+    """Add status_changed_utc column and backfill terminal-status timestamps.
+
+    Adds a nullable ``DATETIME`` column ``status_changed_utc`` to the
+    ``voucher`` table and backfills reasonable values for vouchers
+    already in a terminal status:
+
+    * **EXPIRED**: ``activated_utc + duration_minutes`` (or
+      ``created_utc + duration_minutes`` when ``activated_utc`` is
+      ``NULL``).
+    * **REVOKED**: The migration execution timestamp (actual
+      revocation time is unrecoverable from existing data).
+
+    UNUSED and ACTIVE vouchers are left with ``NULL`` because they
+    have not yet reached a terminal status.
+
+    Args:
+        engine: SQLAlchemy engine to inspect and migrate.
+    """
+    logger = logging.getLogger("captive_portal.persistence")
+    insp = inspect(engine)
+    if "voucher" not in insp.get_table_names():
+        return
+    columns = {c["name"] for c in insp.get_columns("voucher")}
+
+    migration_time = datetime.now(timezone.utc)
+
+    with engine.begin() as conn:
+        if "status_changed_utc" not in columns:
+            conn.execute(text("ALTER TABLE voucher ADD COLUMN status_changed_utc DATETIME"))
+            logger.info("Migrated voucher table: added status_changed_utc column.")
+
+        # Backfill EXPIRED vouchers with activated_utc available
+        result_expired_activated: Any = conn.execute(
+            text(
+                "UPDATE voucher "
+                "SET status_changed_utc = datetime("
+                "  activated_utc, '+' || duration_minutes || ' minutes'"
+                ") "
+                "WHERE status = 'expired' "
+                "AND status_changed_utc IS NULL "
+                "AND activated_utc IS NOT NULL"
+            )
+        )
+        if result_expired_activated.rowcount and result_expired_activated.rowcount > 0:
+            logger.info(
+                "Migrated voucher table: backfilled status_changed_utc for %d "
+                "EXPIRED vouchers (from activated_utc + duration).",
+                result_expired_activated.rowcount,
+            )
+
+        # Backfill EXPIRED vouchers without activated_utc (fallback)
+        result_expired_fallback: Any = conn.execute(
+            text(
+                "UPDATE voucher "
+                "SET status_changed_utc = datetime("
+                "  created_utc, '+' || duration_minutes || ' minutes'"
+                ") "
+                "WHERE status = 'expired' "
+                "AND status_changed_utc IS NULL "
+                "AND activated_utc IS NULL"
+            )
+        )
+        if result_expired_fallback.rowcount and result_expired_fallback.rowcount > 0:
+            logger.info(
+                "Migrated voucher table: backfilled status_changed_utc for %d "
+                "EXPIRED vouchers (fallback from created_utc + duration).",
+                result_expired_fallback.rowcount,
+            )
+
+        # Backfill REVOKED vouchers with migration execution time
+        result_revoked: Any = conn.execute(
+            text(
+                "UPDATE voucher "
+                "SET status_changed_utc = :migration_time "
+                "WHERE status = 'revoked' "
+                "AND status_changed_utc IS NULL"
+            ),
+            {"migration_time": migration_time},
+        )
+        if result_revoked.rowcount and result_revoked.rowcount > 0:
+            logger.info(
+                "Migrated voucher table: backfilled status_changed_utc for %d "
+                "REVOKED vouchers (migration timestamp).",
+                result_revoked.rowcount,
+            )
