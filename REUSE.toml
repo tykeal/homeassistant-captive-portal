@@ -19,7 +19,7 @@ SPDX-License-Identifier = "Apache-2.0"
 SPDX-FileCopyrightText = "2026 Andrew Grimberg <tykeal@bardicgrove.org>"
 
 [[annotations]]
-path = [".specify/**", ".github/*/speckit.**", ".vscode/**"]
+path = [".specify/**", ".github/*/speckit.**", ".vscode/**", "specs/**"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Andrew Grimberg <tykeal@bardicgrove.org>"
 SPDX-License-Identifier = "MIT"
