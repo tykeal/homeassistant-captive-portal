@@ -95,3 +95,32 @@ def test_voucher_redeemed_count_increments() -> None:
     voucher.last_redeemed_utc = now
     assert voucher.redeemed_count == 1
     assert voucher.last_redeemed_utc == now
+
+
+def test_status_changed_utc_default_none() -> None:
+    """T001: status_changed_utc defaults to None."""
+    voucher = Voucher(code="STSCHG0001", duration_minutes=60)
+    assert voucher.status_changed_utc is None
+
+
+def test_status_changed_utc_field_present() -> None:
+    """T001: status_changed_utc field is present on the model."""
+    fields = Voucher.model_fields
+    assert "status_changed_utc" in fields
+
+
+def test_status_changed_utc_nullable_datetime() -> None:
+    """T001: status_changed_utc accepts Optional[datetime]."""
+    now = datetime.now(timezone.utc)
+    voucher = Voucher(code="STSCHG0002", duration_minutes=60, status_changed_utc=now)
+    assert voucher.status_changed_utc == now
+
+    voucher_none = Voucher(code="STSCHG0003", duration_minutes=60, status_changed_utc=None)
+    assert voucher_none.status_changed_utc is None
+
+
+def test_status_changed_utc_in_schema() -> None:
+    """T001: status_changed_utc is included in Pydantic schema."""
+    schema = Voucher.model_json_schema()
+    props = schema.get("properties", {})
+    assert "status_changed_utc" in props

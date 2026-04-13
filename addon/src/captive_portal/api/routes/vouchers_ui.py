@@ -30,6 +30,7 @@ from captive_portal.persistence.repositories import (
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
 from captive_portal.security.session_middleware import require_admin
 from captive_portal.services.audit_service import AuditService
+from captive_portal.services.voucher_purge_service import VoucherPurgeService
 from captive_portal.services.voucher_service import (
     VoucherCollisionError,
     VoucherExpiredError,
@@ -211,6 +212,9 @@ async def get_vouchers(
     new_code = request.query_params.get("new_code")
     success_message = request.query_params.get("success")
     error_message = request.query_params.get("error")
+    purge_preview_count = request.query_params.get("purge_preview_count")
+    purge_preview_days = request.query_params.get("purge_preview_days")
+    info_message = request.query_params.get("info")
 
     stmt: Any = select(Voucher).order_by(col(Voucher.created_utc).desc()).limit(500)
     vouchers = list(cast(list[Voucher], session.exec(stmt).all()))
@@ -218,8 +222,23 @@ async def get_vouchers(
     # Lazily persist EXPIRED status for stale ACTIVE vouchers.
     # flush() inside the service keeps loaded objects valid;
     # commit after the response is built to avoid N+1 refreshes.
-    voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
+    voucher_repo = VoucherRepository(session)
+    grant_repo = AccessGrantRepository(session)
+    voucher_service = VoucherService(session=session, voucher_repo=voucher_repo)
     expired_count = voucher_service.expire_stale_vouchers(vouchers)
+
+    # Auto-purge terminal vouchers past retention period (30 days).
+    audit_service = AuditService(session)
+    purge_service = VoucherPurgeService(
+        voucher_repo=voucher_repo,
+        grant_repo=grant_repo,
+        audit_service=audit_service,
+    )
+    purged_count = await purge_service.auto_purge()
+
+    # If vouchers were purged, re-query to get the updated list.
+    if purged_count > 0:
+        vouchers = list(cast(list[Voucher], session.exec(stmt).all()))
 
     voucher_actions: dict[str, VoucherActions] = {}
     now = datetime.now(timezone.utc)
@@ -237,7 +256,6 @@ async def get_vouchers(
         voucher_actions[voucher.code] = VoucherActions(can_revoke=can_revoke, can_delete=can_delete)
 
     # Batch-query active device counts for every voucher in the list
-    grant_repo = AccessGrantRepository(session)
     all_codes = [v.code for v in vouchers]
     active_device_counts: dict[str, int] = (
         grant_repo.count_active_by_voucher_codes(all_codes) if all_codes else {}
@@ -254,9 +272,12 @@ async def get_vouchers(
             "new_code": new_code,
             "success_message": success_message,
             "error_message": error_message,
+            "info_message": info_message,
+            "purge_preview_count": purge_preview_count,
+            "purge_preview_days": purge_preview_days,
         },
     )
-    if expired_count:
+    if expired_count or purged_count:
         session.commit()
     if need_csrf_cookie:
         csrf.set_csrf_cookie(response, csrf_token)
@@ -675,5 +696,158 @@ async def bulk_delete_vouchers(
     encoded_msg = urllib.parse.quote_plus(msg)
     return RedirectResponse(
         url=f"{root}/admin/vouchers/?{param_key}={encoded_msg}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/purge-preview")
+async def purge_preview(
+    request: Request,
+    session: Annotated[Session, Depends(get_session)],
+    admin_id: Annotated[UUID, Depends(require_admin)],
+    csrf: Annotated[CSRFProtection, Depends(get_csrf_protection)],
+) -> RedirectResponse:
+    """Preview the count of vouchers eligible for purge.
+
+    Validates the ``min_age_days`` form field, counts eligible vouchers,
+    and redirects to the vouchers page with preview parameters in the
+    query string for rendering the confirmation banner.
+
+    Args:
+        request: Incoming HTTP request.
+        session: Database session.
+        admin_id: Authenticated admin user ID.
+        csrf: CSRF protection instance.
+
+    Returns:
+        303 redirect to vouchers page with purge preview or error.
+    """
+    root = request.scope.get("root_path", "")
+
+    try:
+        await csrf.validate_token(request)
+    except HTTPException:
+        logger.warning("CSRF validation failed for purge preview")
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    form = await request.form()
+    min_age_raw = form.get("min_age_days", "")
+
+    try:
+        min_age_days = int(min_age_raw)  # type: ignore[arg-type]
+    except (ValueError, TypeError):
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error="
+            + urllib.parse.quote_plus("Age threshold must be a non-negative integer."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    if min_age_days < 0:
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error="
+            + urllib.parse.quote_plus("Age threshold must be a non-negative integer."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    voucher_repo = VoucherRepository(session)
+    grant_repo = AccessGrantRepository(session)
+    audit_service = AuditService(session)
+    purge_service = VoucherPurgeService(
+        voucher_repo=voucher_repo,
+        grant_repo=grant_repo,
+        audit_service=audit_service,
+    )
+
+    count = await purge_service.count_purgeable(min_age_days)
+
+    if count == 0:
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?info="
+            + urllib.parse.quote_plus("No vouchers are eligible for purging with that threshold."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    return RedirectResponse(
+        url=f"{root}/admin/vouchers/?purge_preview_count={count}&purge_preview_days={min_age_days}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/purge-confirm")
+async def purge_confirm(
+    request: Request,
+    session: Annotated[Session, Depends(get_session)],
+    admin_id: Annotated[UUID, Depends(require_admin)],
+    csrf: Annotated[CSRFProtection, Depends(get_csrf_protection)],
+) -> RedirectResponse:
+    """Execute the purge of eligible vouchers.
+
+    Validates the ``min_age_days`` form field, executes the purge
+    operation (nullifying grant references, deleting vouchers, and
+    logging to the audit trail), and redirects with a success message.
+
+    Args:
+        request: Incoming HTTP request.
+        session: Database session.
+        admin_id: Authenticated admin user ID.
+        csrf: CSRF protection instance.
+
+    Returns:
+        303 redirect to vouchers page with success or error message.
+    """
+    root = request.scope.get("root_path", "")
+
+    try:
+        await csrf.validate_token(request)
+    except HTTPException:
+        logger.warning("CSRF validation failed for purge confirm")
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    form = await request.form()
+    min_age_raw = form.get("min_age_days", "")
+
+    try:
+        min_age_days = int(min_age_raw)  # type: ignore[arg-type]
+    except (ValueError, TypeError):
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error="
+            + urllib.parse.quote_plus("Age threshold must be a non-negative integer."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    if min_age_days < 0:
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error="
+            + urllib.parse.quote_plus("Age threshold must be a non-negative integer."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    # Resolve admin username for audit trail
+    from captive_portal.persistence.repositories import AdminUserRepository
+
+    admin_repo = AdminUserRepository(session)
+    admin_user_obj = admin_repo.get_by_id(admin_id)
+    actor = admin_user_obj.username if admin_user_obj else str(admin_id)
+
+    voucher_repo = VoucherRepository(session)
+    grant_repo = AccessGrantRepository(session)
+    audit_service = AuditService(session)
+    purge_service = VoucherPurgeService(
+        voucher_repo=voucher_repo,
+        grant_repo=grant_repo,
+        audit_service=audit_service,
+    )
+
+    purged_count = await purge_service.manual_purge(min_age_days, actor=actor)
+
+    success_msg = urllib.parse.quote_plus(f"Purged {purged_count} vouchers")
+    return RedirectResponse(
+        url=f"{root}/admin/vouchers/?success={success_msg}",
         status_code=status.HTTP_303_SEE_OTHER,
     )

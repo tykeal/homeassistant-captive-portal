@@ -178,6 +178,75 @@ class TestExpireStaleVouchers:
         assert count == 0
 
 
+class TestExpireStatusChangedUtc:
+    """T003: status_changed_utc timestamp on expire transitions."""
+
+    def test_expire_sets_status_changed_utc(self, db_session: Session) -> None:
+        """ACTIVE→EXPIRED sets status_changed_utc to current time."""
+        now = datetime.now(timezone.utc)
+        voucher = _make_voucher(
+            db_session,
+            code="EXPCHG0001",
+            duration_minutes=1,
+            status=VoucherStatus.ACTIVE,
+            redeemed_count=1,
+            activated_utc=now - timedelta(minutes=5),
+        )
+        svc = VoucherService(
+            session=db_session,
+            voucher_repo=VoucherRepository(db_session),
+        )
+        svc.expire_stale_vouchers([voucher], current_time=now)
+        assert voucher.status == VoucherStatus.EXPIRED
+        assert voucher.status_changed_utc is not None
+        assert voucher.status_changed_utc == now
+
+    def test_expire_does_not_overwrite_already_expired(self, db_session: Session) -> None:
+        """Already-EXPIRED vouchers do NOT get status_changed_utc overwritten."""
+        original_time = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        voucher = _make_voucher(
+            db_session,
+            code="EXPNOW0001",
+            duration_minutes=1,
+            status=VoucherStatus.EXPIRED,
+            redeemed_count=1,
+            activated_utc=now - timedelta(minutes=10),
+        )
+        # Manually set status_changed_utc to simulate existing value
+        voucher.status_changed_utc = original_time
+        db_session.commit()
+
+        svc = VoucherService(
+            session=db_session,
+            voucher_repo=VoucherRepository(db_session),
+        )
+        count = svc.expire_stale_vouchers([voucher], current_time=now)
+        assert count == 0
+        # SQLite strips tzinfo on round-trip — compare naive
+        naive_original = original_time.replace(tzinfo=None)
+        result_ts = voucher.status_changed_utc
+        if result_ts is not None and result_ts.tzinfo is not None:
+            result_ts = result_ts.replace(tzinfo=None)
+        assert result_ts == naive_original
+
+    def test_unused_voucher_keeps_null_status_changed(self, db_session: Session) -> None:
+        """UNUSED vouchers remain with NULL status_changed_utc."""
+        voucher = _make_voucher(
+            db_session,
+            code="EXPNUL0001",
+            duration_minutes=1,
+            status=VoucherStatus.UNUSED,
+        )
+        svc = VoucherService(
+            session=db_session,
+            voucher_repo=VoucherRepository(db_session),
+        )
+        future = datetime.now(timezone.utc) + timedelta(days=365)
+        svc.expire_stale_vouchers([voucher], current_time=future)
+        assert voucher.status_changed_utc is None
+
+
 class TestRedeemPersistsExpired:
     """Verify redeem() persists EXPIRED before raising."""
 

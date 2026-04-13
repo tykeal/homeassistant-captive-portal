@@ -42,6 +42,10 @@ class Voucher(SQLModel, table=True):
             this voucher. None or empty means unrestricted.
         max_devices: Maximum number of devices that may simultaneously
             use this voucher (default 1).
+        status_changed_utc: Timestamp when voucher entered its current
+            terminal status (EXPIRED or REVOKED).  ``None`` for
+            UNUSED/ACTIVE vouchers.  Used as the age reference for
+            purge eligibility calculations.
     """
 
     code: str = Field(primary_key=True, max_length=24, min_length=4)
@@ -59,6 +63,7 @@ class Voucher(SQLModel, table=True):
         sa_column=Column(SA_JSON, nullable=True),
     )
     max_devices: int = Field(default=1, ge=1)
+    status_changed_utc: Optional[datetime] = Field(default=None)
 
     @field_validator("code")
     @classmethod

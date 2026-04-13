@@ -117,6 +117,93 @@ class VoucherRepository(BaseRepository[Voucher]):
             return True
         return False
 
+    def count_purgeable(self, cutoff: datetime) -> int:
+        """Count vouchers eligible for purge.
+
+        Counts vouchers in EXPIRED or REVOKED status whose
+        ``status_changed_utc`` is before the given cutoff.
+
+        Args:
+            cutoff: Cutoff datetime; vouchers with status_changed_utc
+                before this are eligible.
+
+        Returns:
+            Count of purgeable vouchers.
+        """
+        from sqlalchemy import func
+
+        from captive_portal.models.voucher import VoucherStatus
+
+        # SQLite stores naive datetimes — strip tzinfo for comparison
+        cutoff_naive = cutoff.replace(tzinfo=None) if cutoff.tzinfo else cutoff
+
+        statement: Any = (
+            select(func.count())
+            .select_from(Voucher)
+            .where(col(Voucher.status).in_([VoucherStatus.EXPIRED, VoucherStatus.REVOKED]))
+            .where(Voucher.status_changed_utc.isnot(None))  # type: ignore[union-attr]
+            .where(Voucher.status_changed_utc < cutoff_naive)  # type: ignore[operator]
+        )
+        result: int = self.session.exec(statement).one()
+        return result
+
+    def get_purgeable_codes(self, cutoff: datetime) -> list[str]:
+        """Return codes of vouchers eligible for purge.
+
+        Retrieves the codes of all vouchers in EXPIRED or REVOKED
+        status whose ``status_changed_utc`` is before the given cutoff.
+        Used to identify grant references that must be nullified
+        before purge deletion.
+
+        Args:
+            cutoff: Cutoff datetime.
+
+        Returns:
+            List of voucher codes eligible for purge.
+        """
+        from captive_portal.models.voucher import VoucherStatus
+
+        # SQLite stores naive datetimes — strip tzinfo for comparison
+        cutoff_naive = cutoff.replace(tzinfo=None) if cutoff.tzinfo else cutoff
+
+        statement: Any = (
+            select(Voucher.code)
+            .where(col(Voucher.status).in_([VoucherStatus.EXPIRED, VoucherStatus.REVOKED]))
+            .where(Voucher.status_changed_utc.isnot(None))  # type: ignore[union-attr]
+            .where(Voucher.status_changed_utc < cutoff_naive)  # type: ignore[operator]
+        )
+        results: list[str] = list(self.session.exec(statement).all())
+        return results
+
+    def purge(self, cutoff: datetime) -> int:
+        """Delete vouchers eligible for purge.
+
+        Deletes all vouchers in EXPIRED or REVOKED status whose
+        ``status_changed_utc`` is before the given cutoff.
+
+        Args:
+            cutoff: Cutoff datetime.
+
+        Returns:
+            Number of deleted vouchers.
+        """
+        from sqlalchemy import delete as sa_delete
+
+        from captive_portal.models.voucher import VoucherStatus
+
+        # SQLite stores naive datetimes — strip tzinfo for comparison
+        cutoff_naive = cutoff.replace(tzinfo=None) if cutoff.tzinfo else cutoff
+
+        stmt = (
+            sa_delete(Voucher)
+            .where(col(Voucher.status).in_([VoucherStatus.EXPIRED, VoucherStatus.REVOKED]))
+            .where(Voucher.status_changed_utc.isnot(None))  # type: ignore[union-attr]
+            .where(Voucher.status_changed_utc < cutoff_naive)  # type: ignore[operator, arg-type]
+        )
+        result: Any = self.session.execute(stmt)
+        self.session.flush()
+        return int(result.rowcount)
+
 
 class AccessGrantRepository(BaseRepository[AccessGrant]):
     """Repository for AccessGrant entities."""
@@ -224,6 +311,33 @@ class AccessGrantRepository(BaseRepository[AccessGrant]):
         )
         rows = self.session.exec(statement).all()
         return {code: count for code, count in rows}
+
+    def nullify_voucher_references(self, voucher_codes: list[str]) -> int:
+        """Set voucher_code to NULL for grants referencing the given voucher codes.
+
+        Used during purge operations to preserve grant records as
+        historical data while removing the FK reference to vouchers
+        that are about to be deleted.
+
+        Args:
+            voucher_codes: List of voucher codes being purged.
+
+        Returns:
+            Number of grant records updated.
+        """
+        if not voucher_codes:
+            return 0
+
+        from sqlalchemy import update as sa_update
+
+        stmt = (
+            sa_update(AccessGrant)
+            .where(col(AccessGrant.voucher_code).in_(voucher_codes))
+            .values(voucher_code=None)
+        )
+        result: Any = self.session.execute(stmt)
+        self.session.flush()
+        return int(result.rowcount)
 
 
 class AdminUserRepository(BaseRepository[AdminUser]):

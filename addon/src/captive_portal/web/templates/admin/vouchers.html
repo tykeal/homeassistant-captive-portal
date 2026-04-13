@@ -43,6 +43,12 @@ SPDX-License-Identifier: Apache-2.0
         </div>
         {% endif %}
 
+        {% if info_message %}
+        <div class="alert alert-info">
+            {{ info_message }}
+        </div>
+        {% endif %}
+
         {% if new_code %}
         <div class="voucher-code-display">
             <h3>New Voucher Created</h3>
@@ -106,6 +112,36 @@ SPDX-License-Identifier: Apache-2.0
                 </div>
                 <div class="form-group">
                     <button type="submit" class="btn btn-primary">Create Vouchers</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="settings-form">
+            <h3>Purge Expired/Revoked Vouchers</h3>
+            {% if purge_preview_count %}
+            <div class="alert alert-info">
+                <strong>{{ purge_preview_count }} voucher(s)</strong> are eligible for purging
+                {% if purge_preview_days and purge_preview_days != "0" %}
+                    (older than {{ purge_preview_days }} days).
+                {% else %}
+                    (all expired/revoked vouchers).
+                {% endif %}
+                <form method="POST" action="{{ rp }}/admin/vouchers/purge-confirm" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="min_age_days" value="{{ purge_preview_days }}">
+                    <button type="submit" class="btn btn-danger">Confirm Purge</button>
+                </form>
+            </div>
+            {% endif %}
+            <form method="POST" action="{{ rp }}/admin/vouchers/purge-preview">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="form-group">
+                    <label for="min_age_days" class="form-label">Minimum Age (days)</label>
+                    <input type="number" id="min_age_days" name="min_age_days" class="form-control" min="0" value="30" required>
+                    <small>Purge expired/revoked vouchers older than this many days. Use 0 to purge all expired/revoked vouchers regardless of age.</small>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Preview Purge</button>
                 </div>
             </form>
         </section>
