@@ -129,3 +129,84 @@ class TestVoucherServiceRevoke:
             await service.revoke("REVEXPRD01", current_time=future)
         db_session.delete(voucher)
         db_session.commit()
+
+
+class TestRevokeStatusChangedUtc:
+    """T004: status_changed_utc timestamp on revoke transitions."""
+
+    @pytest.mark.asyncio
+    async def test_revoke_unused_sets_status_changed_utc(self, db_session: Session) -> None:
+        """UNUSED→REVOKED sets status_changed_utc."""
+        now = datetime.now(timezone.utc)
+        _make_voucher(db_session, code="RVKCHG0001")
+        repo = VoucherRepository(db_session)
+        service = VoucherService(session=db_session, voucher_repo=repo)
+        result = await service.revoke("RVKCHG0001", current_time=now)
+        assert result.status == VoucherStatus.REVOKED
+        assert result.status_changed_utc is not None
+        # SQLite strips tzinfo — compare naive
+        result_ts = (
+            result.status_changed_utc.replace(tzinfo=None)
+            if result.status_changed_utc.tzinfo
+            else result.status_changed_utc
+        )
+        assert result_ts == now.replace(tzinfo=None)
+
+    @pytest.mark.asyncio
+    async def test_revoke_active_sets_status_changed_utc(self, db_session: Session) -> None:
+        """ACTIVE→REVOKED sets status_changed_utc."""
+        now = datetime.now(timezone.utc)
+        _make_voucher(db_session, code="RVKACT0001", status=VoucherStatus.ACTIVE)
+        repo = VoucherRepository(db_session)
+        service = VoucherService(session=db_session, voucher_repo=repo)
+        result = await service.revoke("RVKACT0001", current_time=now)
+        assert result.status == VoucherStatus.REVOKED
+        result_ts = (
+            result.status_changed_utc.replace(tzinfo=None)
+            if result.status_changed_utc and result.status_changed_utc.tzinfo
+            else result.status_changed_utc
+        )
+        assert result_ts == now.replace(tzinfo=None)
+
+    @pytest.mark.asyncio
+    async def test_revoke_expired_active_sets_status_changed_utc(self, db_session: Session) -> None:
+        """ACTIVE→EXPIRED (via revoke) sets status_changed_utc."""
+        now = datetime.now(timezone.utc)
+        _make_voucher(
+            db_session,
+            code="RVKEXP0002",
+            activated_utc=now - timedelta(days=365),
+        )
+        repo = VoucherRepository(db_session)
+        service = VoucherService(session=db_session, voucher_repo=repo)
+        future = now + timedelta(days=365)
+        with pytest.raises(VoucherExpiredError):
+            await service.revoke("RVKEXP0002", current_time=future)
+        voucher = repo.get_by_code("RVKEXP0002")
+        assert voucher is not None
+        assert voucher.status == VoucherStatus.EXPIRED
+        result_ts = voucher.status_changed_utc
+        if result_ts is not None and result_ts.tzinfo is not None:
+            result_ts = result_ts.replace(tzinfo=None)
+        assert result_ts == future.replace(tzinfo=None)
+
+    @pytest.mark.asyncio
+    async def test_revoke_already_revoked_does_not_overwrite(self, db_session: Session) -> None:
+        """Already-REVOKED voucher does NOT get status_changed_utc overwritten."""
+        original_time = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        _make_voucher(db_session, code="RVKNOW0001", status=VoucherStatus.REVOKED)
+        # Manually set status_changed_utc
+
+        voucher = db_session.get(Voucher, "RVKNOW0001")
+        assert voucher is not None
+        voucher.status_changed_utc = original_time
+        db_session.commit()
+
+        repo = VoucherRepository(db_session)
+        service = VoucherService(session=db_session, voucher_repo=repo)
+        result = await service.revoke("RVKNOW0001")
+        assert result.status == VoucherStatus.REVOKED
+        result_ts = result.status_changed_utc
+        if result_ts is not None and result_ts.tzinfo is not None:
+            result_ts = result_ts.replace(tzinfo=None)
+        assert result_ts == original_time.replace(tzinfo=None)
