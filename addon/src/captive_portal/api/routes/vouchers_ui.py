@@ -131,10 +131,10 @@ async def get_vouchers(
     vouchers = list(cast(list[Voucher], session.exec(stmt).all()))
 
     # Lazily persist EXPIRED status for stale ACTIVE vouchers.
+    # flush() inside the service keeps loaded objects valid;
+    # commit after the response is built to avoid N+1 refreshes.
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     expired_count = voucher_service.expire_stale_vouchers(vouchers)
-    if expired_count:
-        session.commit()
 
     voucher_actions: dict[str, VoucherActions] = {}
     now = datetime.now(timezone.utc)
@@ -163,6 +163,8 @@ async def get_vouchers(
             "error_message": error_message,
         },
     )
+    if expired_count:
+        session.commit()
     if need_csrf_cookie:
         csrf.set_csrf_cookie(response, csrf_token)
     return response
