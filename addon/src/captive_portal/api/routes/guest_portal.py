@@ -37,6 +37,7 @@ from captive_portal.services.booking_code_validator import (
 )
 from captive_portal.services.redirect_validator import RedirectValidator
 from captive_portal.services.unified_code_service import CodeType, UnifiedCodeService
+from captive_portal.services.vlan_validation_service import VlanValidationService
 from captive_portal.services.voucher_service import VoucherRedemptionError, VoucherService
 from captive_portal.utils.network_utils import get_client_ip, validate_mac_address
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
@@ -551,10 +552,43 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
 
     # Process code and create access grant based on type
     grant: AccessGrant
+    vlan_service = VlanValidationService()
+    vlan_meta: dict[str, Any] = {}
     try:
         if validation_result.code_type == CodeType.VOUCHER:
-            # Redeem voucher
+            # Look up voucher for VLAN check before redeeming
             voucher_service = VoucherService(session)
+            voucher_for_vlan = voucher_service.voucher_repo.get_by_code(
+                validation_result.normalized_code
+            )
+            if voucher_for_vlan and voucher_for_vlan.allowed_vlans:
+                vlan_result = vlan_service.validate_voucher_vlan(vid, voucher_for_vlan)
+                vlan_meta = {
+                    "vlan_allowed": vlan_result.allowed,
+                    "vlan_reason": vlan_result.reason,
+                    "vlan_device_vid": vlan_result.device_vid,
+                    "vlan_allowed_vlans": vlan_result.allowed_vlans,
+                }
+                if not vlan_result.allowed:
+                    await audit_service.log(
+                        actor=f"guest@{client_ip}",
+                        action="guest.authorize",
+                        outcome="denied",
+                        target_type="voucher",
+                        target_id=validation_result.normalized_code,
+                        meta={
+                            "client_ip": client_ip,
+                            "mac": mac_address,
+                            "error": "vlan_check_failed",
+                            **vlan_meta,
+                        },
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="This code is not valid for your network.",
+                    )
+
+            # Redeem voucher
             grant = await voucher_service.redeem(
                 code=validation_result.normalized_code,
                 mac=mac_address,
@@ -568,6 +602,34 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             integration: HAIntegrationConfig | None = session.exec(stmt).first()
             if not integration:
                 raise IntegrationUnavailableError("No rental control integration configured")
+
+            # VLAN validation for booking path
+            if integration.allowed_vlans:
+                vlan_result = vlan_service.validate_booking_vlan(vid, integration)
+                vlan_meta = {
+                    "vlan_allowed": vlan_result.allowed,
+                    "vlan_reason": vlan_result.reason,
+                    "vlan_device_vid": vlan_result.device_vid,
+                    "vlan_allowed_vlans": vlan_result.allowed_vlans,
+                }
+                if not vlan_result.allowed:
+                    await audit_service.log(
+                        actor=f"guest@{client_ip}",
+                        action="guest.authorize",
+                        outcome="denied",
+                        target_type="booking",
+                        target_id=validation_result.normalized_code,
+                        meta={
+                            "client_ip": client_ip,
+                            "mac": mac_address,
+                            "error": "vlan_check_failed",
+                            **vlan_meta,
+                        },
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="This code is not valid for your network.",
+                    )
 
             # Find matching event
             event = booking_validator.validate_code(validation_result.normalized_code, integration)
@@ -793,20 +855,23 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     rate_limiter.clear(client_ip)
 
     # Log successful authorization
+    success_meta: dict[str, Any] = {
+        "client_ip": client_ip,
+        "mac": mac_address,
+        "user_agent": request.headers.get("User-Agent", "unknown"),
+        "code_type": validation_result.code_type.value,
+        "grant_start": grant.start_utc.isoformat(),
+        "grant_end": grant.end_utc.isoformat(),
+    }
+    if vlan_meta:
+        success_meta.update(vlan_meta)
     await audit_service.log(
         actor=f"guest@{client_ip}",
         action="guest.authorize",
         outcome="success",
         target_type="voucher" if validation_result.code_type == CodeType.VOUCHER else "booking",
         target_id=str(grant.id),
-        meta={
-            "client_ip": client_ip,
-            "mac": mac_address,
-            "user_agent": request.headers.get("User-Agent", "unknown"),
-            "code_type": validation_result.code_type.value,
-            "grant_start": grant.start_utc.isoformat(),
-            "grant_end": grant.end_utc.isoformat(),
-        },
+        meta=success_meta,
     )
 
     # Validate and determine redirect destination
