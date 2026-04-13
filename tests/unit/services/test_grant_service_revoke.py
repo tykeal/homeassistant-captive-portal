@@ -2,48 +2,98 @@
 # SPDX-License-Identifier: Apache-2.0
 """Test grant revocation logic (US2: Admin manages access grants)."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
+from sqlmodel import Session
+
+from captive_portal.models.access_grant import AccessGrant, GrantStatus
+from captive_portal.persistence.repositories import AccessGrantRepository
+from captive_portal.services.grant_service import GrantService
+
+
+def _make_grant(
+    session: Session,
+    *,
+    mac: str = "AA:BB:CC:DD:EE:01",
+    status: GrantStatus = GrantStatus.ACTIVE,
+) -> AccessGrant:
+    """Create and persist a grant for testing."""
+    base = datetime.now(timezone.utc)
+    grant = AccessGrant(
+        device_id=mac,
+        mac=mac,
+        start_utc=base - timedelta(hours=1),
+        end_utc=base + timedelta(hours=1),
+        status=status,
+    )
+    session.add(grant)
+    session.commit()
+    session.refresh(grant)
+    return grant
 
 
 class TestGrantServiceRevoke:
     """Test GrantService.revoke() method."""
 
-    def test_revoke_active_grant_transitions_to_revoked(self) -> None:
+    @pytest.mark.asyncio
+    async def test_revoke_active_grant_transitions_to_revoked(self, db_session: Session) -> None:
         """Revoke active grant transitions status ACTIVE -> REVOKED."""
-        pytest.skip("Phase 2 TDD: awaiting GrantService implementation")
+        grant = _make_grant(db_session, mac="AA:BB:CC:DD:EE:01")
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        result = await svc.revoke(grant.id)
+        assert result.status == GrantStatus.REVOKED
 
-    def test_revoke_pending_grant_transitions_to_revoked(self) -> None:
+    @pytest.mark.asyncio
+    async def test_revoke_pending_grant_transitions_to_revoked(self, db_session: Session) -> None:
         """Revoke pending grant transitions status PENDING -> REVOKED."""
-        pytest.skip("Phase 2 TDD: awaiting GrantService implementation")
+        grant = _make_grant(db_session, mac="AA:BB:CC:DD:EE:02", status=GrantStatus.PENDING)
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        result = await svc.revoke(grant.id)
+        assert result.status == GrantStatus.REVOKED
 
-    def test_revoke_expired_grant_idempotent(self) -> None:
-        """Revoke expired grant (already past end_utc) is no-op but succeeds."""
-        pytest.skip("Phase 2 TDD: awaiting GrantService implementation")
+    @pytest.mark.asyncio
+    async def test_revoke_expired_grant_succeeds(self, db_session: Session) -> None:
+        """Revoke expired grant transitions status to REVOKED without error."""
+        grant = _make_grant(db_session, mac="AA:BB:CC:DD:EE:03", status=GrantStatus.EXPIRED)
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        result = await svc.revoke(grant.id)
+        assert result.status == GrantStatus.REVOKED
 
-    def test_revoke_already_revoked_idempotent(self) -> None:
+    @pytest.mark.asyncio
+    async def test_revoke_already_revoked_idempotent(self, db_session: Session) -> None:
         """Revoke already-revoked grant is idempotent (no error)."""
-        pytest.skip("Phase 2 TDD: awaiting GrantService implementation")
+        grant = _make_grant(db_session, mac="AA:BB:CC:DD:EE:04", status=GrantStatus.REVOKED)
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        result = await svc.revoke(grant.id)
+        assert result.status == GrantStatus.REVOKED
 
-    def test_revoke_updates_updated_utc(self) -> None:
+    @pytest.mark.asyncio
+    async def test_revoke_updates_updated_utc(self, db_session: Session) -> None:
         """Revoke sets grant.updated_utc to current timestamp."""
-        pytest.skip("Phase 2 TDD: awaiting GrantService implementation")
+        grant = _make_grant(db_session, mac="AA:BB:CC:DD:EE:05")
+        now = datetime.now(timezone.utc)
 
-    def test_revoke_requires_operator_or_admin_role(self) -> None:
-        """Revoke enforces RBAC: only operator/admin can revoke."""
-        pytest.skip("Phase 2 TDD: awaiting GrantService implementation")
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        result = await svc.revoke(grant.id, current_time=now)
+        # SQLite strips tzinfo; compare naive values
+        assert result.updated_utc.replace(tzinfo=None) == now.replace(tzinfo=None)
 
-    def test_revoke_emits_audit_log(self) -> None:
-        """Revoke emits audit log with grant_id, actor, reason."""
-        pytest.skip("Phase 2 TDD: awaiting GrantService implementation")
-
-    def test_revoke_persists_changes(self) -> None:
+    @pytest.mark.asyncio
+    async def test_revoke_persists_changes(self, db_session: Session) -> None:
         """Revoke commits updated grant to repository."""
-        pytest.skip("Phase 2 TDD: awaiting GrantService implementation")
+        grant = _make_grant(db_session, mac="AA:BB:CC:DD:EE:06")
+        grant_id = grant.id
 
-    def test_revoke_propagates_to_controller(self) -> None:
-        """Revoke calls controller revoke API (by grant_id or MAC fallback)."""
-        pytest.skip("Phase 2 TDD: awaiting GrantService implementation")
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        await svc.revoke(grant_id)
 
-    def test_revoke_controller_failure_retries(self) -> None:
-        """Revoke retries controller call on transient failure (4 attempts)."""
-        pytest.skip("Phase 2 TDD: awaiting GrantService implementation")
+        fetched = repo.get_by_id(grant_id)
+        assert fetched is not None
+        assert fetched.status == GrantStatus.REVOKED

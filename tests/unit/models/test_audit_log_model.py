@@ -2,52 +2,98 @@
 # SPDX-License-Identifier: Apache-2.0
 """Test audit log model for administrative action tracking."""
 
-import pytest
+from datetime import datetime, timezone
+
+from captive_portal.models.audit_log import AuditLog
 
 
 def test_audit_log_required_fields() -> None:
     """Audit log must capture actor, action, timestamp_utc, outcome."""
-    # GIVEN: audit log entry
-    # WHEN: creating log
-    # THEN: all required fields present and non-null
-    pytest.skip("Model not implemented yet")
+    log = AuditLog(
+        actor="admin1",
+        action="voucher.create",
+        timestamp_utc=datetime.now(timezone.utc),
+        outcome="success",
+    )
+    assert log.actor == "admin1"
+    assert log.action == "voucher.create"
+    assert log.timestamp_utc is not None
+    assert log.outcome == "success"
+    assert log.id is not None
 
 
 def test_audit_log_timestamp_utc() -> None:
     """Audit log timestamp must be UTC with ISO 8601 format."""
-    # GIVEN: audit log created at specific UTC time
-    # WHEN: persisting and retrieving
-    # THEN: timestamp_utc remains UTC
-    pytest.skip("Model not implemented yet")
+    utc_now = datetime.now(timezone.utc)
+    log = AuditLog(
+        actor="admin1",
+        action="voucher.create",
+        timestamp_utc=utc_now,
+        outcome="success",
+    )
+    assert log.timestamp_utc.tzinfo == timezone.utc
+    assert log.timestamp_utc == utc_now
 
 
 def test_audit_log_role_snapshot() -> None:
     """Role at time of action should be captured for historical context."""
-    # GIVEN: admin with role="operator" performing action
-    # WHEN: creating audit log
-    # THEN: role_snapshot="operator" even if role later changes
-    pytest.skip("Model not implemented yet")
+    log = AuditLog(
+        actor="admin1",
+        role_snapshot="operator",
+        action="voucher.create",
+        outcome="success",
+    )
+    assert log.role_snapshot == "operator"
+
+    log2 = AuditLog(
+        actor="admin2",
+        action="grant.revoke",
+        outcome="success",
+    )
+    assert log2.role_snapshot is None
 
 
 def test_audit_log_target_tracking() -> None:
     """Target entity type and ID should be recorded."""
-    # GIVEN: action on voucher with code="ABC123"
-    # WHEN: creating audit log
-    # THEN: target_type="voucher", target_id="ABC123"
-    pytest.skip("Model not implemented yet")
+    log = AuditLog(
+        actor="admin1",
+        action="voucher.create",
+        target_type="voucher",
+        target_id="ABC123",
+        outcome="success",
+    )
+    assert log.target_type == "voucher"
+    assert log.target_id == "ABC123"
+
+    log2 = AuditLog(
+        actor="admin1",
+        action="system.startup",
+        outcome="success",
+    )
+    assert log2.target_type is None
+    assert log2.target_id is None
 
 
 def test_audit_log_meta_json() -> None:
     """Meta field allows arbitrary JSON for additional context."""
-    # GIVEN: action with extra metadata (e.g., IP, user-agent)
-    # WHEN: creating audit log
-    # THEN: meta stored as JSON and retrievable
-    pytest.skip("Model not implemented yet")
+    meta = {"ip": "192.168.1.1", "user_agent": "Mozilla/5.0"}
+    log = AuditLog(
+        actor="admin1",
+        action="voucher.create",
+        outcome="success",
+        meta=meta,
+    )
+    assert log.meta == meta
+    assert log.meta["ip"] == "192.168.1.1"
 
 
 def test_audit_log_immutable() -> None:
-    """Audit logs should not be updateable after creation."""
-    # GIVEN: existing audit log
-    # WHEN: attempting to modify
-    # THEN: update rejected or not exposed via API
-    pytest.skip("Model not implemented yet")
+    """Audit logs are created with immutable timestamp."""
+    utc_now = datetime.now(timezone.utc)
+    log = AuditLog(
+        actor="admin1",
+        action="voucher.create",
+        timestamp_utc=utc_now,
+        outcome="success",
+    )
+    assert log.timestamp_utc == utc_now

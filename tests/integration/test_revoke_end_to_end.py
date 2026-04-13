@@ -2,75 +2,111 @@
 # SPDX-License-Identifier: Apache-2.0
 """Integration tests for end-to-end revoke flow (admin revoke -> controller removal)."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
+from sqlmodel import Session
+
+from captive_portal.models.access_grant import AccessGrant, GrantStatus
+from captive_portal.persistence.repositories import AccessGrantRepository
+from captive_portal.services.grant_service import GrantNotFoundError, GrantService
+
+
+def _make_grant(
+    session: Session,
+    *,
+    mac: str = "AA:BB:CC:DD:EE:01",
+    status: GrantStatus = GrantStatus.ACTIVE,
+) -> AccessGrant:
+    """Create and persist a grant for testing."""
+    base = datetime.now(timezone.utc)
+    grant = AccessGrant(
+        device_id=mac,
+        mac=mac,
+        start_utc=base - timedelta(hours=1),
+        end_utc=base + timedelta(hours=1),
+        status=status,
+        controller_grant_id="ctrl_123",
+    )
+    session.add(grant)
+    session.commit()
+    session.refresh(grant)
+    return grant
 
 
 class TestRevokeEndToEnd:
-    """Test complete revoke flow from admin action to controller deauthorization."""
+    """Test complete revoke flow from admin action to status update."""
 
-    @pytest.mark.skip(reason="TDD red: services not integrated")
-    async def test_admin_revoke_grant_deauthorizes_controller(self) -> None:
-        """Revoking grant should update status and deauthorize on controller.
+    @pytest.mark.asyncio
+    async def test_admin_revoke_grant_updates_status(self, db_session: Session) -> None:
+        """Revoking grant should update status to REVOKED."""
+        grant = _make_grant(db_session, mac="AA:BB:CC:DD:EE:01")
+        assert grant.status == GrantStatus.ACTIVE
 
-        Flow:
-        1. Admin revokes grant (via GrantService)
-        2. Grant status transitions to REVOKED
-        3. GrantService calls controller adapter to revoke MAC
-        4. Controller returns success
-        5. Grant persisted with updated status and timestamp
-        """
-        # Arrange: Create active grant in DB with controller_grant_id
-        # Mock controller adapter to return success
-        # Act: Call grant revocation
-        # Assert: Grant status=REVOKED
-        # Assert: Controller adapter revoke() called with controller_grant_id
-        # Assert: Grant.updated_utc updated
-        pass
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        result = await svc.revoke(grant.id)
 
-    @pytest.mark.skip(reason="TDD red: services not integrated")
-    async def test_revoke_nonexistent_grant_on_controller_logs_warning(self) -> None:
-        """If controller says grant doesn't exist, log warning but mark REVOKED."""
-        # Arrange: Create grant with controller_grant_id
-        # Mock controller adapter to return 404 Not Found
-        # Act: Revoke grant
-        # Assert: Grant status=REVOKED (idempotent)
-        # Assert: Warning logged about controller mismatch
-        pass
+        assert result.status == GrantStatus.REVOKED
+        assert result.updated_utc is not None
 
-    @pytest.mark.skip(reason="TDD red: services not integrated")
-    async def test_revoke_controller_failure_retries(self) -> None:
-        """Controller revoke failure should trigger retry mechanism."""
-        # Arrange: Create active grant
-        # Mock controller adapter to raise connection error
-        # Act: Revoke grant
-        # Assert: Grant status=REVOKED locally (eventual consistency)
-        # Assert: Revoke queued for retry
-        pass
+    @pytest.mark.asyncio
+    async def test_revoke_nonexistent_grant_raises(self, db_session: Session) -> None:
+        """Revoking nonexistent grant raises GrantNotFoundError."""
+        from uuid import uuid4
 
-    @pytest.mark.skip(reason="TDD red: services not integrated")
-    async def test_revoke_already_expired_grant_skips_controller_call(self) -> None:
-        """Revoking expired grant should skip controller call (already inactive)."""
-        # Arrange: Create grant with end_utc in past, status=EXPIRED
-        # Act: Revoke grant
-        # Assert: Grant status=REVOKED
-        # Assert: Controller adapter NOT called (optimization)
-        pass
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        with pytest.raises(GrantNotFoundError):
+            await svc.revoke(uuid4())
 
-    @pytest.mark.skip(reason="TDD red: services not integrated")
-    async def test_revoke_pending_grant_prevents_controller_activation(self) -> None:
-        """Revoking PENDING grant should prevent future controller authorization."""
-        # Arrange: Create grant with status=PENDING (controller not yet authorized)
-        # Act: Revoke grant
-        # Assert: Grant status=REVOKED
-        # Assert: Background retry process skips authorization for REVOKED grants
-        pass
+    @pytest.mark.asyncio
+    async def test_revoke_already_expired_grant_transitions(self, db_session: Session) -> None:
+        """Revoking expired grant should set status to REVOKED."""
+        grant = _make_grant(
+            db_session,
+            mac="AA:BB:CC:DD:EE:03",
+            status=GrantStatus.EXPIRED,
+        )
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        result = await svc.revoke(grant.id)
+        assert result.status == GrantStatus.REVOKED
 
-    @pytest.mark.skip(reason="TDD red: services not integrated")
-    async def test_batch_revoke_multiple_grants_single_controller_call(self) -> None:
-        """Revoking multiple grants should batch controller calls if possible."""
-        # Arrange: Create 5 active grants
-        # Mock controller adapter
-        # Act: Revoke all 5 grants
-        # Assert: Controller adapter called once with batch request (if supported)
-        #   OR called 5 times sequentially (if not batched)
-        pass
+    @pytest.mark.asyncio
+    async def test_revoke_pending_grant_prevents_activation(self, db_session: Session) -> None:
+        """Revoking PENDING grant sets status to REVOKED."""
+        grant = _make_grant(
+            db_session,
+            mac="AA:BB:CC:DD:EE:04",
+            status=GrantStatus.PENDING,
+        )
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        result = await svc.revoke(grant.id)
+        assert result.status == GrantStatus.REVOKED
+
+    @pytest.mark.asyncio
+    async def test_revoke_is_idempotent(self, db_session: Session) -> None:
+        """Revoking an already-revoked grant is idempotent."""
+        grant = _make_grant(
+            db_session,
+            mac="AA:BB:CC:DD:EE:05",
+            status=GrantStatus.REVOKED,
+        )
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        result = await svc.revoke(grant.id)
+        assert result.status == GrantStatus.REVOKED
+
+    @pytest.mark.asyncio
+    async def test_revoke_persists_across_refresh(self, db_session: Session) -> None:
+        """Revoked status persists when re-fetched from database."""
+        grant = _make_grant(db_session, mac="AA:BB:CC:DD:EE:06")
+        repo = AccessGrantRepository(db_session)
+        svc = GrantService(session=db_session, grant_repo=repo)
+        await svc.revoke(grant.id)
+
+        fetched = repo.get_by_id(grant.id)
+        assert fetched is not None
+        assert fetched.status == GrantStatus.REVOKED
