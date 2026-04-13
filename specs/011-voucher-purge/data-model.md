@@ -96,11 +96,15 @@ No schema changes. New purge operations create audit entries using existing fiel
 A voucher is eligible for purge when ALL conditions are met:
 1. `status` is `EXPIRED` or `REVOKED`
 2. `status_changed_utc` is not NULL
-3. `status_changed_utc < (now - retention_period)`
+3. One of the following age rules applies:
+   - **Auto-purge**: `status_changed_utc < (now - 30 days)`
+   - **Manual purge, N > 0**: `status_changed_utc < (now - N days)`
+   - **Manual purge, N = 0**: no age/cutoff check is applied;
+     all terminal vouchers with non-NULL `status_changed_utc`
+     are eligible
 
-Where `retention_period` is:
-- **Auto-purge**: 30 days (hardcoded constant)
-- **Manual purge**: N days from admin input (N=0 means all terminal vouchers regardless of age)
+This special-case for manual purge with `N=0` is normative and
+overrides the retention-period comparison.
 
 ## Migration Specification
 

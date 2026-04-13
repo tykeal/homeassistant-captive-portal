@@ -98,7 +98,7 @@ As a system administrator, I want purged voucher data to be handled consistently
 ### Functional Requirements
 
 - **FR-001**: System MUST automatically delete vouchers in EXPIRED or REVOKED status whose terminal-status timestamp is older than the configured retention period (default: 30 days).
-- **FR-002**: System MUST run the auto-purge process at least once per day, triggered either as part of an existing background loop or lazily on admin page load.
+- **FR-002**: System MUST trigger the auto-purge process opportunistically as part of an existing background loop or when the admin vouchers page is loaded; the trigger MUST be safe to invoke multiple times and SHOULD avoid running the purge more than once per day when using the lazy admin-page-load path.
 - **FR-003**: System MUST record a transition timestamp on the voucher whenever its status changes to EXPIRED or REVOKED.
 - **FR-004**: System MUST provide a data migration that backfills transition timestamps for existing EXPIRED and REVOKED vouchers using reasonable fallback values.
 - **FR-005**: System MUST provide an admin UI control on the vouchers page that allows the admin to initiate a manual purge of expired/revoked vouchers older than N days.
