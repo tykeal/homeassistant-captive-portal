@@ -150,7 +150,7 @@ class TestVoucherServiceRedeem:
         # Simulate controller confirmation by setting ACTIVE
         grant.status = GrantStatus.ACTIVE
         db_session.commit()
-        with pytest.raises(VoucherRedemptionError, match="already redeemed"):
+        with pytest.raises(VoucherRedemptionError, match="already authorized"):
             await svc.redeem("REDEEM0008", "AA:BB:CC:DD:EE:08")
 
 

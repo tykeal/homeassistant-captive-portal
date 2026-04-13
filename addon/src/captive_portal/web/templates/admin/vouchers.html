@@ -70,7 +70,42 @@ SPDX-License-Identifier: Apache-2.0
                     <small>Comma-separated VLAN IDs (1-4094). Leave blank for unrestricted.</small>
                 </div>
                 <div class="form-group">
+                    <label for="max_devices" class="form-label">Max Devices</label>
+                    <input type="number" id="max_devices" name="max_devices" class="form-control" min="1" value="1">
+                    <small>Maximum number of devices that can use this voucher simultaneously</small>
+                </div>
+                <div class="form-group">
                     <button type="submit" class="btn btn-primary">Create Voucher</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="settings-form">
+            <h3>Bulk Create Vouchers</h3>
+            <form method="POST" action="{{ rp }}/admin/vouchers/bulk-create">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="form-group">
+                    <label for="bulk_count" class="form-label">Number of Vouchers *</label>
+                    <input type="number" id="bulk_count" name="count" class="form-control" min="1" max="100" required placeholder="10">
+                    <small>How many vouchers to create (1-100)</small>
+                </div>
+                <div class="form-group">
+                    <label for="bulk_duration" class="form-label">Duration (minutes) *</label>
+                    <input type="number" id="bulk_duration" name="duration_minutes" class="form-control" min="1" max="43200" required placeholder="60">
+                    <small>Access duration in minutes (1-43200)</small>
+                </div>
+                <div class="form-group">
+                    <label for="bulk_max_devices" class="form-label">Max Devices</label>
+                    <input type="number" id="bulk_max_devices" name="max_devices" class="form-control" min="1" value="1">
+                    <small>Maximum devices per voucher</small>
+                </div>
+                <div class="form-group">
+                    <label for="bulk_vlans" class="form-label">VLAN Restriction (optional)</label>
+                    <input type="text" id="bulk_vlans" name="allowed_vlans" class="form-control" placeholder="e.g., 50, 51, 52">
+                    <small>Comma-separated VLAN IDs (1-4094). Leave blank for unrestricted.</small>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Create Vouchers</button>
                 </div>
             </form>
         </section>
@@ -90,7 +125,7 @@ SPDX-License-Identifier: Apache-2.0
                             <th>Code</th>
                             <th>Duration</th>
                             <th>Status</th>
-                            <th>Redemption</th>
+                            <th>Devices</th>
                             <th>Booking Ref</th>
                             <th>VLANs</th>
                             <th>Created</th>
@@ -110,13 +145,14 @@ SPDX-License-Identifier: Apache-2.0
                                 </span>
                             </td>
                             <td>
-                                {% if voucher.redeemed_count > 0 %}
-                                    Redeemed
-                                    {% if voucher.last_redeemed_utc %}
-                                        ({{ voucher.last_redeemed_utc.strftime('%Y-%m-%d %H:%M') }})
-                                    {% endif %}
+                                {% if voucher.max_devices > 1 %}
+                                    {{ active_device_counts.get(voucher.code, 0) }}/{{ voucher.max_devices }} devices
                                 {% else %}
-                                    Unredeemed
+                                    {% if voucher.redeemed_count > 0 %}
+                                        Redeemed
+                                    {% else %}
+                                        Unredeemed
+                                    {% endif %}
                                 {% endif %}
                             </td>
                             <td>

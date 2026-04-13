@@ -30,6 +30,7 @@ class CreateVoucherRequest(BaseModel):
     down_kbps: int | None = Field(default=None, gt=0)
     code_length: int = Field(default=10, ge=4, le=24)
     allowed_vlans: list[int] | None = Field(default=None)
+    max_devices: int = Field(default=1, ge=1)
 
     @field_validator("allowed_vlans", mode="before")
     @classmethod
@@ -58,6 +59,8 @@ class VoucherResponse(BaseModel):
     status: str
     created_utc: datetime
     allowed_vlans: list[int] | None = None
+    max_devices: int = 1
+    active_devices: int = 0
 
 
 @router.post("/", response_model=VoucherResponse, status_code=status.HTTP_201_CREATED)
@@ -91,6 +94,7 @@ async def create_voucher(
             down_kbps=request.down_kbps,
             code_length=request.code_length,
             allowed_vlans=request.allowed_vlans,
+            max_devices=request.max_devices,
         )
 
         await audit_service.log_admin_action(

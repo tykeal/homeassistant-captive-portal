@@ -32,6 +32,12 @@ class VoucherRedemptionError(Exception):
     pass
 
 
+class VoucherDeviceLimitError(VoucherRedemptionError):
+    """Raised when voucher has reached max device limit."""
+
+    pass
+
+
 class VoucherNotFoundError(Exception):
     """Raised when a voucher code cannot be found."""
 
@@ -143,6 +149,7 @@ class VoucherService:
         code_length: int = 10,
         max_retries: int = 5,
         allowed_vlans: list[int] | None = None,
+        max_devices: int = 1,
     ) -> Voucher:
         """Create voucher with collision retry logic (D3 decision).
 
@@ -157,6 +164,7 @@ class VoucherService:
             code_length: Code length (4-24, default 10)
             max_retries: Max collision retry attempts (default 5)
             allowed_vlans: Optional VLAN restriction list (1-4094)
+            max_devices: Max simultaneous devices (>=1, default 1)
 
         Returns:
             Created voucher with generated code
@@ -182,6 +190,7 @@ class VoucherService:
                     status=VoucherStatus.UNUSED,
                     redeemed_count=0,
                     allowed_vlans=allowed_vlans,
+                    max_devices=max_devices,
                 )
                 self.voucher_repo.add(voucher)
                 self.voucher_repo.commit()
@@ -236,10 +245,17 @@ class VoucherService:
             raise VoucherRedemptionError(f"Voucher '{code}' expired at {voucher.expires_utc}")
 
         # Check for duplicate redemption (same voucher + MAC)
-        existing_grants = self.grant_repo.find_active_by_mac(mac)
+        existing_grants = self.grant_repo.find_pending_or_active_by_mac(mac)
         for grant in existing_grants:
             if grant.voucher_code == code:
-                raise VoucherRedemptionError(f"Voucher '{code}' already redeemed for MAC '{mac}'")
+                raise VoucherRedemptionError("Your device is already authorized with this code.")
+
+        # Enforce multi-device limit
+        active_count = self.grant_repo.count_active_by_voucher_code(code)
+        if active_count >= voucher.max_devices:
+            raise VoucherDeviceLimitError(
+                f"Voucher '{code}' has reached its maximum of {voucher.max_devices} device(s)"
+            )
 
         # Set activation time on first use (starts the expiry timer).
         # Guard with status check so legacy rows (redeemed_count > 0

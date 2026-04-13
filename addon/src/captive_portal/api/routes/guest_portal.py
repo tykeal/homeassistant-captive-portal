@@ -38,7 +38,11 @@ from captive_portal.services.booking_code_validator import (
 from captive_portal.services.redirect_validator import RedirectValidator
 from captive_portal.services.unified_code_service import CodeType, UnifiedCodeService
 from captive_portal.services.vlan_validation_service import VlanValidationService
-from captive_portal.services.voucher_service import VoucherRedemptionError, VoucherService
+from captive_portal.services.voucher_service import (
+    VoucherDeviceLimitError,
+    VoucherRedemptionError,
+    VoucherService,
+)
 from captive_portal.utils.network_utils import get_client_ip, validate_mac_address
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
@@ -704,6 +708,25 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
                 detail="Invalid code type",
             )
 
+    except VoucherDeviceLimitError:
+        # Log device limit reached
+        await audit_service.log(
+            actor=f"guest@{client_ip}",
+            action="guest.authorize",
+            outcome="denied",
+            target_type="voucher",
+            target_id=validation_result.normalized_code,
+            meta={
+                "client_ip": client_ip,
+                "mac": mac_address,
+                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "error": "voucher_device_limit",
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="This code has reached its maximum number of devices.",
+        )
     except VoucherRedemptionError as e:
         # Log voucher redemption failure
         await audit_service.log(
