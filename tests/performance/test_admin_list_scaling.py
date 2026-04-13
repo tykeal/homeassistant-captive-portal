@@ -214,8 +214,8 @@ async def test_admin_voucher_create_p95(
         """Create a voucher and return latency in milliseconds."""
         start = time.perf_counter()
         response = await client.post(
-            "/admin/vouchers/create",
-            data={"csrf_token": csrf_token, "duration_minutes": "60"},
+            "/admin/vouchers/bulk-create",
+            data={"csrf_token": csrf_token, "duration_minutes": "60", "count": "1"},
             follow_redirects=False,
         )
         assert response.status_code == 303
