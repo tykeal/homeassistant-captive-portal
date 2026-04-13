@@ -73,6 +73,7 @@ def init_db(engine: Engine, drop_existing: bool = False) -> None:
     SQLModel.metadata.create_all(engine)
     _migrate_voucher_activated_utc(engine)
     _migrate_accessgrant_omada_params(engine)
+    _migrate_vlan_allowed_vlans(engine)
 
 
 def _migrate_voucher_activated_utc(engine: Engine) -> None:
@@ -164,6 +165,33 @@ def get_session() -> Generator[Session, None, None]:
         raise RuntimeError("Database engine not initialized. Call create_db_engine() first.")
     with Session(_engine) as session:
         yield session
+
+
+def _migrate_vlan_allowed_vlans(engine: Engine) -> None:
+    """Add allowed_vlans JSON column to integration and voucher tables.
+
+    Existing rows receive NULL (unrestricted) so deployments that
+    predate VLAN isolation continue to work without configuration.
+
+    Args:
+        engine: SQLAlchemy engine to inspect and migrate.
+    """
+    logger = logging.getLogger("captive_portal.persistence")
+    insp = inspect(engine)
+
+    for table_name in ("ha_integration_config", "voucher"):
+        if table_name not in insp.get_table_names():
+            continue
+        columns = {c["name"] for c in insp.get_columns(table_name)}
+        if "allowed_vlans" not in columns:
+            with engine.begin() as conn:
+                conn.execute(
+                    text(f"ALTER TABLE {table_name} ADD COLUMN allowed_vlans JSON DEFAULT NULL")
+                )
+            logger.info(
+                "Migrated %s table: added allowed_vlans column.",
+                table_name,
+            )
 
 
 def dispose_engine() -> None:
