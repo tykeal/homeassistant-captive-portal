@@ -193,6 +193,7 @@ async def save_integration(
     checkout_grace_minutes: int = Form(...),
     identifier_attr: Optional[str] = Form(None),
     auth_attribute: Optional[str] = Form(None),
+    allowed_vlans: Optional[str] = Form(None),
     id: UUID | None = Form(None),
     session: Session = Depends(get_session),
     admin_id: UUID = Depends(require_admin),
@@ -209,6 +210,7 @@ async def save_integration(
         checkout_grace_minutes: Checkout grace period
         identifier_attr: Identifier attribute (new field name)
         auth_attribute: Legacy field name (backward compat)
+        allowed_vlans: Comma-separated VLAN IDs (e.g. "50,51,52")
         id: Optional existing integration UUID (for updates)
         session: Database session
         admin_id: Authenticated admin user ID
@@ -240,6 +242,25 @@ async def save_integration(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
+    # Parse comma-separated VLANs from form input
+    parsed_vlans: list[int] | None = None
+    if allowed_vlans and allowed_vlans.strip():
+        try:
+            parsed_vlans = sorted(
+                set(int(v.strip()) for v in allowed_vlans.split(",") if v.strip())
+            )
+            for vid in parsed_vlans:
+                if vid < 1 or vid > 4094:
+                    raise ValueError(f"Invalid VLAN ID: {vid}")
+        except ValueError as exc:
+            from urllib.parse import quote_plus
+
+            msg = quote_plus(f"Invalid VLAN input: {exc}")
+            return RedirectResponse(
+                url=f"{root}/admin/integrations/?error={msg}",
+                status_code=status.HTTP_303_SEE_OTHER,
+            )
+
     audit_service = AuditService(session)
 
     if id:
@@ -252,9 +273,11 @@ async def save_integration(
                 status_code=status.HTTP_303_SEE_OTHER,
             )
 
+        old_vlans = list(integration.allowed_vlans or [])
         integration.integration_id = integration_id
         integration.identifier_attr = resolved_attr
         integration.checkout_grace_minutes = checkout_grace_minutes
+        integration.allowed_vlans = parsed_vlans
 
         session.add(integration)
         session.commit()
@@ -264,6 +287,11 @@ async def save_integration(
             action="update_integration",
             target_type="ha_integration_config",
             target_id=str(id),
+            metadata={
+                "integration_id": integration_id,
+                "allowed_vlans_old": old_vlans,
+                "allowed_vlans_new": list(parsed_vlans or []),
+            },
         )
     else:
         # Duplicate guard
@@ -285,6 +313,7 @@ async def save_integration(
             integration_id=integration_id,
             identifier_attr=resolved_attr,
             checkout_grace_minutes=checkout_grace_minutes,
+            allowed_vlans=parsed_vlans,
         )
 
         session.add(integration)
