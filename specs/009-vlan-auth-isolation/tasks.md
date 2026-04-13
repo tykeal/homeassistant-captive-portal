@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 # Tasks: VLAN-Based Authorization Isolation
 
 **Input**: Design documents from `/specs/009-vlan-auth-isolation/`
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
+**Prerequisites**: plan.md (required), spec.md (required for user stories), data-model.md
 
 **Tests**: Tests are included as required by the project constitution (Principle II: TDD is NON-NEGOTIABLE).
 

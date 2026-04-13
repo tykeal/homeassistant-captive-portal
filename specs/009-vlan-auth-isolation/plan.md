@@ -48,10 +48,10 @@ Add VLAN-based authorization isolation to the captive portal so that each Rental
 ```text
 specs/009-vlan-auth-isolation/
 ├── plan.md              # This file
-├── research.md          # Phase 0 output
+├── research.md          # Phase 0 output (planned, not yet included)
 ├── data-model.md        # Phase 1 output
-├── quickstart.md        # Phase 1 output
-├── contracts/           # Phase 1 output
+├── quickstart.md        # Phase 1 output (planned, not yet included)
+├── contracts/           # Phase 1 output (planned, not yet included)
 │   ├── vlan-validation-api.md
 │   └── admin-integration-vlan-api.md
 └── tasks.md             # Phase 2 output (NOT created by plan)

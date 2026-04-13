@@ -23,7 +23,7 @@ A property manager has 10 rental units, each assigned a dedicated guest VLAN (e.
 1. **Given** an integration config for Unit A with allowed VLAN 50 and a valid booking code for Unit A, **When** a guest on VLAN 50 submits that booking code, **Then** authorization proceeds normally and the guest receives WiFi access.
 2. **Given** an integration config for Unit A with allowed VLAN 50 and a valid booking code for Unit A, **When** a guest on VLAN 51 submits that booking code, **Then** authorization is rejected with the message "This code is not valid for your network."
 3. **Given** an integration config for Unit A with allowed VLANs 50 and 55 (multiple VLANs), **When** a guest on VLAN 55 submits a valid Unit A booking code, **Then** authorization proceeds normally.
-4. **Given** a valid booking code and a guest device whose redirect URL contains no VLAN ID (vid is empty or missing), **When** the guest submits the booking code, **Then** authorization is rejected with a user-friendly error indicating the network could not be identified.
+4. **Given** a valid booking code and a guest device whose network/VLAN cannot be identified, **When** the guest submits the booking code, **Then** authorization is rejected with a user-friendly error indicating the network could not be identified.
 
 ---
 
@@ -57,7 +57,7 @@ A property manager creates vouchers and optionally restricts them to specific VL
 1. **Given** a voucher with no VLAN restrictions, **When** a guest on any VLAN submits the voucher code, **Then** authorization proceeds as normal (backward compatible).
 2. **Given** a voucher restricted to VLANs 50 and 51, **When** a guest on VLAN 50 submits the voucher code, **Then** authorization proceeds normally.
 3. **Given** a voucher restricted to VLAN 50 only, **When** a guest on VLAN 52 submits the voucher code, **Then** authorization is rejected with the message "This code is not valid for your network."
-4. **Given** a voucher restricted to VLAN 50, **When** a guest whose device has no VLAN ID (vid is missing), **Then** authorization is rejected with a user-friendly error.
+4. **Given** a voucher restricted to VLAN 50, **When** a guest whose device's network/VLAN cannot be identified, **Then** authorization is rejected with a user-friendly error.
 
 ---
 
@@ -78,10 +78,10 @@ A property manager who has not yet configured VLANs for any integrations upgrade
 
 ### Edge Cases
 
-- What happens when the Omada controller redirect provides a `vid` value that is not a valid integer (e.g., malformed, alphanumeric)? System should treat it as "no VLAN" and reject if the integration requires VLAN matching.
+- What happens when the VLAN identifier provided during the redirect is not a valid integer (e.g., malformed, alphanumeric)? System should treat it as "no VLAN" and reject if the integration requires VLAN matching.
 - What happens when an admin configures VLANs on an integration and then a guest with an active grant on a now-disallowed VLAN attempts to re-authorize? Existing active grants are not retroactively revoked; only new authorization attempts are validated.
 - What happens when an integration has VLANs configured but all configured VLANs are later removed (set to empty)? The integration reverts to no-VLAN-check behavior (backward compatible).
-- What happens if the same booking code matches events across multiple integrations with different VLAN allowlists? The system should use the integration that owns the matching event and validate against that integration's VLANs.
+- What happens if the same booking code matches events across multiple integrations with different VLAN allowlists? The VLAN allowlist acts as a discriminator: the system filters candidate integrations to those whose allowlist includes the device's VLAN. If exactly one integration matches, validation proceeds against it. If multiple integrations match (or none match after VLAN filtering), authorization is rejected with an ambiguity/mismatch error.
 - What happens when a voucher with VLAN restrictions is partially redeemed (multi-use voucher) from VLAN 50, and a subsequent redemption attempt comes from VLAN 52 (not in allowlist)? The second redemption is rejected; each redemption attempt is independently validated.
 
 ## Requirements *(mandatory)*

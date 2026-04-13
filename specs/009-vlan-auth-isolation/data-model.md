@@ -54,7 +54,7 @@ SPDX-License-Identifier: Apache-2.0
 | **`allowed_vlans`** | **`list[int] \| None`** | **`None`** | **Each int 1–4094; deduplicated; sorted** | **NEW — JSON column** |
 
 **Business rules**:
-- `allowed_vlans` is `None` → **unrestricted voucher** (redeemable from any VLAN, backward compatible — FR-009)
+- `allowed_vlans` is `None` or empty list `[]` → **unrestricted voucher** (redeemable from any VLAN, backward compatible — FR-009)
 - `allowed_vlans` is a non-empty list → **only devices on listed VLANs may redeem** (FR-008)
 - VLAN restrictions are set at voucher creation time (spec assumption — no editing after creation)
 - Each redemption attempt is independently validated against VLAN restrictions (spec edge case: multi-use voucher, different VLANs per attempt)
