@@ -8,7 +8,7 @@ from typing import Optional, cast, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
@@ -36,6 +36,20 @@ class IntegrationConfigCreate(BaseModel):
     integration_id: str = Field(..., min_length=1, max_length=128)
     identifier_attr: IdentifierAttr = Field(default=IdentifierAttr.SLOT_CODE)
     checkout_grace_minutes: int = Field(default=15, ge=0, le=30)
+    allowed_vlans: list[int] = Field(default_factory=list)
+
+    @field_validator("allowed_vlans", mode="before")
+    @classmethod
+    def coerce_and_validate_vlans(cls, v: list[int] | None) -> list[int]:
+        """Coerce None to empty list and validate VLAN IDs."""
+        if v is None:
+            return []
+        if not isinstance(v, list):
+            raise ValueError("allowed_vlans must be a list")
+        for vid in v:
+            if not isinstance(vid, int) or vid < 1 or vid > 4094:
+                raise ValueError(f"Invalid VLAN ID: {vid} (must be 1-4094)")
+        return sorted(set(v))
 
 
 class IntegrationConfigUpdate(BaseModel):
@@ -43,10 +57,26 @@ class IntegrationConfigUpdate(BaseModel):
 
     identifier_attr: Optional[IdentifierAttr] = None
     checkout_grace_minutes: Optional[int] = Field(None, ge=0, le=30)
+    allowed_vlans: list[int] | None = None
+
+    @field_validator("allowed_vlans", mode="before")
+    @classmethod
+    def validate_vlans(cls, v: list[int] | None) -> list[int] | None:
+        """Validate VLAN IDs when provided."""
+        if v is None:
+            return None
+        if not isinstance(v, list):
+            raise ValueError("allowed_vlans must be a list")
+        for vid in v:
+            if not isinstance(vid, int) or vid < 1 or vid > 4094:
+                raise ValueError(f"Invalid VLAN ID: {vid} (must be 1-4094)")
+        return sorted(set(v))
 
 
 class IntegrationConfigResponse(BaseModel):
     """Response schema for HA integration configuration."""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     integration_id: str
@@ -54,11 +84,13 @@ class IntegrationConfigResponse(BaseModel):
     checkout_grace_minutes: int
     last_sync_utc: Optional[str] = None
     stale_count: int
+    allowed_vlans: list[int] = Field(default_factory=list)
 
-    class Config:
-        """Pydantic config."""
-
-        from_attributes = True
+    @field_validator("allowed_vlans", mode="before")
+    @classmethod
+    def coerce_none_to_empty(cls, v: list[int] | None) -> list[int]:
+        """Coerce None to empty list for response serialization."""
+        return v if v is not None else []
 
 
 # Global engine instance - will be initialized by application startup
@@ -137,6 +169,7 @@ async def create_integration(
         integration_id=config.integration_id,
         identifier_attr=config.identifier_attr,
         checkout_grace_minutes=config.checkout_grace_minutes,
+        allowed_vlans=config.allowed_vlans or None,
     )
 
     session.add(new_config)
@@ -153,6 +186,7 @@ async def create_integration(
             "integration_id": config.integration_id,
             "identifier_attr": config.identifier_attr.value,
             "checkout_grace_minutes": config.checkout_grace_minutes,
+            "allowed_vlans": config.allowed_vlans,
         },
     )
 
@@ -275,6 +309,8 @@ async def update_integration(
         config.identifier_attr = updates.identifier_attr
     if updates.checkout_grace_minutes is not None:
         config.checkout_grace_minutes = updates.checkout_grace_minutes
+    if updates.allowed_vlans is not None:
+        config.allowed_vlans = updates.allowed_vlans or None
 
     session.add(config)
     session.commit()

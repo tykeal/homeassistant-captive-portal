@@ -147,6 +147,17 @@ SPDX-License-Identifier: Apache-2.0
                 </div>
 
                 <div class="form-group">
+                    <label for="allowed_vlans" class="form-label">Allowed VLANs (optional)</label>
+                    <input type="text"
+                           id="allowed_vlans"
+                           name="allowed_vlans"
+                           class="form-control"
+                           value="{{ integration.allowed_vlans | join(', ') if integration and integration.allowed_vlans else '' }}"
+                           placeholder="e.g., 50, 51, 52">
+                    <small>Comma-separated VLAN IDs (1-4094). Leave blank for unrestricted access.</small>
+                </div>
+
+                <div class="form-group">
                     <button type="submit" class="btn btn-primary">
                         {% if integration %}Update{% else %}Add{% endif %} Integration
                     </button>
@@ -166,6 +177,7 @@ SPDX-License-Identifier: Apache-2.0
                         <th>Integration ID</th>
                         <th>Identifier Attribute</th>
                         <th>Grace Period</th>
+                        <th>Allowed VLANs</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -175,6 +187,7 @@ SPDX-License-Identifier: Apache-2.0
                         <td>{{ int.integration_id }}</td>
                         <td>{{ int.identifier_attr.value }}</td>
                         <td>{{ int.checkout_grace_minutes }} min</td>
+                        <td>{{ int.allowed_vlans | join(', ') if int.allowed_vlans else 'Unrestricted' }}</td>
                         <td>
                             <a href="{{ rp }}/admin/integrations/edit/{{ int.id }}" class="btn btn-primary">Edit</a>
                             <form method="POST" action="{{ rp }}/admin/integrations/delete/{{ int.id }}" style="display: inline;" class="delete-form">
