@@ -91,6 +91,7 @@ class GrantService:
         grant = AccessGrant(
             voucher_code=voucher_code,
             booking_ref=booking_ref,
+            device_id=mac,
             mac=mac,
             session_token=session_token,
             start_utc=start_utc,
