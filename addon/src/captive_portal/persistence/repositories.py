@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Generic, Optional, TypeVar, List, cast, Any
 from uuid import UUID
 
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 
 from captive_portal.models.access_grant import AccessGrant
@@ -154,6 +154,53 @@ class AccessGrantRepository(BaseRepository[AccessGrant]):
         )
         results: list[AccessGrant] = list(self.session.exec(statement).all())
         return results
+
+    def count_active_by_voucher_code(self, code: str) -> int:
+        """Count active or pending grants for a voucher code.
+
+        Args:
+            code: Voucher code to count grants for.
+
+        Returns:
+            Number of grants with status pending or active.
+        """
+        from sqlalchemy import func
+
+        from captive_portal.models.access_grant import GrantStatus
+
+        statement: Any = (
+            select(func.count())
+            .select_from(AccessGrant)
+            .where(AccessGrant.voucher_code == code)
+            .where(col(AccessGrant.status).in_([GrantStatus.PENDING, GrantStatus.ACTIVE]))
+        )
+        result: int = self.session.exec(statement).one()
+        return result
+
+    def count_active_by_voucher_codes(self, codes: list[str]) -> dict[str, int]:
+        """Batch-count active or pending grants per voucher code.
+
+        Args:
+            codes: List of voucher codes to count.
+
+        Returns:
+            Mapping of code to count (codes with zero are omitted).
+        """
+        if not codes:
+            return {}
+
+        from sqlalchemy import func
+
+        from captive_portal.models.access_grant import GrantStatus
+
+        statement: Any = (
+            select(AccessGrant.voucher_code, func.count())
+            .where(col(AccessGrant.voucher_code).in_(codes))
+            .where(col(AccessGrant.status).in_([GrantStatus.PENDING, GrantStatus.ACTIVE]))
+            .group_by(AccessGrant.voucher_code)
+        )
+        rows = self.session.exec(statement).all()
+        return {code: count for code, count in rows}
 
 
 class AdminUserRepository(BaseRepository[AdminUser]):

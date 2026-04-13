@@ -115,5 +115,5 @@ class TestAuthorizeEndToEnd:
         grant.status = GrantStatus.ACTIVE
         db_session.commit()
 
-        with pytest.raises(VoucherRedemptionError, match="already redeemed"):
+        with pytest.raises(VoucherRedemptionError, match="already authorized"):
             await svc.redeem("AUTH000005", "AA:BB:CC:DD:EE:05")

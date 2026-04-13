@@ -74,6 +74,7 @@ def init_db(engine: Engine, drop_existing: bool = False) -> None:
     _migrate_voucher_activated_utc(engine)
     _migrate_accessgrant_omada_params(engine)
     _migrate_vlan_allowed_vlans(engine)
+    _migrate_voucher_max_devices(engine)
 
 
 def _migrate_voucher_activated_utc(engine: Engine) -> None:
@@ -208,3 +209,26 @@ def dispose_engine() -> None:
         return
     _engine.dispose()
     _engine = None
+
+
+def _migrate_voucher_max_devices(engine: Engine) -> None:
+    """Add max_devices column to the voucher table.
+
+    Existing rows receive the default value of 1 (single-device
+    voucher) so deployments that predate multi-device support
+    continue to work unchanged.
+
+    Args:
+        engine: SQLAlchemy engine to inspect and migrate.
+    """
+    logger = logging.getLogger("captive_portal.persistence")
+    insp = inspect(engine)
+    if "voucher" not in insp.get_table_names():
+        return
+    columns = {c["name"] for c in insp.get_columns("voucher")}
+    if "max_devices" not in columns:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE voucher ADD COLUMN max_devices INTEGER DEFAULT 1"))
+        logger.info(
+            "Migrated voucher table: added max_devices column.",
+        )

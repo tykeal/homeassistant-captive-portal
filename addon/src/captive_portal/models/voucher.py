@@ -40,6 +40,8 @@ class Voucher(SQLModel, table=True):
             rather than the actual first redemption time.
         allowed_vlans: Optional list of VLAN IDs (1-4094) authorized for
             this voucher. None or empty means unrestricted.
+        max_devices: Maximum number of devices that may simultaneously
+            use this voucher (default 1).
     """
 
     code: str = Field(primary_key=True, max_length=24, min_length=4)
@@ -56,6 +58,7 @@ class Voucher(SQLModel, table=True):
         default=None,
         sa_column=Column(SA_JSON, nullable=True),
     )
+    max_devices: int = Field(default=1, ge=1)
 
     @field_validator("code")
     @classmethod
