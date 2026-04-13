@@ -362,7 +362,7 @@ async def bulk_create_vouchers(
                     "duration_minutes": parsed.duration,
                     "booking_ref": parsed.booking_ref,
                     "max_devices": parsed.max_devices,
-                    "bulk": True,
+                    "bulk": parsed.count > 1,
                 },
             )
 

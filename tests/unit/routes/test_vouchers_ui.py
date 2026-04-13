@@ -406,7 +406,7 @@ class TestCreateVoucher:
         ]
         assert len(csrf_logs) >= 1
 
-    def test_invalid_duration_logging(
+    def test_invalid_duration_redirect(
         self,
         authenticated_client: tuple[TestClient, str],
     ) -> None:
