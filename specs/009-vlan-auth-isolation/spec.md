@@ -92,7 +92,7 @@ A property manager who has not yet configured VLANs for any integrations upgrade
 - **FR-002**: System MUST validate VLAN IDs as integers in the range 1–4094 (per IEEE 802.1Q standard) when configured by an administrator.
 - **FR-003**: System MUST, during booking code authorization, compare the connecting device's VLAN ID (from the controller redirect parameters) against the allowed VLANs of the integration that owns the matched booking event.
 - **FR-004**: System MUST reject booking code authorization with a user-friendly error message ("This code is not valid for your network") when the device's VLAN does not match any of the integration's allowed VLANs.
-- **FR-005**: System MUST skip VLAN validation entirely when an integration has no allowed VLANs configured (empty list), preserving backward compatibility.
+- **FR-005**: System MUST skip VLAN validation entirely when an integration has no allowed VLANs configured (`None` or empty list), preserving backward compatibility.
 - **FR-006**: System MUST reject authorization when the integration has VLANs configured but the device's VLAN ID is missing, empty, or not a valid integer.
 - **FR-007**: System MUST allow administrators to optionally assign allowed VLAN IDs to individual vouchers.
 - **FR-008**: System MUST validate voucher VLAN restrictions during voucher redemption, rejecting redemption when the device's VLAN does not match any of the voucher's allowed VLANs.
