@@ -4,7 +4,7 @@
 
 Tests the vouchers_ui route module which provides:
 - GET /admin/vouchers — list vouchers with new_code highlight (T021)
-- POST /admin/vouchers/create — create new voucher (T022)
+- POST /admin/vouchers/bulk-create — create voucher(s) (T022)
 
 These are TDD tests written before implementation.
 """
@@ -243,12 +243,12 @@ class TestGetVouchersPage:
 
 
 # ---------------------------------------------------------------------------
-# T022 – POST /admin/vouchers/create
+# T022 – POST /admin/vouchers/bulk-create (unified endpoint)
 # ---------------------------------------------------------------------------
 
 
 class TestCreateVoucher:
-    """T022: POST /admin/vouchers/create — create new voucher."""
+    """T022: POST /admin/vouchers/bulk-create — create voucher(s)."""
 
     def test_successful_create_redirects_with_new_code(
         self,
@@ -258,8 +258,8 @@ class TestCreateVoucher:
         client, csrf_token = authenticated_client
 
         resp = client.post(
-            "/admin/vouchers/create",
-            data={"csrf_token": csrf_token, "duration_minutes": "60"},
+            "/admin/vouchers/bulk-create",
+            data={"csrf_token": csrf_token, "duration_minutes": "60", "count": "1"},
             follow_redirects=False,
         )
 
@@ -277,8 +277,8 @@ class TestCreateVoucher:
         client, _csrf = authenticated_client
 
         resp = client.post(
-            "/admin/vouchers/create",
-            data={"csrf_token": "wrong-token-value", "duration_minutes": "60"},
+            "/admin/vouchers/bulk-create",
+            data={"csrf_token": "wrong-token-value", "duration_minutes": "60", "count": "1"},
             follow_redirects=False,
         )
 
@@ -306,10 +306,11 @@ class TestCreateVoucher:
         client, csrf_token = authenticated_client
 
         resp = client.post(
-            "/admin/vouchers/create",
+            "/admin/vouchers/bulk-create",
             data={
                 "csrf_token": csrf_token,
                 "duration_minutes": duration_value,
+                "count": "1",
             },
             follow_redirects=False,
         )
@@ -332,11 +333,12 @@ class TestCreateVoucher:
         client, csrf_token = authenticated_client
 
         resp = client.post(
-            "/admin/vouchers/create",
+            "/admin/vouchers/bulk-create",
             data={
                 "csrf_token": csrf_token,
                 "duration_minutes": "120",
                 "booking_ref": "BOOK-REF-999",
+                "count": "1",
             },
             follow_redirects=False,
         )
@@ -364,10 +366,11 @@ class TestCreateVoucher:
             side_effect=VoucherCollisionError("Failed to generate unique voucher code"),
         ):
             resp = client.post(
-                "/admin/vouchers/create",
+                "/admin/vouchers/bulk-create",
                 data={
                     "csrf_token": csrf_token,
                     "duration_minutes": "60",
+                    "count": "1",
                 },
                 follow_redirects=False,
             )
@@ -387,10 +390,11 @@ class TestCreateVoucher:
 
         with caplog.at_level(logging.WARNING):
             client.post(
-                "/admin/vouchers/create",
+                "/admin/vouchers/bulk-create",
                 data={
                     "csrf_token": "wrong-token-value",
                     "duration_minutes": "60",
+                    "count": "1",
                 },
                 follow_redirects=False,
             )
@@ -402,30 +406,27 @@ class TestCreateVoucher:
         ]
         assert len(csrf_logs) >= 1
 
-    def test_invalid_duration_logging(
+    def test_invalid_duration_redirect(
         self,
         authenticated_client: tuple[TestClient, str],
-        caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """Invalid duration on create should produce structured log."""
+        """Invalid duration returns redirect with error message."""
         client, csrf_token = authenticated_client
 
-        with caplog.at_level(logging.WARNING):
-            client.post(
-                "/admin/vouchers/create",
-                data={
-                    "csrf_token": csrf_token,
-                    "duration_minutes": "abc",
-                },
-                follow_redirects=False,
-            )
+        resp = client.post(
+            "/admin/vouchers/bulk-create",
+            data={
+                "csrf_token": csrf_token,
+                "duration_minutes": "abc",
+                "count": "1",
+            },
+            follow_redirects=False,
+        )
 
-        duration_logs = [
-            r
-            for r in caplog.records
-            if "duration" in r.getMessage().lower() or "minutes" in r.getMessage().lower()
-        ]
-        assert len(duration_logs) >= 1
+        assert resp.status_code == 303
+        location = resp.headers["location"]
+        assert "error=" in location
+        assert "Duration" in location or "duration" in location.lower()
 
     def test_collision_error_logging(
         self,
@@ -448,10 +449,11 @@ class TestCreateVoucher:
             caplog.at_level(logging.WARNING),
         ):
             client.post(
-                "/admin/vouchers/create",
+                "/admin/vouchers/bulk-create",
                 data={
                     "csrf_token": csrf_token,
                     "duration_minutes": "60",
+                    "count": "1",
                 },
                 follow_redirects=False,
             )

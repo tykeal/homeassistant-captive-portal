@@ -57,9 +57,14 @@ SPDX-License-Identifier: Apache-2.0
         {% endif %}
 
         <section class="settings-form">
-            <h3>Create Voucher</h3>
-            <form method="POST" action="{{ rp }}/admin/vouchers/create">
+            <h3>Create Vouchers</h3>
+            <form method="POST" action="{{ rp }}/admin/vouchers/bulk-create">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="form-group">
+                    <label for="count" class="form-label">Number of Vouchers *</label>
+                    <input type="number" id="count" name="count" class="form-control" min="1" max="100" value="1" required>
+                    <small>How many vouchers to create (1-100)</small>
+                </div>
                 <div class="form-group">
                     <label for="duration_minutes" class="form-label">Duration (minutes) *</label>
                     <input type="number" id="duration_minutes" name="duration_minutes" class="form-control" min="1" max="43200" required placeholder="60">
@@ -68,46 +73,16 @@ SPDX-License-Identifier: Apache-2.0
                 <div class="form-group">
                     <label for="booking_ref" class="form-label">Booking Reference (optional)</label>
                     <input type="text" id="booking_ref" name="booking_ref" class="form-control" maxlength="128" placeholder="e.g., BOOKING-001">
-                    <small>Optional reference to associate with this voucher</small>
-                </div>
-                <div class="form-group">
-                    <label for="allowed_vlans" class="form-label">VLAN Restriction (optional)</label>
-                    <input type="text" id="allowed_vlans" name="allowed_vlans" class="form-control" placeholder="e.g., 50, 51, 52">
-                    <small>Comma-separated VLAN IDs (1-4094). Leave blank for unrestricted.</small>
+                    <small>Optional reference to associate with these vouchers</small>
                 </div>
                 <div class="form-group">
                     <label for="max_devices" class="form-label">Max Devices</label>
                     <input type="number" id="max_devices" name="max_devices" class="form-control" min="1" value="1">
-                    <small>Maximum number of devices that can use this voucher simultaneously</small>
+                    <small>Maximum number of devices that can use each voucher simultaneously</small>
                 </div>
                 <div class="form-group">
-                    <button type="submit" class="btn btn-primary">Create Voucher</button>
-                </div>
-            </form>
-        </section>
-
-        <section class="settings-form">
-            <h3>Bulk Create Vouchers</h3>
-            <form method="POST" action="{{ rp }}/admin/vouchers/bulk-create">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <div class="form-group">
-                    <label for="bulk_count" class="form-label">Number of Vouchers *</label>
-                    <input type="number" id="bulk_count" name="count" class="form-control" min="1" max="100" required placeholder="10">
-                    <small>How many vouchers to create (1-100)</small>
-                </div>
-                <div class="form-group">
-                    <label for="bulk_duration" class="form-label">Duration (minutes) *</label>
-                    <input type="number" id="bulk_duration" name="duration_minutes" class="form-control" min="1" max="43200" required placeholder="60">
-                    <small>Access duration in minutes (1-43200)</small>
-                </div>
-                <div class="form-group">
-                    <label for="bulk_max_devices" class="form-label">Max Devices</label>
-                    <input type="number" id="bulk_max_devices" name="max_devices" class="form-control" min="1" value="1">
-                    <small>Maximum devices per voucher</small>
-                </div>
-                <div class="form-group">
-                    <label for="bulk_vlans" class="form-label">VLAN Restriction (optional)</label>
-                    <input type="text" id="bulk_vlans" name="allowed_vlans" class="form-control" placeholder="e.g., 50, 51, 52">
+                    <label for="allowed_vlans" class="form-label">VLAN Restriction (optional)</label>
+                    <input type="text" id="allowed_vlans" name="allowed_vlans" class="form-control" placeholder="e.g., 50, 51, 52">
                     <small>Comma-separated VLAN IDs (1-4094). Leave blank for unrestricted.</small>
                 </div>
                 <div class="form-group">

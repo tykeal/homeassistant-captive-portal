@@ -113,6 +113,7 @@ class BulkCreateParams:
     duration: int
     max_devices: int
     allowed_vlans: list[int] | None
+    booking_ref: str | None
 
 
 def _parse_bulk_create_form(
@@ -179,11 +180,26 @@ def _parse_bulk_create_form(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
+    booking_ref_raw = form.get("booking_ref", "")
+    booking_ref: str | None
+    if booking_ref_raw:
+        booking_ref_str = str(booking_ref_raw).strip()
+        booking_ref = booking_ref_str or None
+    else:
+        booking_ref = None
+
+    if booking_ref and len(booking_ref) > 128:
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Booking+reference+must+be+128+characters+or+less",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
     return BulkCreateParams(
         count=count,
         duration=duration,
         max_devices=max_devices,
         allowed_vlans=parsed_vlans,
+        booking_ref=booking_ref,
     )
 
 
@@ -284,136 +300,6 @@ async def get_vouchers(
     return response
 
 
-@router.post("/create")
-async def create_voucher(
-    request: Request,
-    session: Annotated[Session, Depends(get_session)],
-    admin_id: Annotated[UUID, Depends(require_admin)],
-    csrf: Annotated[CSRFProtection, Depends(get_csrf_protection)],
-) -> RedirectResponse:
-    """Create a new voucher with specified duration.
-
-    Args:
-        request: Incoming HTTP request.
-        session: Database session.
-        admin_id: Authenticated admin user ID.
-        csrf: CSRF protection instance.
-
-    Returns:
-        303 redirect to vouchers page with new_code or error message.
-    """
-    root = request.scope.get("root_path", "")
-
-    # Validate CSRF
-    try:
-        await csrf.validate_token(request)
-    except HTTPException:
-        logger.warning("CSRF validation failed for voucher create")
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    # Parse form data
-    form = await request.form()
-    duration_raw = form.get("duration_minutes", "")
-    booking_ref_raw = form.get("booking_ref", "")
-    allowed_vlans_raw = form.get("allowed_vlans", "")
-    booking_ref: str | None
-    if booking_ref_raw:
-        booking_ref_str = str(booking_ref_raw).strip()
-        booking_ref = booking_ref_str or None
-    else:
-        booking_ref = None
-
-    # Parse comma-separated VLANs from form input
-    try:
-        parsed_vlans = _parse_vlan_form_input(str(allowed_vlans_raw) if allowed_vlans_raw else None)
-    except ValueError:
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Invalid+VLAN+input",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    # Parse max_devices
-    max_devices_raw = form.get("max_devices", "1")
-    try:
-        max_devices = int(max_devices_raw)  # type: ignore[arg-type]
-    except (ValueError, TypeError):
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Max+devices+must+be+a+positive+integer",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-    if max_devices < 1:
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Max+devices+must+be+at+least+1",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    # Validate duration
-    try:
-        duration = int(duration_raw)  # type: ignore[arg-type]
-    except (ValueError, TypeError):
-        logger.warning("Invalid duration value '%s' for voucher create", duration_raw)
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Duration+must+be+between+1+and+43200+minutes",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    if duration < 1 or duration > 43200:
-        logger.warning("Duration out of range (%d) for voucher create", duration)
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Duration+must+be+between+1+and+43200+minutes",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    # Trim and validate booking_ref length
-    if booking_ref and len(booking_ref) > 128:
-        logger.warning(
-            "Booking reference too long (%d chars) for voucher create",
-            len(booking_ref),
-        )
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Booking+reference+must+be+128+characters+or+less",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    # Create voucher
-    voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
-    try:
-        voucher = await voucher_service.create(
-            duration_minutes=duration,
-            booking_ref=booking_ref,
-            allowed_vlans=parsed_vlans,
-            max_devices=max_devices,
-        )
-    except VoucherCollisionError:
-        logger.warning("Voucher code collision during create")
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Failed+to+generate+unique+voucher+code",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    # Audit log
-    audit_service = AuditService(session)
-    await audit_service.log_admin_action(
-        admin_id=admin_id,
-        action="voucher.create",
-        target_type="voucher",
-        target_id=voucher.code,
-        metadata={
-            "duration_minutes": duration,
-            "booking_ref": booking_ref,
-            "max_devices": max_devices,
-        },
-    )
-
-    return RedirectResponse(
-        url=f"{root}/admin/vouchers/?new_code={voucher.code}&success=Voucher+created+successfully",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
-
-
 @router.post("/bulk-create")
 async def bulk_create_vouchers(
     request: Request,
@@ -456,6 +342,7 @@ async def bulk_create_vouchers(
         try:
             voucher = await voucher_service.create(
                 duration_minutes=parsed.duration,
+                booking_ref=parsed.booking_ref,
                 allowed_vlans=parsed.allowed_vlans,
                 max_devices=parsed.max_devices,
             )
@@ -473,12 +360,18 @@ async def bulk_create_vouchers(
                 target_id=code,
                 metadata={
                     "duration_minutes": parsed.duration,
+                    "booking_ref": parsed.booking_ref,
                     "max_devices": parsed.max_devices,
-                    "bulk": True,
+                    "bulk": parsed.count > 1,
                 },
             )
 
     if len(created_codes) == parsed.count:
+        if parsed.count == 1:
+            return RedirectResponse(
+                url=f"{root}/admin/vouchers/?new_code={created_codes[0]}&success=Voucher+created+successfully",
+                status_code=status.HTTP_303_SEE_OTHER,
+            )
         msg = urllib.parse.quote_plus(f"Created {parsed.count} vouchers successfully")
         return RedirectResponse(
             url=f"{root}/admin/vouchers/?success={msg}",

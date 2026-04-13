@@ -185,8 +185,8 @@ class TestAdminVouchersPage:
 
         # POST → 303 redirect
         resp = client.post(
-            "/admin/vouchers/create",
-            data={"csrf_token": csrf_token, "duration_minutes": "60"},
+            "/admin/vouchers/bulk-create",
+            data={"csrf_token": csrf_token, "duration_minutes": "60", "count": "1"},
             follow_redirects=False,
         )
         assert resp.status_code == 303
@@ -209,8 +209,8 @@ class TestAdminVouchersPage:
 
         # Create a voucher to get a real code
         resp = client.post(
-            "/admin/vouchers/create",
-            data={"csrf_token": csrf_token, "duration_minutes": "120"},
+            "/admin/vouchers/bulk-create",
+            data={"csrf_token": csrf_token, "duration_minutes": "120", "count": "1"},
             follow_redirects=False,
         )
         assert resp.status_code == 303
