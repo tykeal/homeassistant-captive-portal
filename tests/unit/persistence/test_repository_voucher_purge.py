@@ -165,6 +165,47 @@ class TestVoucherRepositoryPurge:
         deleted = repo.purge(cutoff)
         assert deleted == 0
 
+    def test_count_purgeable_includes_null_status_changed(self, db_session: Session) -> None:
+        """Vouchers with NULL status_changed_utc use created_utc fallback."""
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        old_time = cutoff - timedelta(days=10)
+
+        # status_changed_utc is set — normal case
+        _make_voucher(
+            db_session, code="PRGNULL001", status=VoucherStatus.EXPIRED, status_changed_utc=old_time
+        )
+        # status_changed_utc is NULL — created_utc is used as fallback
+        v = _make_voucher(
+            db_session, code="PRGNULL002", status=VoucherStatus.REVOKED, status_changed_utc=None
+        )
+        # Backdate created_utc so it falls before cutoff
+        v.created_utc = old_time
+        db_session.add(v)
+        db_session.commit()
+
+        repo = VoucherRepository(db_session)
+        assert repo.count_purgeable(cutoff) == 2
+        codes = repo.get_purgeable_codes(cutoff)
+        assert set(codes) == {"PRGNULL001", "PRGNULL002"}
+
+    def test_purge_deletes_null_status_changed_vouchers(self, db_session: Session) -> None:
+        """Purge deletes terminal vouchers even when status_changed_utc is NULL."""
+        cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+        old_time = cutoff - timedelta(days=10)
+
+        v = _make_voucher(
+            db_session, code="PRGNULD001", status=VoucherStatus.EXPIRED, status_changed_utc=None
+        )
+        v.created_utc = old_time
+        db_session.add(v)
+        db_session.commit()
+
+        repo = VoucherRepository(db_session)
+        deleted = repo.purge(cutoff)
+        db_session.commit()
+        assert deleted == 1
+        assert repo.get_by_code("PRGNULD001") is None
+
     def test_purge_zero_result_case(self, db_session: Session) -> None:
         """Purge with no eligible vouchers returns 0."""
         repo = VoucherRepository(db_session)

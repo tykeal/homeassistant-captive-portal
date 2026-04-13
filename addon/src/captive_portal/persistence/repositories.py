@@ -120,29 +120,33 @@ class VoucherRepository(BaseRepository[Voucher]):
     def count_purgeable(self, cutoff: datetime) -> int:
         """Count vouchers eligible for purge.
 
-        Counts vouchers in EXPIRED or REVOKED status whose
-        ``status_changed_utc`` is before the given cutoff.
+        Counts vouchers in EXPIRED or REVOKED status whose age
+        reference is before the given cutoff.  The age reference
+        is ``COALESCE(status_changed_utc, created_utc)`` so that
+        vouchers lacking ``status_changed_utc`` fall back to
+        ``created_utc`` as a conservative estimate.
 
         Args:
-            cutoff: Cutoff datetime; vouchers with status_changed_utc
-                before this are eligible.
+            cutoff: Cutoff datetime; vouchers whose age reference
+                is before this are eligible.
 
         Returns:
             Count of purgeable vouchers.
         """
         from sqlalchemy import func
+        from sqlalchemy.sql.functions import coalesce
 
         from captive_portal.models.voucher import VoucherStatus
 
         # SQLite stores naive datetimes — strip tzinfo for comparison
         cutoff_naive = cutoff.replace(tzinfo=None) if cutoff.tzinfo else cutoff
+        age_ref = coalesce(Voucher.status_changed_utc, Voucher.created_utc)
 
         statement: Any = (
             select(func.count())
             .select_from(Voucher)
             .where(col(Voucher.status).in_([VoucherStatus.EXPIRED, VoucherStatus.REVOKED]))
-            .where(Voucher.status_changed_utc.isnot(None))  # type: ignore[union-attr]
-            .where(Voucher.status_changed_utc < cutoff_naive)  # type: ignore[operator]
+            .where(age_ref < cutoff_naive)
         )
         result: int = self.session.exec(statement).one()
         return result
@@ -151,9 +155,11 @@ class VoucherRepository(BaseRepository[Voucher]):
         """Return codes of vouchers eligible for purge.
 
         Retrieves the codes of all vouchers in EXPIRED or REVOKED
-        status whose ``status_changed_utc`` is before the given cutoff.
-        Used to identify grant references that must be nullified
-        before purge deletion.
+        status whose age reference is before the given cutoff.
+        The age reference is ``COALESCE(status_changed_utc,
+        created_utc)`` so vouchers without ``status_changed_utc``
+        fall back to ``created_utc``.  Used to identify grant
+        references that must be nullified before purge deletion.
 
         Args:
             cutoff: Cutoff datetime.
@@ -161,16 +167,18 @@ class VoucherRepository(BaseRepository[Voucher]):
         Returns:
             List of voucher codes eligible for purge.
         """
+        from sqlalchemy.sql.functions import coalesce
+
         from captive_portal.models.voucher import VoucherStatus
 
         # SQLite stores naive datetimes — strip tzinfo for comparison
         cutoff_naive = cutoff.replace(tzinfo=None) if cutoff.tzinfo else cutoff
+        age_ref = coalesce(Voucher.status_changed_utc, Voucher.created_utc)
 
         statement: Any = (
             select(Voucher.code)
             .where(col(Voucher.status).in_([VoucherStatus.EXPIRED, VoucherStatus.REVOKED]))
-            .where(Voucher.status_changed_utc.isnot(None))  # type: ignore[union-attr]
-            .where(Voucher.status_changed_utc < cutoff_naive)  # type: ignore[operator]
+            .where(age_ref < cutoff_naive)
         )
         results: list[str] = list(self.session.exec(statement).all())
         return results
@@ -179,7 +187,10 @@ class VoucherRepository(BaseRepository[Voucher]):
         """Delete vouchers eligible for purge.
 
         Deletes all vouchers in EXPIRED or REVOKED status whose
-        ``status_changed_utc`` is before the given cutoff.
+        age reference is before the given cutoff.  The age
+        reference is ``COALESCE(status_changed_utc, created_utc)``
+        so vouchers without ``status_changed_utc`` fall back to
+        ``created_utc``.
 
         Args:
             cutoff: Cutoff datetime.
@@ -188,17 +199,18 @@ class VoucherRepository(BaseRepository[Voucher]):
             Number of deleted vouchers.
         """
         from sqlalchemy import delete as sa_delete
+        from sqlalchemy.sql.functions import coalesce
 
         from captive_portal.models.voucher import VoucherStatus
 
         # SQLite stores naive datetimes — strip tzinfo for comparison
         cutoff_naive = cutoff.replace(tzinfo=None) if cutoff.tzinfo else cutoff
+        age_ref = coalesce(Voucher.status_changed_utc, Voucher.created_utc)
 
         stmt = (
             sa_delete(Voucher)
             .where(col(Voucher.status).in_([VoucherStatus.EXPIRED, VoucherStatus.REVOKED]))
-            .where(Voucher.status_changed_utc.isnot(None))  # type: ignore[union-attr]
-            .where(Voucher.status_changed_utc < cutoff_naive)  # type: ignore[operator, arg-type]
+            .where(age_ref < cutoff_naive)
         )
         result: Any = self.session.execute(stmt)
         self.session.flush()
