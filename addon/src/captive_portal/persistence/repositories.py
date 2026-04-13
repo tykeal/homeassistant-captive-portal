@@ -155,6 +155,29 @@ class AccessGrantRepository(BaseRepository[AccessGrant]):
         results: list[AccessGrant] = list(self.session.exec(statement).all())
         return results
 
+    def find_pending_or_active_by_mac(self, mac: str) -> List[AccessGrant]:
+        """Find pending or active grants for MAC address.
+
+        Used by the voucher redemption flow to detect duplicate
+        MAC+voucher combinations regardless of whether the earlier
+        grant has been confirmed by the controller yet.
+
+        Args:
+            mac: Device MAC address
+
+        Returns:
+            List of pending or active grants
+        """
+        from captive_portal.models.access_grant import GrantStatus
+
+        statement: Any = (
+            select(AccessGrant)
+            .where(AccessGrant.mac == mac)
+            .where(col(AccessGrant.status).in_([GrantStatus.PENDING, GrantStatus.ACTIVE]))
+        )
+        results: list[AccessGrant] = list(self.session.exec(statement).all())
+        return results
+
     def count_active_by_voucher_code(self, code: str) -> int:
         """Count active or pending grants for a voucher code.
 

@@ -4,7 +4,7 @@
 
 import logging
 from collections.abc import Generator
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
@@ -232,3 +232,14 @@ def _migrate_voucher_max_devices(engine: Engine) -> None:
         logger.info(
             "Migrated voucher table: added max_devices column.",
         )
+    else:
+        # Backfill any NULL values from partial migrations
+        with engine.begin() as conn:
+            result: Any = conn.execute(
+                text("UPDATE voucher SET max_devices = 1 WHERE max_devices IS NULL")
+            )
+            if result.rowcount and result.rowcount > 0:
+                logger.info(
+                    "Migrated voucher table: backfilled %d NULL max_devices values to 1.",
+                    result.rowcount,
+                )

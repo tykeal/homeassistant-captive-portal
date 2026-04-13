@@ -245,7 +245,7 @@ class VoucherService:
             raise VoucherRedemptionError(f"Voucher '{code}' expired at {voucher.expires_utc}")
 
         # Check for duplicate redemption (same voucher + MAC)
-        existing_grants = self.grant_repo.find_active_by_mac(mac)
+        existing_grants = self.grant_repo.find_pending_or_active_by_mac(mac)
         for grant in existing_grants:
             if grant.voucher_code == code:
                 raise VoucherRedemptionError("Your device is already authorized with this code.")
