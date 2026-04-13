@@ -65,6 +65,11 @@ SPDX-License-Identifier: Apache-2.0
                     <small>Optional reference to associate with this voucher</small>
                 </div>
                 <div class="form-group">
+                    <label for="allowed_vlans" class="form-label">VLAN Restriction (optional)</label>
+                    <input type="text" id="allowed_vlans" name="allowed_vlans" class="form-control" placeholder="e.g., 50, 51, 52">
+                    <small>Comma-separated VLAN IDs (1-4094). Leave blank for unrestricted.</small>
+                </div>
+                <div class="form-group">
                     <button type="submit" class="btn btn-primary">Create Voucher</button>
                 </div>
             </form>
@@ -87,6 +92,7 @@ SPDX-License-Identifier: Apache-2.0
                             <th>Status</th>
                             <th>Redemption</th>
                             <th>Booking Ref</th>
+                            <th>VLANs</th>
                             <th>Created</th>
                             <th>Actions</th>
                         </tr>
@@ -120,6 +126,13 @@ SPDX-License-Identifier: Apache-2.0
                                     <em>-</em>
                                 {% endif %}
                             </td>
+                            <td>
+                                {% if voucher.allowed_vlans %}
+                                    {{ voucher.allowed_vlans | join(', ') }}
+                                {% else %}
+                                    <em>Unrestricted</em>
+                                {% endif %}
+                            </td>
                             <td>{{ voucher.created_utc.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>
                                 <button type="submit"
@@ -139,7 +152,7 @@ SPDX-License-Identifier: Apache-2.0
                         {% endfor %}
                         {% else %}
                         <tr>
-                            <td colspan="8" class="empty-state">No vouchers found. Create one using the form above.</td>
+                            <td colspan="9" class="empty-state">No vouchers found. Create one using the form above.</td>
                         </tr>
                         {% endif %}
                     </tbody>

@@ -6,7 +6,7 @@ from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlmodel import Session
 
 from captive_portal.models.voucher import Voucher
@@ -29,6 +29,20 @@ class CreateVoucherRequest(BaseModel):
     up_kbps: int | None = Field(default=None, gt=0)
     down_kbps: int | None = Field(default=None, gt=0)
     code_length: int = Field(default=10, ge=4, le=24)
+    allowed_vlans: list[int] | None = Field(default=None)
+
+    @field_validator("allowed_vlans", mode="before")
+    @classmethod
+    def validate_vlans(cls, v: list[int] | None) -> list[int] | None:
+        """Validate VLAN IDs are integers in the 1-4094 range."""
+        if v is None:
+            return None
+        if not isinstance(v, list):
+            raise ValueError("allowed_vlans must be a list")
+        for vid in v:
+            if isinstance(vid, bool) or not isinstance(vid, int) or vid < 1 or vid > 4094:
+                raise ValueError(f"Invalid VLAN ID: {vid} (must be 1-4094)")
+        return sorted(set(v))
 
 
 class VoucherResponse(BaseModel):
@@ -43,6 +57,7 @@ class VoucherResponse(BaseModel):
     down_kbps: int | None
     status: str
     created_utc: datetime
+    allowed_vlans: list[int] | None = None
 
 
 @router.post("/", response_model=VoucherResponse, status_code=status.HTTP_201_CREATED)
@@ -75,6 +90,7 @@ async def create_voucher(
             up_kbps=request.up_kbps,
             down_kbps=request.down_kbps,
             code_length=request.code_length,
+            allowed_vlans=request.allowed_vlans,
         )
 
         await audit_service.log_admin_action(

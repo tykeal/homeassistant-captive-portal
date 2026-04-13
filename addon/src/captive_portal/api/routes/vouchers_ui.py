@@ -42,6 +42,27 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templa
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 
 
+def _parse_vlan_form_input(raw: str | None) -> list[int] | None:
+    """Parse comma-separated VLAN IDs from form input.
+
+    Args:
+        raw: Raw form input string (e.g. "50, 51, 52") or None.
+
+    Returns:
+        Sorted list of valid VLAN IDs, or None if input is empty.
+
+    Raises:
+        ValueError: If any VLAN ID is invalid.
+    """
+    if not raw or not str(raw).strip():
+        return None
+    vlans = sorted(set(int(v.strip()) for v in str(raw).split(",") if v.strip()))
+    for vid in vlans:
+        if vid < 1 or vid > 4094:
+            raise ValueError(f"Invalid VLAN ID: {vid}")
+    return vlans
+
+
 class VoucherActions(NamedTuple):
     """Pre-computed action eligibility for a voucher."""
 
@@ -174,12 +195,22 @@ async def create_voucher(
     form = await request.form()
     duration_raw = form.get("duration_minutes", "")
     booking_ref_raw = form.get("booking_ref", "")
+    allowed_vlans_raw = form.get("allowed_vlans", "")
     booking_ref: str | None
     if booking_ref_raw:
         booking_ref_str = str(booking_ref_raw).strip()
         booking_ref = booking_ref_str or None
     else:
         booking_ref = None
+
+    # Parse comma-separated VLANs from form input
+    try:
+        parsed_vlans = _parse_vlan_form_input(str(allowed_vlans_raw) if allowed_vlans_raw else None)
+    except ValueError:
+        return RedirectResponse(
+            url=f"{root}/admin/vouchers/?error=Invalid+VLAN+input",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     # Validate duration
     try:
@@ -212,7 +243,9 @@ async def create_voucher(
     # Create voucher
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     try:
-        voucher = await voucher_service.create(duration_minutes=duration, booking_ref=booking_ref)
+        voucher = await voucher_service.create(
+            duration_minutes=duration, booking_ref=booking_ref, allowed_vlans=parsed_vlans
+        )
     except VoucherCollisionError:
         logger.warning("Voucher code collision during create")
         return RedirectResponse(

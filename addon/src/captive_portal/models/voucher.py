@@ -7,7 +7,9 @@ from enum import Enum
 from typing import Optional
 
 from pydantic import field_validator, computed_field
+from sqlalchemy import Column
 from sqlmodel import Field, SQLModel
+from sqlmodel import JSON as SA_JSON
 
 
 class VoucherStatus(str, Enum):
@@ -36,6 +38,8 @@ class Voucher(SQLModel, table=True):
             For pre-existing vouchers upgraded via migration, this
             may be an approximation derived from ``created_utc``
             rather than the actual first redemption time.
+        allowed_vlans: Optional list of VLAN IDs (1-4094) authorized for
+            this voucher. None or empty means unrestricted.
     """
 
     code: str = Field(primary_key=True, max_length=24, min_length=4)
@@ -48,6 +52,10 @@ class Voucher(SQLModel, table=True):
     redeemed_count: int = Field(default=0, ge=0)
     last_redeemed_utc: Optional[datetime] = Field(default=None)
     activated_utc: Optional[datetime] = Field(default=None)
+    allowed_vlans: list[int] | None = Field(
+        default=None,
+        sa_column=Column(SA_JSON, nullable=True),
+    )
 
     @field_validator("code")
     @classmethod
@@ -62,6 +70,19 @@ class Voucher(SQLModel, table=True):
     def validate_booking_ref(cls, v: Optional[str]) -> Optional[str]:
         """Trim whitespace from booking reference while preserving case."""
         return v.strip() if v else None
+
+    @field_validator("allowed_vlans", mode="before")
+    @classmethod
+    def validate_vlans(cls, v: list[int] | None) -> list[int] | None:
+        """Validate VLAN IDs are integers in the 1-4094 range."""
+        if v is None:
+            return None
+        if not isinstance(v, list):
+            raise ValueError("allowed_vlans must be a list")
+        for vid in v:
+            if isinstance(vid, bool) or not isinstance(vid, int) or vid < 1 or vid > 4094:
+                raise ValueError(f"Invalid VLAN ID: {vid} (must be 1-4094)")
+        return sorted(set(v))
 
     @computed_field  # type: ignore[prop-decorator]
     @property

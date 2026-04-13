@@ -101,6 +101,7 @@ class VoucherService:
         down_kbps: Optional[int] = None,
         code_length: int = 10,
         max_retries: int = 5,
+        allowed_vlans: list[int] | None = None,
     ) -> Voucher:
         """Create voucher with collision retry logic (D3 decision).
 
@@ -114,6 +115,7 @@ class VoucherService:
             down_kbps: Optional download bandwidth limit (>0)
             code_length: Code length (4-24, default 10)
             max_retries: Max collision retry attempts (default 5)
+            allowed_vlans: Optional VLAN restriction list (1-4094)
 
         Returns:
             Created voucher with generated code
@@ -138,6 +140,7 @@ class VoucherService:
                     down_kbps=down_kbps,
                     status=VoucherStatus.UNUSED,
                     redeemed_count=0,
+                    allowed_vlans=allowed_vlans,
                 )
                 self.voucher_repo.add(voucher)
                 self.voucher_repo.commit()
