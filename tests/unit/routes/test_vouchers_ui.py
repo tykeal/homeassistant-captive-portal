@@ -580,6 +580,36 @@ class TestVoucherActionsContext:
         db_session.delete(v)
         db_session.commit()
 
+    def test_expired_voucher_shows_expired_badge(
+        self,
+        authenticated_client: tuple[TestClient, str],
+        db_session: Session,
+    ) -> None:
+        """Stale ACTIVE voucher lazily transitions and shows expired badge."""
+        client, _csrf = authenticated_client
+        past = datetime.now(timezone.utc) - timedelta(hours=24)
+        v = Voucher(
+            code="UIEXPIRE01",
+            duration_minutes=1,
+            status=VoucherStatus.ACTIVE,
+            redeemed_count=1,
+            activated_utc=past,
+        )
+        db_session.add(v)
+        db_session.commit()
+        db_session.refresh(v)
+
+        resp = client.get("/admin/vouchers/")
+        assert resp.status_code == 200
+        assert "status-expired" in resp.text
+        assert "expired" in resp.text
+
+        db_session.refresh(v)
+        assert v.status == VoucherStatus.EXPIRED
+
+        db_session.delete(v)
+        db_session.commit()
+
 
 # ---------------------------------------------------------------------------
 # T007 – POST /admin/vouchers/revoke/{code}

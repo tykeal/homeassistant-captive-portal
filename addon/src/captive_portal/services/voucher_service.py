@@ -79,6 +79,47 @@ class VoucherService:
         self.voucher_repo = voucher_repo or VoucherRepository(session)
         self.grant_repo = grant_repo or AccessGrantRepository(session)
 
+    def expire_stale_vouchers(
+        self,
+        vouchers: list[Voucher],
+        current_time: datetime | None = None,
+    ) -> int:
+        """Transition ACTIVE vouchers past expiry to EXPIRED.
+
+        Iterates *vouchers* and sets ``status = EXPIRED`` for each
+        entry whose expiry timer has started and whose
+        ``expires_utc`` is in the past.  Changes are flushed to
+        the session so the caller sees updated objects immediately;
+        the caller is responsible for committing the transaction.
+
+        Args:
+            vouchers: Voucher instances to inspect.
+            current_time: Reference "now" (defaults to UTC now).
+
+        Returns:
+            Number of vouchers whose status was changed.
+        """
+        if current_time is None:
+            current_time = datetime.now(timezone.utc)
+
+        count = 0
+        for voucher in vouchers:
+            if voucher.status != VoucherStatus.ACTIVE:
+                continue
+            if not voucher.is_activated_for_expiry:
+                continue
+            expires = voucher.expires_utc
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+            if current_time > expires:
+                voucher.status = VoucherStatus.EXPIRED
+                count += 1
+
+        if count:
+            self.session.flush()
+
+        return count
+
     def _generate_code(self, length: int = 10) -> str:
         """Generate random voucher code (A-Z0-9).
 
@@ -190,6 +231,8 @@ class VoucherService:
 
         # Check expiration — skip only for truly unactivated vouchers.
         if voucher.is_activated_for_expiry and voucher.expires_utc < current_time:
+            voucher.status = VoucherStatus.EXPIRED
+            self.voucher_repo.commit()
             raise VoucherRedemptionError(f"Voucher '{code}' expired at {voucher.expires_utc}")
 
         # Check for duplicate redemption (same voucher + MAC)
@@ -259,6 +302,8 @@ class VoucherService:
         if expires.tzinfo is None:
             expires = expires.replace(tzinfo=timezone.utc)
         if voucher.is_activated_for_expiry and current_time > expires:
+            voucher.status = VoucherStatus.EXPIRED
+            self.voucher_repo.commit()
             raise VoucherExpiredError(code)
 
         voucher.status = VoucherStatus.REVOKED

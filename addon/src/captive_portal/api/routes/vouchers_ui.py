@@ -130,17 +130,24 @@ async def get_vouchers(
     stmt: Any = select(Voucher).order_by(col(Voucher.created_utc).desc()).limit(500)
     vouchers = list(cast(list[Voucher], session.exec(stmt).all()))
 
-    now = datetime.now(timezone.utc)
+    # Lazily persist EXPIRED status for stale ACTIVE vouchers.
+    voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
+    expired_count = voucher_service.expire_stale_vouchers(vouchers)
+    if expired_count:
+        session.commit()
+
     voucher_actions: dict[str, VoucherActions] = {}
+    now = datetime.now(timezone.utc)
     for voucher in vouchers:
-        if voucher.is_activated_for_expiry:
+        if voucher.status in (VoucherStatus.REVOKED, VoucherStatus.EXPIRED):
+            can_revoke = False
+        elif voucher.is_activated_for_expiry:
             expires = voucher.expires_utc
             if expires.tzinfo is None:
                 expires = expires.replace(tzinfo=timezone.utc)
-            is_expired = now > expires
+            can_revoke = now <= expires
         else:
-            is_expired = False
-        can_revoke = voucher.status != VoucherStatus.REVOKED and not is_expired
+            can_revoke = True
         can_delete = voucher.redeemed_count == 0
         voucher_actions[voucher.code] = VoucherActions(can_revoke=can_revoke, can_delete=can_delete)
 
