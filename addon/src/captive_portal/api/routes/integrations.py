@@ -47,7 +47,7 @@ class IntegrationConfigCreate(BaseModel):
         if not isinstance(v, list):
             raise ValueError("allowed_vlans must be a list")
         for vid in v:
-            if not isinstance(vid, int) or vid < 1 or vid > 4094:
+            if isinstance(vid, bool) or not isinstance(vid, int) or vid < 1 or vid > 4094:
                 raise ValueError(f"Invalid VLAN ID: {vid} (must be 1-4094)")
         return sorted(set(v))
 
@@ -68,7 +68,7 @@ class IntegrationConfigUpdate(BaseModel):
         if not isinstance(v, list):
             raise ValueError("allowed_vlans must be a list")
         for vid in v:
-            if not isinstance(vid, int) or vid < 1 or vid > 4094:
+            if isinstance(vid, bool) or not isinstance(vid, int) or vid < 1 or vid > 4094:
                 raise ValueError(f"Invalid VLAN ID: {vid} (must be 1-4094)")
         return sorted(set(v))
 
@@ -280,7 +280,7 @@ async def update_integration(
     config_id: UUID,
     updates: IntegrationConfigUpdate,
     session: Session = Depends(get_db_session),
-    _admin: UUID = Depends(require_admin),
+    admin_id: UUID = Depends(require_admin),
 ) -> HAIntegrationConfig:
     """Update HA integration configuration.
 
@@ -288,7 +288,7 @@ async def update_integration(
         config_id: Integration configuration UUID
         updates: Fields to update
         session: Database session
-        _admin: Admin authentication dependency
+        admin_id: Admin user ID from authentication
 
     Returns:
         Updated integration configuration
@@ -304,6 +304,9 @@ async def update_integration(
             detail=f"Integration configuration {config_id} not found",
         )
 
+    audit_service = AuditService(session)
+    old_vlans = list(config.allowed_vlans or [])
+
     # Apply updates
     if updates.identifier_attr is not None:
         config.identifier_attr = updates.identifier_attr
@@ -316,6 +319,18 @@ async def update_integration(
     session.commit()
     session.refresh(config)
     assert isinstance(config, HAIntegrationConfig)
+
+    await audit_service.log_admin_action(
+        admin_id=admin_id,
+        action="update_integration",
+        target_type="ha_integration_config",
+        target_id=str(config_id),
+        metadata={
+            "integration_id": config.integration_id,
+            "allowed_vlans_old": old_vlans,
+            "allowed_vlans_new": list(config.allowed_vlans or []),
+        },
+    )
 
     logger.info(f"Updated HA integration config: {config.integration_id}")
 

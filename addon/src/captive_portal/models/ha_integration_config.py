@@ -59,6 +59,6 @@ class HAIntegrationConfig(SQLModel, table=True):
         if not isinstance(v, list):
             raise ValueError("allowed_vlans must be a list")
         for vid in v:
-            if not isinstance(vid, int) or vid < 1 or vid > 4094:
+            if isinstance(vid, bool) or not isinstance(vid, int) or vid < 1 or vid > 4094:
                 raise ValueError(f"Invalid VLAN ID: {vid} (must be 1-4094)")
         return sorted(set(v))

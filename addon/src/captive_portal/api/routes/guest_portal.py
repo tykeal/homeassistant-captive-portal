@@ -561,7 +561,7 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             voucher_for_vlan = voucher_service.voucher_repo.get_by_code(
                 validation_result.normalized_code
             )
-            if voucher_for_vlan and voucher_for_vlan.allowed_vlans:
+            if voucher_for_vlan:
                 vlan_result = vlan_service.validate_voucher_vlan(vid, voucher_for_vlan)
                 vlan_meta = {
                     "vlan_allowed": vlan_result.allowed,
@@ -604,32 +604,31 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
                 raise IntegrationUnavailableError("No rental control integration configured")
 
             # VLAN validation for booking path
-            if integration.allowed_vlans:
-                vlan_result = vlan_service.validate_booking_vlan(vid, integration)
-                vlan_meta = {
-                    "vlan_allowed": vlan_result.allowed,
-                    "vlan_reason": vlan_result.reason,
-                    "vlan_device_vid": vlan_result.device_vid,
-                    "vlan_allowed_vlans": vlan_result.allowed_vlans,
-                }
-                if not vlan_result.allowed:
-                    await audit_service.log(
-                        actor=f"guest@{client_ip}",
-                        action="guest.authorize",
-                        outcome="denied",
-                        target_type="booking",
-                        target_id=validation_result.normalized_code,
-                        meta={
-                            "client_ip": client_ip,
-                            "mac": mac_address,
-                            "error": "vlan_check_failed",
-                            **vlan_meta,
-                        },
-                    )
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="This code is not valid for your network.",
-                    )
+            vlan_result = vlan_service.validate_booking_vlan(vid, integration)
+            vlan_meta = {
+                "vlan_allowed": vlan_result.allowed,
+                "vlan_reason": vlan_result.reason,
+                "vlan_device_vid": vlan_result.device_vid,
+                "vlan_allowed_vlans": vlan_result.allowed_vlans,
+            }
+            if not vlan_result.allowed:
+                await audit_service.log(
+                    actor=f"guest@{client_ip}",
+                    action="guest.authorize",
+                    outcome="denied",
+                    target_type="booking",
+                    target_id=validation_result.normalized_code,
+                    meta={
+                        "client_ip": client_ip,
+                        "mac": mac_address,
+                        "error": "vlan_check_failed",
+                        **vlan_meta,
+                    },
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="This code is not valid for your network.",
+                )
 
             # Find matching event
             event = booking_validator.validate_code(validation_result.normalized_code, integration)
