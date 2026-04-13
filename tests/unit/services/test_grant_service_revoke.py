@@ -55,8 +55,8 @@ class TestGrantServiceRevoke:
         assert result.status == GrantStatus.REVOKED
 
     @pytest.mark.asyncio
-    async def test_revoke_expired_grant_idempotent(self, db_session: Session) -> None:
-        """Revoke expired grant (already past end_utc) is no-op but succeeds."""
+    async def test_revoke_expired_grant_succeeds(self, db_session: Session) -> None:
+        """Revoke expired grant transitions status to REVOKED without error."""
         grant = _make_grant(db_session, mac="AA:BB:CC:DD:EE:03", status=GrantStatus.EXPIRED)
         repo = AccessGrantRepository(db_session)
         svc = GrantService(session=db_session, grant_repo=repo)

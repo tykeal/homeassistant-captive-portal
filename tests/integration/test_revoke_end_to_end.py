@@ -38,7 +38,7 @@ class TestRevokeEndToEnd:
     """Test complete revoke flow from admin action to status update."""
 
     @pytest.mark.asyncio
-    async def test_admin_revoke_grant_deauthorizes_controller(self, db_session: Session) -> None:
+    async def test_admin_revoke_grant_updates_status(self, db_session: Session) -> None:
         """Revoking grant should update status to REVOKED."""
         grant = _make_grant(db_session, mac="AA:BB:CC:DD:EE:01")
         assert grant.status == GrantStatus.ACTIVE

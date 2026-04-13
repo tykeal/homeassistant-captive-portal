@@ -111,8 +111,8 @@ class TestVoucherServiceRedeem:
         assert grant.end_utc.second == 0
 
     @pytest.mark.asyncio
-    async def test_redeem_applies_bandwidth_limits_to_grant(self, db_session: Session) -> None:
-        """Redeem creates grant; bandwidth is tracked on voucher."""
+    async def test_redeem_voucher_bandwidth_tracked_on_voucher(self, db_session: Session) -> None:
+        """Redeem creates grant; bandwidth limits remain on the voucher."""
         voucher = _make_voucher(db_session, code="REDEEM0006")
         voucher.up_kbps = 512
         voucher.down_kbps = 1024
