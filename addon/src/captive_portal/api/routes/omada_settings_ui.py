@@ -126,7 +126,7 @@ async def get_omada_settings(
     csrf_token = csrf.generate_token()
     config = _get_or_create_omada_config(session)
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="admin/omada_settings.html",
         context={
@@ -138,6 +138,8 @@ async def get_omada_settings(
             "error_message": request.query_params.get("error"),
         },
     )
+    csrf.set_csrf_cookie(response, csrf_token)
+    return response
 
 
 def _validate_omada_form(
