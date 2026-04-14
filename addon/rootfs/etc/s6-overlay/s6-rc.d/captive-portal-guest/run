@@ -4,21 +4,15 @@
 # shellcheck shell=bash
 # s6-overlay run script for the guest captive portal listener.
 
-declare guest_external_url
-guest_external_url=$(bashio::config 'guest_external_url' '')
-export CP_GUEST_EXTERNAL_URL="${guest_external_url}"
-
-# Omada controller settings are now managed via the web UI and stored
-# in the database.  No environment variable exports are needed.
+# Omada controller settings and guest_external_url are now managed via
+# the web UI and stored in the database.  No environment variable
+# exports are needed for those.
 
 declare debug_guest_portal
 debug_guest_portal=$(bashio::config 'debug_guest_portal' 'false')
 export CP_DEBUG_GUEST_PORTAL="${debug_guest_portal}"
 
 bashio::log.info "Starting guest captive portal listener on port 8099..."
-if [ -n "${guest_external_url}" ]; then
-    bashio::log.info "Guest external URL: ${guest_external_url}"
-fi
 
 exec python -m uvicorn \
     captive_portal.guest_app:create_guest_app \

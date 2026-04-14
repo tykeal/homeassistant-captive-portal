@@ -3,11 +3,12 @@
 """One-time migration of YAML/env settings into the database.
 
 On first startup after upgrade, this service reads existing
-``AppSettings`` values (resolved from YAML / environment variables)
-and writes them into the corresponding database models.  The migration
-is idempotent — it only writes when the target DB record is at its
-default state, so subsequent restarts do not overwrite user changes
-made through the web UI.
+YAML / environment variable values via
+``AppSettings._load_for_migration()`` and writes them into the
+corresponding database models.  The migration is idempotent — it
+only writes when the target DB record is at its default state, so
+subsequent restarts do not overwrite user changes made through the
+web UI.
 """
 
 from __future__ import annotations
@@ -42,18 +43,35 @@ class MigrationResult(BaseModel):
     skipped_reason: str | None = None
 
 
+def _omada_configured(legacy: dict[str, Any]) -> bool:
+    """Check whether legacy values contain a complete Omada config.
+
+    Args:
+        legacy: Dict returned by ``AppSettings._load_for_migration()``.
+
+    Returns:
+        True when controller URL, username, and password are all
+        non-empty.
+    """
+    return bool(
+        str(legacy.get("omada_controller_url", "")).strip()
+        and str(legacy.get("omada_username", "")).strip()
+        and str(legacy.get("omada_password", "")).strip()
+    )
+
+
 async def migrate_yaml_to_db(
     settings: AppSettings,
     session: Session,
     key_path: str = "/data/.omada_key",
 ) -> MigrationResult:
-    """Migrate settings from AppSettings (YAML/env) into DB models.
+    """Migrate settings from YAML/env into DB models.
 
     This function is idempotent: it only writes when the target
     database record is still at its default/empty state.
 
     Args:
-        settings: Resolved application settings.
+        settings: Application settings (used only for options_path).
         session: Active database session.
         key_path: Path to the Fernet encryption key file.
 
@@ -62,24 +80,27 @@ async def migrate_yaml_to_db(
     """
     result = MigrationResult()
 
+    # Read legacy values from YAML / env vars
+    legacy = AppSettings._load_for_migration()
+
     # --- Omada migration ---
     stmt: Any = select(OmadaConfig).where(OmadaConfig.id == 1)
     omada_config: Optional[OmadaConfig] = session.exec(stmt).first()
 
     if omada_config is None or not omada_config.omada_configured:
         # Only migrate if YAML has Omada settings configured
-        if settings.omada_configured:
+        if _omada_configured(legacy):
             if omada_config is None:
                 omada_config = OmadaConfig(id=1)
 
-            omada_config.controller_url = settings.omada_controller_url.strip()
-            omada_config.username = settings.omada_username.strip()
+            omada_config.controller_url = str(legacy["omada_controller_url"]).strip()
+            omada_config.username = str(legacy["omada_username"]).strip()
             omada_config.encrypted_password = encrypt_credential(
-                settings.omada_password, key_path=key_path
+                str(legacy["omada_password"]), key_path=key_path
             )
-            omada_config.site_name = settings.omada_site_name.strip() or "Default"
-            omada_config.controller_id = settings.omada_controller_id.strip()
-            omada_config.verify_ssl = settings.omada_verify_ssl
+            omada_config.site_name = str(legacy["omada_site_name"]).strip() or "Default"
+            omada_config.controller_id = str(legacy["omada_controller_id"]).strip()
+            omada_config.verify_ssl = bool(legacy["omada_verify_ssl"])
 
             session.add(omada_config)
             session.commit()
@@ -104,30 +125,33 @@ async def migrate_yaml_to_db(
         session.refresh(portal_config)
 
     # Migrate session_idle_minutes (only if DB is at default and YAML differs)
-    if portal_config.session_idle_minutes == 30 and settings.session_idle_minutes != 30:
-        portal_config.session_idle_minutes = settings.session_idle_minutes
+    idle = int(legacy["session_idle_minutes"])
+    if portal_config.session_idle_minutes == 30 and idle != 30:
+        portal_config.session_idle_minutes = idle
         result.session_fields_migrated += 1
         logger.info(
             "Migrated session_idle_minutes from YAML: %d",
-            settings.session_idle_minutes,
+            idle,
         )
 
     # Migrate session_max_hours
-    if portal_config.session_max_hours == 8 and settings.session_max_hours != 8:
-        portal_config.session_max_hours = settings.session_max_hours
+    max_h = int(legacy["session_max_hours"])
+    if portal_config.session_max_hours == 8 and max_h != 8:
+        portal_config.session_max_hours = max_h
         result.session_fields_migrated += 1
         logger.info(
             "Migrated session_max_hours from YAML: %d",
-            settings.session_max_hours,
+            max_h,
         )
 
     # Migrate guest_external_url
-    if portal_config.guest_external_url == "" and settings.guest_external_url != "":
-        portal_config.guest_external_url = settings.guest_external_url
+    guest_url = str(legacy["guest_external_url"])
+    if portal_config.guest_external_url == "" and guest_url != "":
+        portal_config.guest_external_url = guest_url
         result.guest_url_migrated = True
         logger.info(
             "Migrated guest_external_url from YAML: %s",
-            settings.guest_external_url,
+            guest_url,
         )
 
     if result.session_fields_migrated > 0 or result.guest_url_migrated:

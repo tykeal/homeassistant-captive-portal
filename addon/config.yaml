@@ -28,7 +28,6 @@ ports_description:
   "8099/tcp": Guest captive portal (configure WiFi controller to redirect here)
 schema:
   log_level: "list(trace|debug|info|notice|warning|error|fatal)?"
-  session_idle_timeout: "int(1,)?"
-  session_max_duration: "int(1,)?"
-  guest_external_url: "url?"
+  ha_base_url: "url?"
+  ha_token: "str?"
   debug_guest_portal: "bool?"

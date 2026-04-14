@@ -64,15 +64,14 @@ async def _run_config_migration(settings: AppSettings, engine: Any) -> None:
         migration_session.close()
 
 
-async def _load_omada_config(settings: AppSettings, engine: Any) -> dict[str, Any] | None:
-    """Load Omada config from DB, falling back to AppSettings.
+async def _load_omada_config(engine: Any) -> dict[str, Any] | None:
+    """Load Omada config from the database.
 
     Args:
-        settings: Application settings.
         engine: SQLAlchemy engine.
 
     Returns:
-        Omada config dict or None.
+        Omada config dict or None if not configured.
     """
     from captive_portal.config.omada_config import build_omada_config
     from captive_portal.models.omada_config import OmadaConfig
@@ -86,11 +85,11 @@ async def _load_omada_config(settings: AppSettings, engine: Any) -> dict[str, An
             db_omada: OmadaConfig | None = omada_session.exec(_stmt).first()
             if db_omada and db_omada.omada_configured:
                 return await build_omada_config(db_omada, logger)
-            return await build_omada_config(settings, logger)
+            return None
         finally:
             omada_session.close()
     except Exception:
-        return await build_omada_config(settings, logger)
+        return None
 
 
 def _make_lifespan(
@@ -143,8 +142,8 @@ def _make_lifespan(
         app.state.ha_client = ha_client
         logger.info("HAClient initialized for %s", settings.ha_base_url)
 
-        # Configure Omada controller integration (prefer DB config)
-        app.state.omada_config = await _load_omada_config(settings, engine)
+        # Configure Omada controller integration (from DB)
+        app.state.omada_config = await _load_omada_config(engine)
 
         if app.state.omada_config:
             logger.info("Omada controller configured.")
@@ -237,10 +236,11 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         lifespan=_make_lifespan(settings),
     )
 
-    # Initialize shared session store and config from settings
-    from captive_portal.security.session_middleware import SessionStore
+    # Initialize shared session store and config (defaults; lifespan
+    # may update from DB-stored PortalConfig values)
+    from captive_portal.security.session_middleware import SessionConfig, SessionStore
 
-    session_config = settings.to_session_config()
+    session_config = SessionConfig()
     session_store = SessionStore()
     # Store both in app state for access by routes
     app.state.session_config = session_config
