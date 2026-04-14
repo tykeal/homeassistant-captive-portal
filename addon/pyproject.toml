@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 [project]
 name = "captive-portal"
-version = "0.0.0.dev0"
+dynamic = ["version"]
 description = "Captive portal guest access (TP-Omada + Home Assistant)"
 authors = [{name="Andrew Grimberg", email="tykeal@bardicgrove.org"}]
 license = {text = "Apache-2.0"}
@@ -34,8 +34,15 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+raw-options.root = ".."
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/captive_portal/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/captive_portal"]

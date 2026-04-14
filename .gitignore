@@ -12,5 +12,6 @@ venv
 
 # Generated files that can be recreated
 addon/coverage.xml
+addon/src/captive_portal/_version.py
 captive_portal.egg-info/*
 addon/src/captive_portal.egg-info/*

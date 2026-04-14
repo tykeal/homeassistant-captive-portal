@@ -175,7 +175,6 @@ wheels = [
 
 [[package]]
 name = "captive-portal"
-version = "0.0.0.dev0"
 source = { editable = "addon" }
 dependencies = [
     { name = "argon2-cffi" },

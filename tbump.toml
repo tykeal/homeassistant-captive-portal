@@ -26,8 +26,3 @@ tag_template = "v{new_version}"
 [[file]]
 src = "addon/config.yaml"
 search = 'version: "{current_version}"'
-
-# Addon Python package — PEP 440 version in pyproject.toml
-[[file]]
-src = "addon/pyproject.toml"
-search = 'version = "{current_version}"'

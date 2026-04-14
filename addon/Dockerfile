@@ -6,6 +6,10 @@ FROM ${BUILD_FROM}
 # Install uv for fast Python package management
 COPY --from=ghcr.io/astral-sh/uv:0.10.9 /uv /usr/local/bin/uv
 
+# Allow injecting version when .git is unavailable (Docker context)
+ARG SETUPTOOLS_SCM_PRETEND_VERSION="0.0.0.dev0"
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=${SETUPTOOLS_SCM_PRETEND_VERSION}
+
 WORKDIR /app
 
 # Phase 1: Install dependencies only (cached when only source changes)
