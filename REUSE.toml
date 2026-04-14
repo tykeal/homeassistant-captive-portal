@@ -4,7 +4,7 @@ version = 1
 
 # Annotate spec kit files
 [[annotations]]
-path = ["addon/uv.lock", "uv.lock", "**.json", "captive_portal.egg-info/**", "addon/src/captive_portal.egg-info/**"]
+path = ["addon/uv.lock", "uv.lock", "**.json", "captive_portal.egg-info/**", "addon/src/captive_portal.egg-info/**", "addon/src/captive_portal/_version.py"]
 SPDX-License-Identifier = "Apache-2.0"
 SPDX-FileCopyrightText = "2025 Andrew Grimberg <tykeal@bardicgrove.org>"
 

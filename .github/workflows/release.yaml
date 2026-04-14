@@ -418,6 +418,7 @@ jobs:
           version: ${{ needs.tag-validate.outputs.version }}
           build-args: |
             BUILD_FROM=${{ steps.base-image.outputs.build_from }}
+            SETUPTOOLS_SCM_PRETEND_VERSION=${{ needs.tag-validate.outputs.version }}
           cosign: 'true'
 
   container-publish:
