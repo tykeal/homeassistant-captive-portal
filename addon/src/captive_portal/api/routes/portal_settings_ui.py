@@ -85,7 +85,7 @@ async def get_portal_settings(
         session.commit()
         session.refresh(config)
 
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request=request,
         name="admin/portal_settings.html",
         context={
@@ -95,6 +95,8 @@ async def get_portal_settings(
             "error_message": request.query_params.get("error"),
         },
     )
+    csrf.set_csrf_cookie(response, csrf_token)
+    return response
 
 
 @router.post("/", response_class=HTMLResponse)
