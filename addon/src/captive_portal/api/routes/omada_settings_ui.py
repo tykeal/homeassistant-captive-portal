@@ -90,8 +90,12 @@ def _get_or_create_omada_config(session: Session) -> OmadaConfig:
     return config
 
 
-def _get_connection_status(app_state: Any) -> str | None:
-    """Determine Omada connection status from app state.
+async def _test_omada_connection(app_state: Any) -> str | None:
+    """Test live connectivity to the Omada controller.
+
+    Attempts an actual API login using the credentials stored in
+    ``app.state.omada_config``.  Returns ``"connected"`` on success,
+    ``"error"`` on failure, or ``None`` when Omada is not configured.
 
     Args:
         app_state: FastAPI app.state object.
@@ -99,10 +103,32 @@ def _get_connection_status(app_state: Any) -> str | None:
     Returns:
         ``"connected"``, ``"error"``, or ``None`` if not configured.
     """
-    omada_cfg = getattr(app_state, "omada_config", None)
+    omada_cfg: dict[str, Any] | None = getattr(app_state, "omada_config", None)
     if omada_cfg is None:
         return None
-    return "connected"
+
+    from captive_portal.controllers.tp_omada.base_client import (
+        OmadaClient,
+        OmadaClientError,
+    )
+
+    try:
+        async with OmadaClient(
+            base_url=omada_cfg["base_url"],
+            controller_id=omada_cfg["controller_id"],
+            username=omada_cfg["username"],
+            password=omada_cfg["password"],
+            verify_ssl=omada_cfg.get("verify_ssl", True),
+            timeout=10.0,
+        ):
+            pass  # login succeeded inside __aenter__
+        return "connected"
+    except OmadaClientError as exc:
+        logger.warning("Omada connection test failed: %s", exc)
+        return "error"
+    except Exception as exc:
+        logger.warning("Omada connection test error: %s", exc)
+        return "error"
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -133,7 +159,7 @@ async def get_omada_settings(
             "config": config,
             "csrf_token": csrf_token,
             "has_password": bool(config.encrypted_password),
-            "connection_status": _get_connection_status(request.app.state),
+            "connection_status": await _test_omada_connection(request.app.state),
             "success_message": request.query_params.get("success"),
             "error_message": request.query_params.get("error"),
         },
@@ -270,7 +296,7 @@ async def update_omada_settings(
     session.add(config)
     session.commit()
 
-    # Rebuild app.state.omada_config
+    # Rebuild app.state.omada_config and test connection
     error_msg = None
     if config.omada_configured:
         try:
@@ -278,9 +304,20 @@ async def update_omada_settings(
 
             new_omada_cfg = await build_omada_config(config, logger)
             request.app.state.omada_config = new_omada_cfg
+
+            # Test actual connectivity with saved credentials
+            conn_status = await _test_omada_connection(request.app.state)
+            if conn_status == "error":
+                error_msg = (
+                    "Settings+saved+but+connection+test+failed"
+                    "+—+check+controller+URL+and+credentials"
+                )
         except Exception as exc:
-            error_msg = f"Settings saved but connection failed: {exc}"
-            logger.error("Omada connection error after settings update: %s", exc)
+            logger.error(
+                "Omada config build error after settings update: %s",
+                exc,
+            )
+            error_msg = "Settings+saved+but+configuration+error"
     else:
         request.app.state.omada_config = None
 
