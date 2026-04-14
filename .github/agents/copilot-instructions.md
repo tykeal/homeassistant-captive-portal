@@ -3,7 +3,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # captive-portal Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-13
+Auto-generated from all feature plans. Last updated: 2026-04-14
 
 ## Active Technologies
 - Python 3.12+ (runtime: Python 3.13 from HA base image) + FastAPI, Uvicorn, SQLModel, Pydantic, Jinja2, Argon2-cffi, HTTPX, passlib (003-addon-structure-refactor)
@@ -17,6 +17,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-13
 - SQLite via SQLModel (ORM), path: `/data/captive_portal.db` (008-omada-controller-wiring)
 - Python 3.12+ with strict mypy type checking + FastAPI, SQLModel, SQLAlchemy, Pydantic, Jinja2, Uvicorn, httpx (011-voucher-purge)
 - SQLite (via SQLModel/SQLAlchemy); lightweight schema migrations in `database.py` (011-voucher-purge)
+- Python 3.12+ with full type annotation coverage (mypy strict) + FastAPI 0.115+, SQLModel, Jinja2, Pydantic v2, cryptography (Fernet), httpx (012-yaml-to-webui-config)
+- SQLite via SQLModel/SQLAlchemy (file: `/data/captive_portal.db`) (012-yaml-to-webui-config)
 
 - Python 3.12+ (per `pyproject.toml` `requires-python = ">=3.12"`) + FastAPI, uvicorn\[standard\], SQLModel, Jinja2, pydantic, argon2-cffi, httpx, passlib, python-multipart, email-validator (002-addon-app-wiring)
 
@@ -41,9 +43,9 @@ uv run mypy addon/src/captive_portal
 Python 3.12+ (per `pyproject.toml` `requires-python = ">=3.12"`): Follow standard conventions
 
 ## Recent Changes
+- 012-yaml-to-webui-config: Added Python 3.12+ with full type annotation coverage (mypy strict) + FastAPI 0.115+, SQLModel, Jinja2, Pydantic v2, cryptography (Fernet), httpx
 - 011-voucher-purge: Added Python 3.12+ with strict mypy type checking + FastAPI, SQLModel, SQLAlchemy, Pydantic, Jinja2, Uvicorn, httpx
 - 008-omada-controller-wiring: Added Python 3.12+ + FastAPI, httpx, SQLModel, Pydantic, uvicorn, passlib, argon2-cffi
-- 007-voucher-management: Documented plan/spec using existing stack: Python 3.12+ (strict mypy, full type annotations) + FastAPI 0.100+, Jinja2, SQLModel (SQLAlchemy + Pydantic), python-multipart (no new runtime dependencies added in this change)
 
 
 <!-- MANUAL ADDITIONS START -->
