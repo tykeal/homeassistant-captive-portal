@@ -27,11 +27,10 @@ def guest_client(guest_app: FastAPI) -> Generator[TestClient, None, None]:
 
 @pytest.fixture
 def guest_app_with_url() -> FastAPI:
-    """Create guest app with configured external URL."""
+    """Create guest app (URL will be read from DB during lifespan)."""
     return create_guest_app(
         settings=AppSettings(
             db_path=":memory:",
-            guest_external_url="http://192.168.1.100:8099",
         )
     )
 
@@ -71,14 +70,16 @@ class TestCaptiveDetectGuestRelative:
 
 
 class TestCaptiveDetectGuestExternalUrl:
-    """Test captive detection with configured guest_external_url."""
+    """Test captive detection without external URL (DB default is empty)."""
 
     @pytest.mark.parametrize("url", DETECTION_URLS)
-    def test_detection_uses_external_url(self, guest_client_with_url: TestClient, url: str) -> None:
-        """Detection URLs redirect using configured external URL."""
+    def test_detection_uses_relative_path(
+        self, guest_client_with_url: TestClient, url: str
+    ) -> None:
+        """Detection URLs redirect using relative path when DB has no URL."""
         response = guest_client_with_url.get(url, follow_redirects=False)
         assert response.status_code == 302
-        assert response.headers["location"] == "http://192.168.1.100:8099/guest/authorize"
+        assert response.headers["location"] == "/guest/authorize"
 
 
 class TestGuestAuthorizationAccess:

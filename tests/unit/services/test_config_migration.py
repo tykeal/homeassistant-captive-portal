@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from unittest.mock import patch
 
 import pytest
 from sqlmodel import Session
@@ -15,6 +16,11 @@ from captive_portal.models.omada_config import OmadaConfig
 from captive_portal.models.portal_config import PortalConfig
 from captive_portal.security.credential_encryption import decrypt_credential
 from captive_portal.services.config_migration import MigrationResult, migrate_yaml_to_db
+
+
+def _clean_env() -> dict[str, str]:
+    """Return environment with all CP_ vars removed."""
+    return {k: v for k, v in os.environ.items() if not k.startswith("CP_")}
 
 
 @pytest.fixture
@@ -35,20 +41,24 @@ class TestMigrateYamlToDb:
 
     @pytest.mark.asyncio
     async def test_full_migration_with_all_fields(self, db_session: Session, key_path: str) -> None:
-        """All fields migrate from populated AppSettings."""
-        settings = AppSettings(
-            omada_controller_url="https://omada.test:8043",
-            omada_username="operator",
-            omada_password="secret123",
-            omada_site_name="TestSite",
-            omada_controller_id="aabbccdd1122",
-            omada_verify_ssl=False,
-            session_idle_minutes=45,
-            session_max_hours=12,
-            guest_external_url="https://guest.example.com",
+        """All fields migrate from legacy env vars."""
+        env = _clean_env()
+        env.update(
+            {
+                "CP_OMADA_CONTROLLER_URL": "https://omada.test:8043",
+                "CP_OMADA_USERNAME": "operator",
+                "CP_OMADA_PASSWORD": "secret123",
+                "CP_OMADA_SITE_NAME": "TestSite",
+                "CP_OMADA_CONTROLLER_ID": "aabbccdd1122",
+                "CP_OMADA_VERIFY_SSL": "false",
+                "CP_SESSION_IDLE_TIMEOUT": "45",
+                "CP_SESSION_MAX_DURATION": "12",
+                "CP_GUEST_EXTERNAL_URL": "https://guest.example.com",
+            }
         )
-
-        result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
+            result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
 
         assert result.omada_migrated is True
         assert result.session_fields_migrated == 2
@@ -82,13 +92,17 @@ class TestMigrateYamlToDb:
         db_session.add(existing)
         db_session.commit()
 
-        settings = AppSettings(
-            omada_controller_url="https://new.omada:8043",
-            omada_username="new_user",
-            omada_password="new_pass",
+        env = _clean_env()
+        env.update(
+            {
+                "CP_OMADA_CONTROLLER_URL": "https://new.omada:8043",
+                "CP_OMADA_USERNAME": "new_user",
+                "CP_OMADA_PASSWORD": "new_pass",
+            }
         )
-
-        result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
+            result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
 
         assert result.omada_migrated is False
 
@@ -105,9 +119,11 @@ class TestMigrateYamlToDb:
         db_session.add(portal)
         db_session.commit()
 
-        settings = AppSettings(session_idle_minutes=90)
-
-        result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
+        env = _clean_env()
+        env["CP_SESSION_IDLE_TIMEOUT"] = "90"
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
+            result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
 
         assert result.session_fields_migrated == 0
 
@@ -119,13 +135,17 @@ class TestMigrateYamlToDb:
     @pytest.mark.asyncio
     async def test_partial_migration_omada_only(self, db_session: Session, key_path: str) -> None:
         """Only Omada settings migrate when session settings are default."""
-        settings = AppSettings(
-            omada_controller_url="https://omada.test:8043",
-            omada_username="user",
-            omada_password="pass",
+        env = _clean_env()
+        env.update(
+            {
+                "CP_OMADA_CONTROLLER_URL": "https://omada.test:8043",
+                "CP_OMADA_USERNAME": "user",
+                "CP_OMADA_PASSWORD": "pass",
+            }
         )
-
-        result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
+            result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
 
         assert result.omada_migrated is True
         assert result.session_fields_migrated == 0
@@ -133,10 +153,11 @@ class TestMigrateYamlToDb:
 
     @pytest.mark.asyncio
     async def test_empty_settings_apply_defaults(self, db_session: Session, key_path: str) -> None:
-        """Default AppSettings result in no migration."""
-        settings = AppSettings()
-
-        result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
+        """Default settings (no legacy env) result in no migration."""
+        env = _clean_env()
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
+            result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
 
         assert result.omada_migrated is False
         assert result.session_fields_migrated == 0

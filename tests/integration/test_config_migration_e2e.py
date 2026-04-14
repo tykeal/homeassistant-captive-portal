@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from unittest.mock import patch
 
 import pytest
 from sqlmodel import Session
@@ -36,19 +37,20 @@ class TestConfigMigrationE2E:
     @pytest.mark.asyncio
     async def test_full_startup_migration(self, db_session: Session, key_path: str) -> None:
         """Simulate startup with YAML values → DB records created."""
-        settings = AppSettings(
-            omada_controller_url="https://omada.e2e:8043",
-            omada_username="e2e_user",
-            omada_password="e2e_pass",
-            omada_site_name="E2ESite",
-            omada_controller_id="aabb11223344",
-            omada_verify_ssl=True,
-            session_idle_minutes=60,
-            session_max_hours=24,
-            guest_external_url="https://guest.e2e.example.com",
-        )
-
-        result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
+        env = {
+            "CP_OMADA_CONTROLLER_URL": "https://omada.e2e:8043",
+            "CP_OMADA_USERNAME": "e2e_user",
+            "CP_OMADA_PASSWORD": "e2e_pass",
+            "CP_OMADA_SITE_NAME": "E2ESite",
+            "CP_OMADA_CONTROLLER_ID": "aabb11223344",
+            "CP_OMADA_VERIFY_SSL": "true",
+            "CP_SESSION_IDLE_TIMEOUT": "60",
+            "CP_SESSION_MAX_DURATION": "24",
+            "CP_GUEST_EXTERNAL_URL": "https://guest.e2e.example.com",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
+            result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
 
         assert result.omada_migrated is True
         assert result.session_fields_migrated == 2
@@ -71,30 +73,34 @@ class TestConfigMigrationE2E:
     @pytest.mark.asyncio
     async def test_restart_does_not_overwrite(self, db_session: Session, key_path: str) -> None:
         """Simulate restart → DB values unchanged after second migration."""
-        settings = AppSettings(
-            omada_controller_url="https://omada.e2e:8043",
-            omada_username="e2e_user",
-            omada_password="e2e_pass",
-            session_idle_minutes=60,
-            session_max_hours=24,
-            guest_external_url="https://guest.e2e.example.com",
-        )
+        env = {
+            "CP_OMADA_CONTROLLER_URL": "https://omada.e2e:8043",
+            "CP_OMADA_USERNAME": "e2e_user",
+            "CP_OMADA_PASSWORD": "e2e_pass",
+            "CP_SESSION_IDLE_TIMEOUT": "60",
+            "CP_SESSION_MAX_DURATION": "24",
+            "CP_GUEST_EXTERNAL_URL": "https://guest.e2e.example.com",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
 
-        # First migration
-        result1 = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
-        assert result1.omada_migrated is True
+            # First migration
+            result1 = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
+            assert result1.omada_migrated is True
 
-        # Second migration (simulate restart)
-        result2 = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
-        assert result2.omada_migrated is False  # Already migrated
-        assert result2.session_fields_migrated == 0  # Already non-default
+            # Second migration (simulate restart)
+            result2 = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
+            assert result2.omada_migrated is False  # Already migrated
+            assert result2.session_fields_migrated == 0  # Already non-default
 
     @pytest.mark.asyncio
     async def test_fresh_install_defaults(self, db_session: Session, key_path: str) -> None:
         """Simulate fresh install — default settings, no migration."""
-        settings = AppSettings()
+        env = {k: v for k, v in os.environ.items() if not k.startswith("CP_")}
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
 
-        result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
+            result = await migrate_yaml_to_db(settings, db_session, key_path=key_path)
 
         assert result.omada_migrated is False
         assert result.session_fields_migrated == 0

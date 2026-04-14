@@ -38,8 +38,6 @@ def _make_client(root_path: str = "") -> Generator[TestClient, None, None]:
         settings = AppSettings(
             log_level="info",
             db_path=db_path,
-            session_idle_minutes=30,
-            session_max_hours=8,
         )
 
         from captive_portal.app import create_app

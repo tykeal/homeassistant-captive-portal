@@ -12,12 +12,10 @@ from captive_portal.config.settings import AppSettings
 
 
 def test_log_effective_logs_all_settings(caplog: pytest.LogCaptureFixture) -> None:
-    """log_effective() should log all four settings at INFO level."""
+    """log_effective() should log all retained settings at INFO level."""
     settings = AppSettings(
         log_level="debug",
         db_path="/data/test.db",
-        session_idle_minutes=15,
-        session_max_hours=4,
     )
     logger = logging.getLogger("test_startup_logging")
 
@@ -28,10 +26,8 @@ def test_log_effective_logs_all_settings(caplog: pytest.LogCaptureFixture) -> No
     assert "debug" in caplog.text
     assert "db_path" in caplog.text
     assert "/data/test.db" in caplog.text
-    assert "session_idle_minutes" in caplog.text
-    assert "15" in caplog.text
-    assert "session_max_hours" in caplog.text
-    assert "4" in caplog.text
+    assert "ha_base_url" in caplog.text
+    assert "debug_guest_portal" in caplog.text
 
 
 def test_log_effective_no_secrets(caplog: pytest.LogCaptureFixture) -> None:
@@ -43,7 +39,6 @@ def test_log_effective_no_secrets(caplog: pytest.LogCaptureFixture) -> None:
         settings.log_effective(logger)
 
     # Actual setting values should not contain password, token, or key
-    # (AppSettings has no secret fields; this verifies no accidental leakage)
     log_lines = caplog.text.lower()
     for secret_word in ("password=", "token=", "api_key="):
         assert secret_word not in log_lines
@@ -52,12 +47,10 @@ def test_log_effective_no_secrets(caplog: pytest.LogCaptureFixture) -> None:
 def test_log_effective_includes_field_names_and_values(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Log output should include both field names and effective values (FR-016)."""
+    """Log output should include both field names and effective values."""
     settings = AppSettings(
         log_level="warning",
         db_path="/custom/db.sqlite",
-        session_idle_minutes=60,
-        session_max_hours=12,
     )
     logger = logging.getLogger("test_startup_fields")
 
@@ -65,11 +58,9 @@ def test_log_effective_includes_field_names_and_values(
         settings.log_effective(logger)
 
     # Field names present
-    for field in ("log_level", "db_path", "session_idle_minutes", "session_max_hours"):
+    for field in ("log_level", "db_path", "ha_base_url", "debug_guest_portal"):
         assert field in caplog.text
 
     # Values present
     assert "warning" in caplog.text
     assert "/custom/db.sqlite" in caplog.text
-    assert "60" in caplog.text
-    assert "12" in caplog.text

@@ -27,8 +27,6 @@ def test_create_app_with_settings_initializes_db() -> None:
         settings = AppSettings(
             log_level="info",
             db_path=db_path,
-            session_idle_minutes=30,
-            session_max_hours=8,
         )
 
         from captive_portal.app import create_app
