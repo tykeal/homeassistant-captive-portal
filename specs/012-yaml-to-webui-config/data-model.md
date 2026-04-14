@@ -108,8 +108,8 @@ class OmadaConfig(SQLModel, table=True):
 
 | Field | Type | Default | Constraints | Notes |
 |-------|------|---------|-------------|-------|
-| `session_idle_minutes` | `int` | `30` | ge=1, le=1440 | Admin session idle timeout in minutes |
-| `session_max_hours` | `int` | `8` | ge=1, le=168 | Admin session max duration in hours |
+| `session_idle_minutes` | `int` | `30` | ge=1, le=1440 | Guest session idle timeout in minutes |
+| `session_max_hours` | `int` | `8` | ge=1, le=168 | Guest session max duration in hours |
 | `guest_external_url` | `str` | `""` | max_length=2048 | Guest portal external URL for captive detection |
 
 ### Validation Rules
