@@ -98,15 +98,46 @@ def _make_guest_lifespan(
             dispose_engine()
             raise
 
-        # Configure Omada controller integration
+        # Configure Omada controller integration (from DB)
         from captive_portal.config.omada_config import build_omada_config
+        from captive_portal.models.omada_config import OmadaConfig as _OmadaConfig
 
-        app.state.omada_config = await build_omada_config(settings, logger)
+        from sqlmodel import Session as _Session, select as _select
+
+        _omada_sess = _Session(engine)
+        try:
+            from typing import Any as _Any
+
+            _stmt: _Any = _select(_OmadaConfig).where(_OmadaConfig.id == 1)
+            _db_omada: _OmadaConfig | None = _omada_sess.exec(_stmt).first()
+            if _db_omada and _db_omada.omada_configured:
+                app.state.omada_config = await build_omada_config(_db_omada, logger)
+            else:
+                app.state.omada_config = None
+        finally:
+            _omada_sess.close()
+
+        # Load guest_external_url from DB (PortalConfig)
+        from captive_portal.models.portal_config import PortalConfig as _PortalConfig
+
+        _portal_sess = _Session(engine)
+        try:
+            _pstmt: _Any = _select(_PortalConfig).where(_PortalConfig.id == 1)
+            _portal: _PortalConfig | None = _portal_sess.exec(_pstmt).first()
+            guest_url = _portal.guest_external_url if _portal else ""
+            app.state.guest_external_url = guest_url
+            if not guest_url:
+                logger.warning(
+                    "guest_external_url is not configured. "
+                    "Captive portal detection redirects will use "
+                    "relative paths. Configure guest_external_url "
+                    "via the web UI for correct redirect URLs."
+                )
+        finally:
+            _portal_sess.close()
+
         if app.state.omada_config:
-            logger.info(
-                "Omada controller configured for %s",
-                settings.omada_controller_url,
-            )
+            logger.info("Omada controller configured.")
         else:
             logger.info("Omada controller not configured — controller calls will be skipped")
 
@@ -136,14 +167,6 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
     if settings is None:
         settings = AppSettings.load()
 
-    if not settings.guest_external_url:
-        logger.warning(
-            "guest_external_url is not configured. "
-            "Captive portal detection redirects will use relative paths. "
-            "Set guest_external_url in addon options or via the CP_GUEST_EXTERNAL_URL "
-            "environment variable for correct redirect URLs."
-        )
-
     app = FastAPI(
         title="Captive Portal Guest Access — Guest Listener",
         docs_url=None,
@@ -151,8 +174,9 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
         lifespan=_make_guest_lifespan(settings),
     )
 
-    # Store guest external URL in app state for route handlers
-    app.state.guest_external_url = settings.guest_external_url
+    # guest_external_url is loaded from DB during lifespan startup;
+    # set a default so the attribute always exists before lifespan runs.
+    app.state.guest_external_url = ""
 
     # Store debug toggle in app state for route handlers
     app.state.debug_guest_portal = settings.debug_guest_portal

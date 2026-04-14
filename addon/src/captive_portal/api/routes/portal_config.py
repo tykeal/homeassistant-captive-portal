@@ -53,6 +53,9 @@ class PortalConfigResponse(BaseModel):
     rate_limit_attempts: int
     rate_limit_window_seconds: int
     redirect_to_original_url: bool
+    session_idle_minutes: int
+    session_max_hours: int
+    guest_external_url: str
 
 
 class PortalConfigUpdate(BaseModel):
@@ -62,6 +65,9 @@ class PortalConfigUpdate(BaseModel):
     rate_limit_attempts: int | None = Field(None, ge=1, le=MAX_RATE_LIMIT_ATTEMPTS)
     rate_limit_window_seconds: int | None = Field(None, ge=1, le=MAX_RATE_LIMIT_WINDOW_SECONDS)
     redirect_to_original_url: bool | None = None
+    session_idle_minutes: int | None = Field(None, ge=1, le=1440)
+    session_max_hours: int | None = Field(None, ge=1, le=168)
+    guest_external_url: str | None = Field(None, max_length=MAX_REDIRECT_URL_LENGTH)
 
 
 @router.get("", response_model=PortalConfigResponse)
@@ -92,6 +98,9 @@ async def get_portal_config(
         rate_limit_attempts=config.rate_limit_attempts,
         rate_limit_window_seconds=config.rate_limit_window_seconds,
         redirect_to_original_url=config.redirect_to_original_url,
+        session_idle_minutes=config.session_idle_minutes,
+        session_max_hours=config.session_max_hours,
+        guest_external_url=config.guest_external_url,
     )
 
 
@@ -132,6 +141,12 @@ async def update_portal_config(
         config.rate_limit_window_seconds = updates.rate_limit_window_seconds
     if updates.redirect_to_original_url is not None:
         config.redirect_to_original_url = updates.redirect_to_original_url
+    if updates.session_idle_minutes is not None:
+        config.session_idle_minutes = updates.session_idle_minutes
+    if updates.session_max_hours is not None:
+        config.session_max_hours = updates.session_max_hours
+    if updates.guest_external_url is not None:
+        config.guest_external_url = updates.guest_external_url
 
     session.add(config)
     session.commit()
@@ -143,4 +158,7 @@ async def update_portal_config(
         rate_limit_attempts=config.rate_limit_attempts,
         rate_limit_window_seconds=config.rate_limit_window_seconds,
         redirect_to_original_url=config.redirect_to_original_url,
+        session_idle_minutes=config.session_idle_minutes,
+        session_max_hours=config.session_max_hours,
+        guest_external_url=config.guest_external_url,
     )

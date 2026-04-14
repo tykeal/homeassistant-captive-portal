@@ -22,8 +22,6 @@ def test_settings_load_defaults() -> None:
     # THEN: defaults applied
     assert settings.log_level == "info"
     assert settings.db_path == "/data/captive_portal.db"
-    assert settings.session_idle_minutes == 30
-    assert settings.session_max_hours == 8
 
 
 def test_settings_load_from_env() -> None:
@@ -32,8 +30,6 @@ def test_settings_load_from_env() -> None:
     env_overrides = {
         "CP_LOG_LEVEL": "debug",
         "CP_DB_PATH": "/custom/path.db",
-        "CP_SESSION_IDLE_TIMEOUT": "15",
-        "CP_SESSION_MAX_DURATION": "4",
     }
     with patch.dict(os.environ, env_overrides, clear=False):
         # WHEN: loading settings with no addon options file
@@ -42,8 +38,6 @@ def test_settings_load_from_env() -> None:
     # THEN: settings reflect env values
     assert settings.log_level == "debug"
     assert settings.db_path == "/custom/path.db"
-    assert settings.session_idle_minutes == 15
-    assert settings.session_max_hours == 4
 
 
 def test_invalid_log_level_falls_back_to_default() -> None:
@@ -55,17 +49,6 @@ def test_invalid_log_level_falls_back_to_default() -> None:
 
     # THEN: falls through to default
     assert settings.log_level == "info"
-
-
-def test_invalid_negative_timeout_falls_back_to_default() -> None:
-    """Settings should ignore invalid negative timeout and use default."""
-    # GIVEN: env var with negative value
-    with patch.dict(os.environ, {"CP_SESSION_IDLE_TIMEOUT": "-1"}, clear=False):
-        # WHEN: loading settings
-        settings = AppSettings.load(options_path="/nonexistent/options.json")
-
-    # THEN: falls through to default
-    assert settings.session_idle_minutes == 30
 
 
 def test_settings_secret_redaction() -> None:
@@ -97,7 +80,7 @@ def test_settings_database_path_default() -> None:
 
 
 def test_settings_log_effective(caplog: pytest.LogCaptureFixture) -> None:
-    """log_effective() should log all settings at INFO level."""
+    """log_effective() should log retained settings at INFO level."""
     # GIVEN: settings with defaults
     settings = AppSettings.load(options_path="/nonexistent/options.json")
     logger = logging.getLogger("test_settings_load")
@@ -106,8 +89,8 @@ def test_settings_log_effective(caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.INFO, logger="test_settings_load"):
         settings.log_effective(logger)
 
-    # THEN: all four fields logged
+    # THEN: retained fields logged
     assert "log_level" in caplog.text
     assert "db_path" in caplog.text
-    assert "session_idle_minutes" in caplog.text
-    assert "session_max_hours" in caplog.text
+    assert "ha_base_url" in caplog.text
+    assert "debug_guest_portal" in caplog.text

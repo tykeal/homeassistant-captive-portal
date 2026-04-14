@@ -3,8 +3,8 @@
 """Tests for admin app lifespan Omada wiring.
 
 Validates that the admin app stores ``omada_config`` dict on ``app.state``
-when configured, and ``None`` when not. No shared client/adapter instances
-are stored (per-request construction pattern).
+when configured in the database, and ``None`` when not.  No shared
+client/adapter instances are stored (per-request construction pattern).
 """
 
 from __future__ import annotations
@@ -18,42 +18,20 @@ from captive_portal.config.settings import AppSettings
 
 
 class TestAdminLifespanOmadaConfigured:
-    """Tests when Omada controller URL is configured."""
+    """Tests when Omada controller is NOT configured (DB default)."""
 
-    def test_omada_config_dict_on_state(self) -> None:
-        """app.state.omada_config should be a dict with expected keys."""
-        settings = AppSettings(
-            db_path=":memory:",
-            omada_controller_url="https://ctrl.local:8043",
-            omada_controller_id="aabbccdd1122334455667788",
-            omada_username="user1",
-            omada_password="pass1",
-            omada_verify_ssl=False,
-            omada_site_name="MySite",
-        )
+    def test_omada_config_is_none_by_default(self) -> None:
+        """app.state.omada_config should be None when DB has no config."""
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
 
         app = create_app(settings=settings)
         with TestClient(app):
-            config = app.state.omada_config
-            assert config is not None
-            assert isinstance(config, dict)
-            assert config["base_url"] == "https://ctrl.local:8043"
-            assert config["controller_id"] == "aabbccdd1122334455667788"
-            assert config["username"] == "user1"
-            assert config["password"] == "pass1"
-            assert config["verify_ssl"] is False
-            assert config["site_id"] == "MySite"
+            assert app.state.omada_config is None
 
     def test_no_shared_client_on_state(self) -> None:
         """No OmadaClient or OmadaAdapter should be stored on app.state."""
-        settings = AppSettings(
-            db_path=":memory:",
-            omada_controller_url="https://ctrl.local:8043",
-            omada_controller_id="aabbccdd1122334455667788",
-            omada_username="user1",
-            omada_password="pass1",
-        )
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
 
         app = create_app(settings=settings)
@@ -66,11 +44,8 @@ class TestAdminLifespanOmadaNotConfigured:
     """Tests when Omada controller URL is not configured."""
 
     def test_omada_config_is_none(self) -> None:
-        """app.state.omada_config should be None when URL is empty."""
-        settings = AppSettings(
-            db_path=":memory:",
-            omada_controller_url="",
-        )
+        """app.state.omada_config should be None when not configured."""
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
 
         app = create_app(settings=settings)
@@ -79,10 +54,7 @@ class TestAdminLifespanOmadaNotConfigured:
 
     def test_no_errors_when_unconfigured(self, caplog: pytest.LogCaptureFixture) -> None:
         """App should start without errors when Omada is not configured."""
-        settings = AppSettings(
-            db_path=":memory:",
-            omada_controller_url="",
-        )
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
 
         app = create_app(settings=settings)

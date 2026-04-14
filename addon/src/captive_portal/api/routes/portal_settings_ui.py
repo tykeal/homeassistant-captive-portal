@@ -108,6 +108,9 @@ async def update_portal_settings(
     rate_limit_window_seconds: Annotated[int, Form()],
     success_redirect_url: Annotated[str, Form()],
     redirect_to_original_url: Annotated[Optional[str], Form()] = None,
+    session_idle_minutes: Annotated[int, Form()] = 30,
+    session_max_hours: Annotated[int, Form()] = 8,
+    guest_external_url: Annotated[str, Form()] = "",
 ) -> RedirectResponse:
     """Update portal configuration settings (admin only).
 
@@ -121,6 +124,9 @@ async def update_portal_settings(
         rate_limit_window_seconds: Rolling window in seconds
         success_redirect_url: Default redirect URL
         redirect_to_original_url: Checkbox value (present if checked)
+        session_idle_minutes: Session idle timeout in minutes
+        session_max_hours: Session max duration in hours
+        guest_external_url: Guest portal external URL
 
     Returns:
         Redirect to settings page
@@ -166,6 +172,18 @@ async def update_portal_settings(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
+    if session_idle_minutes < 1 or session_idle_minutes > 1440:
+        return RedirectResponse(
+            url=f"{root}/admin/portal-settings?error=Session+idle+timeout+must+be+between+1+and+1440+minutes",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    if session_max_hours < 1 or session_max_hours > 168:
+        return RedirectResponse(
+            url=f"{root}/admin/portal-settings?error=Session+max+duration+must+be+between+1+and+168+hours",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
     # Get singleton config
     stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
     config: Optional[PortalConfig] = session.exec(stmt).first()
@@ -180,6 +198,9 @@ async def update_portal_settings(
     config.rate_limit_window_seconds = rate_limit_window_seconds
     config.success_redirect_url = success_redirect_url
     config.redirect_to_original_url = redirect_to_original_url == "true"
+    config.session_idle_minutes = session_idle_minutes
+    config.session_max_hours = session_max_hours
+    config.guest_external_url = guest_external_url.strip()
 
     session.add(config)
     session.commit()
@@ -195,6 +216,9 @@ async def update_portal_settings(
             "rate_limit_attempts": rate_limit_attempts,
             "rate_limit_window_seconds": rate_limit_window_seconds,
             "redirect_to_original_url": config.redirect_to_original_url,
+            "session_idle_minutes": session_idle_minutes,
+            "session_max_hours": session_max_hours,
+            "guest_external_url": config.guest_external_url,
         },
     )
 

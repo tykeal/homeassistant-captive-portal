@@ -19,10 +19,7 @@ class TestAdminLifespanPollerWiring:
 
     def test_ha_poller_stored_on_state(self) -> None:
         """app.state.ha_poller should be an HAPoller instance."""
-        settings = AppSettings(
-            db_path=":memory:",
-            omada_controller_url="",
-        )
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
 
         app = create_app(settings=settings)
@@ -32,10 +29,7 @@ class TestAdminLifespanPollerWiring:
 
     def test_poller_session_stored_on_state(self) -> None:
         """app.state.poller_session should exist during lifespan."""
-        settings = AppSettings(
-            db_path=":memory:",
-            omada_controller_url="",
-        )
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
 
         app = create_app(settings=settings)
@@ -45,10 +39,7 @@ class TestAdminLifespanPollerWiring:
 
     def test_poller_task_stored_on_state(self) -> None:
         """app.state.ha_poller_task should exist during lifespan."""
-        settings = AppSettings(
-            db_path=":memory:",
-            omada_controller_url="",
-        )
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
 
         app = create_app(settings=settings)
@@ -58,10 +49,7 @@ class TestAdminLifespanPollerWiring:
 
     def test_poller_shutdown_clean(self) -> None:
         """Poller should stop without errors on app shutdown."""
-        settings = AppSettings(
-            db_path=":memory:",
-            omada_controller_url="",
-        )
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
 
         app = create_app(settings=settings)

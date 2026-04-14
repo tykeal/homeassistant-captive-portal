@@ -37,6 +37,61 @@ logger = logging.getLogger("captive_portal")
 _THEMES_DIR = Path(__file__).resolve().parent / "web" / "themes"
 
 
+async def _run_config_migration(settings: AppSettings, engine: Any) -> None:
+    """Run YAML→DB migration (non-fatal).
+
+    Args:
+        settings: Application settings.
+        engine: SQLAlchemy engine.
+    """
+    from captive_portal.services.config_migration import migrate_yaml_to_db
+
+    migration_session = Session(engine)
+    try:
+        result = await migrate_yaml_to_db(settings, migration_session)
+        if result.omada_migrated:
+            logger.info("Config migration: Omada settings migrated from YAML to DB.")
+        if result.session_fields_migrated > 0:
+            logger.info(
+                "Config migration: %d session fields migrated.",
+                result.session_fields_migrated,
+            )
+        if result.guest_url_migrated:
+            logger.info("Config migration: guest_external_url migrated.")
+    except Exception as exc:
+        logger.warning("Config migration skipped (non-fatal): %s", exc)
+    finally:
+        migration_session.close()
+
+
+async def _load_omada_config(engine: Any) -> dict[str, Any] | None:
+    """Load Omada config from the database.
+
+    Args:
+        engine: SQLAlchemy engine.
+
+    Returns:
+        Omada config dict or None if not configured.
+    """
+    from captive_portal.config.omada_config import build_omada_config
+    from captive_portal.models.omada_config import OmadaConfig
+
+    try:
+        omada_session = Session(engine)
+        try:
+            from sqlmodel import select as _select
+
+            _stmt: Any = _select(OmadaConfig).where(OmadaConfig.id == 1)
+            db_omada: OmadaConfig | None = omada_session.exec(_stmt).first()
+            if db_omada and db_omada.omada_configured:
+                return await build_omada_config(db_omada, logger)
+            return None
+        finally:
+            omada_session.close()
+    except Exception:
+        return None
+
+
 def _make_lifespan(
     settings: AppSettings,
 ) -> Callable[..., Any]:
@@ -79,20 +134,19 @@ def _make_lifespan(
             dispose_engine()
             raise
 
+        # Run one-time YAML→DB migration
+        await _run_config_migration(settings, engine)
+
         # Create HA client for API communication
         ha_client = HAClient(settings.ha_base_url, settings.ha_token)
         app.state.ha_client = ha_client
         logger.info("HAClient initialized for %s", settings.ha_base_url)
 
-        # Configure Omada controller integration
-        from captive_portal.config.omada_config import build_omada_config
+        # Configure Omada controller integration (from DB)
+        app.state.omada_config = await _load_omada_config(engine)
 
-        app.state.omada_config = await build_omada_config(settings, logger)
         if app.state.omada_config:
-            logger.info(
-                "Omada controller configured for %s",
-                settings.omada_controller_url,
-            )
+            logger.info("Omada controller configured.")
         else:
             logger.info("Omada controller not configured — controller calls will be skipped")
 
@@ -182,10 +236,11 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         lifespan=_make_lifespan(settings),
     )
 
-    # Initialize shared session store and config from settings
-    from captive_portal.security.session_middleware import SessionStore
+    # Initialize shared session store and config (defaults; lifespan
+    # may update from DB-stored PortalConfig values)
+    from captive_portal.security.session_middleware import SessionConfig, SessionStore
 
-    session_config = settings.to_session_config()
+    session_config = SessionConfig()
     session_store = SessionStore()
     # Store both in app state for access by routes
     app.state.session_config = session_config
@@ -231,6 +286,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         health,
         integrations,
         integrations_ui,
+        omada_settings_ui,
         portal_config,
         portal_settings_ui,
         vouchers,
@@ -251,6 +307,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(guest_portal.router)
     app.include_router(health.router)
     app.include_router(integrations.router)
+    app.include_router(omada_settings_ui.router)
     app.include_router(portal_config.router)
     app.include_router(portal_settings_ui.router)
     app.include_router(vouchers.router)

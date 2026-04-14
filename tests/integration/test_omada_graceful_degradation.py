@@ -3,7 +3,7 @@
 """Integration test for graceful degradation without Omada config.
 
 Validates that the app starts cleanly and functions normally when
-no Omada controller is configured.
+no Omada controller is configured in the database.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ class TestGracefulDegradation:
 
     def test_admin_app_starts_without_omada(self) -> None:
         """Admin app should start without errors when Omada is not configured."""
-        settings = AppSettings(db_path=":memory:", omada_controller_url="")
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
 
         app = create_app(settings=settings)
@@ -34,7 +34,7 @@ class TestGracefulDegradation:
 
     def test_guest_app_starts_without_omada(self) -> None:
         """Guest app should start without errors when Omada is not configured."""
-        settings = AppSettings(db_path=":memory:", omada_controller_url="")
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.guest_app import create_guest_app
 
         app = create_guest_app(settings=settings)
@@ -46,7 +46,7 @@ class TestGracefulDegradation:
 
     def test_adapter_returns_none_when_unconfigured(self) -> None:
         """get_omada_adapter should return None without Omada config."""
-        settings = AppSettings(db_path=":memory:", omada_controller_url="")
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
         from unittest.mock import MagicMock
 
@@ -59,7 +59,7 @@ class TestGracefulDegradation:
 
     def test_no_error_logs_when_unconfigured(self, caplog: pytest.LogCaptureFixture) -> None:
         """No error logs about Omada should appear when unconfigured."""
-        settings = AppSettings(db_path=":memory:", omada_controller_url="")
+        settings = AppSettings(db_path=":memory:")
         from captive_portal.app import create_app
 
         app = create_app(settings=settings)

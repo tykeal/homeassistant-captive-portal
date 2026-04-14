@@ -20,6 +20,9 @@ class PortalConfig(SQLModel, table=True):
         redirect_to_original_url: Redirect to original URL vs success page (default: True)
         trusted_proxy_networks: JSON list of trusted proxy networks in CIDR notation
             (default: ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"])
+        session_idle_minutes: Guest session idle timeout in minutes (1-1440, default: 30)
+        session_max_hours: Guest session max duration in hours (1-168, default: 8)
+        guest_external_url: Guest portal external URL for captive detection (default: "")
     """
 
     __tablename__ = "portal_config"
@@ -35,6 +38,9 @@ class PortalConfig(SQLModel, table=True):
         default='["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]',
         sa_column=Column(TEXT),
     )
+    session_idle_minutes: int = Field(default=30, ge=1, le=1440)
+    session_max_hours: int = Field(default=8, ge=1, le=168)
+    guest_external_url: str = Field(default="", max_length=2048)
 
     @field_validator("trusted_proxy_networks")
     @classmethod

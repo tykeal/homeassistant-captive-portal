@@ -164,10 +164,11 @@ class TestGuestAppState:
     """Test guest app state configuration."""
 
     def test_guest_external_url_in_state(self) -> None:
-        """Guest app stores guest_external_url in app.state."""
-        settings = AppSettings(db_path=":memory:", guest_external_url="http://10.0.0.1:8099")
+        """Guest app stores guest_external_url in app.state (default empty)."""
+        settings = AppSettings(db_path=":memory:")
         app = create_guest_app(settings=settings)
-        assert app.state.guest_external_url == "http://10.0.0.1:8099"
+        # Before lifespan runs, guest_external_url defaults to empty
+        assert app.state.guest_external_url == ""
 
     def test_guest_external_url_empty_in_state(self, guest_app: FastAPI) -> None:
         """Guest app stores empty guest_external_url in state when not configured."""

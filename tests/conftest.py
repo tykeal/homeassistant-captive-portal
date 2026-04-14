@@ -31,6 +31,7 @@ def db_engine() -> Generator[Engine, None, None]:
     from captive_portal.models.admin_user import AdminUser  # noqa: F401
     from captive_portal.models.audit_log import AuditLog  # noqa: F401
     from captive_portal.models.ha_integration_config import HAIntegrationConfig  # noqa: F401
+    from captive_portal.models.omada_config import OmadaConfig  # noqa: F401
     from captive_portal.models.portal_config import PortalConfig  # noqa: F401
     from captive_portal.models.rental_control_event import RentalControlEvent  # noqa: F401
     from captive_portal.models.voucher import Voucher  # noqa: F401
@@ -108,7 +109,9 @@ def app(db_engine: Engine) -> FastAPI:
         health,
         integrations,
         integrations_ui,
+        omada_settings_ui,
         portal_config,
+        portal_settings_ui,
         vouchers,
         vouchers_ui,
     )
@@ -126,7 +129,9 @@ def app(db_engine: Engine) -> FastAPI:
     test_app.include_router(guest_portal.router)
     test_app.include_router(health.router)
     test_app.include_router(integrations.router)
+    test_app.include_router(omada_settings_ui.router)
     test_app.include_router(portal_config.router)
+    test_app.include_router(portal_settings_ui.router)
     test_app.include_router(vouchers.router)
     test_app.include_router(vouchers_ui.router)
     test_app.include_router(integrations_ui.router)

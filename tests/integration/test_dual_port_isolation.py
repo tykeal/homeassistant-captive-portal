@@ -30,7 +30,7 @@ def _admin_only_get_paths() -> tuple[str, ...]:
 
     Cached so the apps are only built once per process.
     """
-    settings = AppSettings(db_path=":memory:", guest_external_url="http://test.local:8099")
+    settings = AppSettings(db_path=":memory:")
     admin_app = create_app(settings=settings)
     guest_app = create_guest_app(settings=settings)
 

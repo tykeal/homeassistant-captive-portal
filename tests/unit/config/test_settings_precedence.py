@@ -31,11 +31,11 @@ def test_addon_option_overrides_env_var() -> None:
 def test_env_var_overrides_default() -> None:
     """Env var takes precedence over built-in default."""
     env_clear = {k: v for k, v in os.environ.items() if not k.startswith("CP_")}
-    env_clear["CP_SESSION_IDLE_TIMEOUT"] = "45"
+    env_clear["CP_DB_PATH"] = "/custom/db.sqlite"
     with patch.dict(os.environ, env_clear, clear=True):
         settings = AppSettings.load(options_path="/nonexistent/options.json")
 
-    assert settings.session_idle_minutes == 45
+    assert settings.db_path == "/custom/db.sqlite"
 
 
 def test_invalid_addon_falls_through_to_env() -> None:
@@ -58,7 +58,7 @@ def test_invalid_addon_falls_through_to_env() -> None:
 
 def test_invalid_addon_no_env_falls_to_default() -> None:
     """Invalid addon option + no env var → built-in default."""
-    options = {"session_idle_timeout": -5}  # invalid
+    options = {"log_level": "banana"}  # invalid
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(options, f)
         f.flush()
@@ -69,8 +69,8 @@ def test_invalid_addon_no_env_falls_to_default() -> None:
         with patch.dict(os.environ, env_clear, clear=True):
             settings = AppSettings.load(options_path=path)
 
-        # No env var, addon invalid → default 30
-        assert settings.session_idle_minutes == 30
+        # No env var, addon invalid → default "info"
+        assert settings.log_level == "info"
     finally:
         os.unlink(path)
 
@@ -79,8 +79,7 @@ def test_valid_addon_kept_while_invalid_one_falls_through() -> None:
     """Valid addon options are kept even when one is invalid."""
     options = {
         "log_level": "debug",  # valid
-        "session_idle_timeout": -5,  # invalid
-        "session_max_duration": 12,  # valid
+        "ha_base_url": "not-a-url",  # invalid
     }
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(options, f)
@@ -89,23 +88,20 @@ def test_valid_addon_kept_while_invalid_one_falls_through() -> None:
 
     try:
         env_clear = {k: v for k, v in os.environ.items() if not k.startswith("CP_")}
-        env_clear["CP_SESSION_IDLE_TIMEOUT"] = "20"
+        env_clear["CP_HA_BASE_URL"] = "https://env-ha.local/api"
         with patch.dict(os.environ, env_clear, clear=True):
             settings = AppSettings.load(options_path=path)
 
         assert settings.log_level == "debug"  # from addon (valid)
-        assert settings.session_idle_minutes == 20  # addon invalid → env
-        assert settings.session_max_hours == 12  # from addon (valid)
+        assert settings.ha_base_url == "https://env-ha.local/api"  # addon invalid → env
     finally:
         os.unlink(path)
 
 
-def test_all_four_fields_independently() -> None:
+def test_all_fields_independently() -> None:
     """Each field's precedence is independent of other fields."""
     options = {
         "log_level": "trace",  # from addon
-        # session_idle_timeout missing → env or default
-        "session_max_duration": 2,  # from addon
     }
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(options, f)
@@ -115,14 +111,11 @@ def test_all_four_fields_independently() -> None:
     try:
         env = {k: v for k, v in os.environ.items() if not k.startswith("CP_")}
         env["CP_DB_PATH"] = "/custom/db.sqlite"  # from env
-        env["CP_SESSION_IDLE_TIMEOUT"] = "60"  # from env
         with patch.dict(os.environ, env, clear=True):
             settings = AppSettings.load(options_path=path)
 
         assert settings.log_level == "trace"  # addon
         assert settings.db_path == "/custom/db.sqlite"  # env
-        assert settings.session_idle_minutes == 60  # env (no addon)
-        assert settings.session_max_hours == 2  # addon
     finally:
         os.unlink(path)
 
@@ -130,8 +123,8 @@ def test_all_four_fields_independently() -> None:
 def test_invalid_env_var_falls_to_default() -> None:
     """Invalid env var with no addon option falls to default."""
     env_clear = {k: v for k, v in os.environ.items() if not k.startswith("CP_")}
-    env_clear["CP_SESSION_MAX_DURATION"] = "not_a_number"
+    env_clear["CP_LOG_LEVEL"] = "not_valid_level"
     with patch.dict(os.environ, env_clear, clear=True):
         settings = AppSettings.load(options_path="/nonexistent/options.json")
 
-    assert settings.session_max_hours == 8  # default
+    assert settings.log_level == "info"  # default
