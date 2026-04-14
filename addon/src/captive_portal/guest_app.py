@@ -98,15 +98,27 @@ def _make_guest_lifespan(
             dispose_engine()
             raise
 
-        # Configure Omada controller integration
+        # Configure Omada controller integration (prefer DB config)
         from captive_portal.config.omada_config import build_omada_config
+        from captive_portal.models.omada_config import OmadaConfig as _OmadaConfig
 
-        app.state.omada_config = await build_omada_config(settings, logger)
+        from sqlmodel import Session as _Session, select as _select
+
+        _omada_sess = _Session(engine)
+        try:
+            from typing import Any as _Any
+
+            _stmt: _Any = _select(_OmadaConfig).where(_OmadaConfig.id == 1)
+            _db_omada: _OmadaConfig | None = _omada_sess.exec(_stmt).first()
+            if _db_omada and _db_omada.omada_configured:
+                app.state.omada_config = await build_omada_config(_db_omada, logger)
+            else:
+                app.state.omada_config = await build_omada_config(settings, logger)
+        finally:
+            _omada_sess.close()
+
         if app.state.omada_config:
-            logger.info(
-                "Omada controller configured for %s",
-                settings.omada_controller_url,
-            )
+            logger.info("Omada controller configured.")
         else:
             logger.info("Omada controller not configured — controller calls will be skipped")
 

@@ -118,6 +118,60 @@ SPDX-License-Identifier: Apache-2.0
                     </div>
                 </div>
 
+                <div class="form-section">
+                    <h3>Session Timeouts</h3>
+                    <p class="form-help">Configure admin session timeout behavior</p>
+
+                    <div class="form-group">
+                        <label for="session_idle_minutes">Idle Timeout (minutes):</label>
+                        <input
+                            type="number"
+                            id="session_idle_minutes"
+                            name="session_idle_minutes"
+                            value="{{ config.session_idle_minutes }}"
+                            min="1"
+                            max="1440"
+                            required
+                        >
+                        <span class="help-text">Inactivity timeout for admin sessions (1-1440 minutes)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="session_max_hours">Maximum Duration (hours):</label>
+                        <input
+                            type="number"
+                            id="session_max_hours"
+                            name="session_max_hours"
+                            value="{{ config.session_max_hours }}"
+                            min="1"
+                            max="168"
+                            required
+                        >
+                        <span class="help-text">Maximum session duration regardless of activity (1-168 hours)</span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Guest Portal</h3>
+                    <p class="form-help">Configure guest portal access settings</p>
+
+                    <div class="form-group">
+                        <label for="guest_external_url">Guest External URL:</label>
+                        <input
+                            type="url"
+                            id="guest_external_url"
+                            name="guest_external_url"
+                            value="{{ config.guest_external_url }}"
+                            maxlength="2048"
+                            placeholder="https://guest.example.com"
+                        >
+                        <span class="help-text">
+                            External URL for guest portal (used by captive detection redirects).
+                            Leave empty if guests access the portal directly.
+                        </span>
+                    </div>
+                </div>
+
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Save Settings</button>
                     <button type="reset" class="btn btn-secondary">Reset</button>
