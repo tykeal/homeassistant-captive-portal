@@ -17,6 +17,7 @@ from captive_portal.models.admin_session import AdminSession
 from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.audit_log import AuditLog
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
+from captive_portal.models.omada_config import OmadaConfig
 from captive_portal.models.rental_control_event import RentalControlEvent
 from captive_portal.models.voucher import Voucher
 
@@ -26,6 +27,7 @@ __all__ = [
     "AdminUser",
     "AuditLog",
     "HAIntegrationConfig",
+    "OmadaConfig",
     "RentalControlEvent",
     "Voucher",
     "create_db_engine",
@@ -77,6 +79,7 @@ def init_db(engine: Engine, drop_existing: bool = False) -> None:
     _migrate_vlan_allowed_vlans(engine)
     _migrate_voucher_max_devices(engine)
     _migrate_voucher_status_changed_utc(engine)
+    _migrate_portal_config_session_fields(engine)
 
 
 def _migrate_voucher_activated_utc(engine: Engine) -> None:
@@ -333,3 +336,34 @@ def _migrate_voucher_status_changed_utc(engine: Engine) -> None:
                 "REVOKED vouchers (migration timestamp).",
                 result_revoked.rowcount,
             )
+
+
+def _migrate_portal_config_session_fields(engine: Engine) -> None:
+    """Add session timeout and guest URL columns to the portal_config table.
+
+    Existing rows receive sensible defaults so databases created before
+    these fields were introduced continue to work unchanged.
+
+    Args:
+        engine: SQLAlchemy engine to inspect and migrate.
+    """
+    logger = logging.getLogger("captive_portal.persistence")
+    insp = inspect(engine)
+    if "portal_config" not in insp.get_table_names():
+        return
+    columns = {c["name"] for c in insp.get_columns("portal_config")}
+
+    new_columns: dict[str, str] = {
+        "session_idle_minutes": "INTEGER DEFAULT 30",
+        "session_max_hours": "INTEGER DEFAULT 8",
+        "guest_external_url": "VARCHAR(2048) DEFAULT ''",
+    }
+
+    with engine.begin() as conn:
+        for col, col_type in new_columns.items():
+            if col not in columns:
+                conn.execute(text(f"ALTER TABLE portal_config ADD COLUMN {col} {col_type}"))
+                logger.info(
+                    "Migrated portal_config table: added %s column.",
+                    col,
+                )

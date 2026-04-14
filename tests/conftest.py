@@ -31,6 +31,7 @@ def db_engine() -> Generator[Engine, None, None]:
     from captive_portal.models.admin_user import AdminUser  # noqa: F401
     from captive_portal.models.audit_log import AuditLog  # noqa: F401
     from captive_portal.models.ha_integration_config import HAIntegrationConfig  # noqa: F401
+    from captive_portal.models.omada_config import OmadaConfig  # noqa: F401
     from captive_portal.models.portal_config import PortalConfig  # noqa: F401
     from captive_portal.models.rental_control_event import RentalControlEvent  # noqa: F401
     from captive_portal.models.voucher import Voucher  # noqa: F401
