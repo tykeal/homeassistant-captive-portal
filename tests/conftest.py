@@ -109,7 +109,9 @@ def app(db_engine: Engine) -> FastAPI:
         health,
         integrations,
         integrations_ui,
+        omada_settings_ui,
         portal_config,
+        portal_settings_ui,
         vouchers,
         vouchers_ui,
     )
@@ -127,7 +129,9 @@ def app(db_engine: Engine) -> FastAPI:
     test_app.include_router(guest_portal.router)
     test_app.include_router(health.router)
     test_app.include_router(integrations.router)
+    test_app.include_router(omada_settings_ui.router)
     test_app.include_router(portal_config.router)
+    test_app.include_router(portal_settings_ui.router)
     test_app.include_router(vouchers.router)
     test_app.include_router(vouchers_ui.router)
     test_app.include_router(integrations_ui.router)

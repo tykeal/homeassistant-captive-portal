@@ -231,6 +231,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         health,
         integrations,
         integrations_ui,
+        omada_settings_ui,
         portal_config,
         portal_settings_ui,
         vouchers,
@@ -251,6 +252,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
     app.include_router(guest_portal.router)
     app.include_router(health.router)
     app.include_router(integrations.router)
+    app.include_router(omada_settings_ui.router)
     app.include_router(portal_config.router)
     app.include_router(portal_settings_ui.router)
     app.include_router(vouchers.router)

@@ -11,9 +11,11 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, Union
 
 from captive_portal.config.settings import AppSettings
+from captive_portal.models.omada_config import OmadaConfig
+from captive_portal.security.credential_encryption import decrypt_credential
 
 _CONTROLLER_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{12,64}$")
 
@@ -37,24 +39,48 @@ def _validate_controller_id(controller_id: str) -> str:
 
 
 async def build_omada_config(
-    settings: AppSettings,
+    settings: Union[AppSettings, OmadaConfig],
     logger: logging.Logger,
 ) -> dict[str, Any] | None:
     """Build Omada configuration dict, auto-discovering controller ID if needed.
 
+    Accepts either an ``AppSettings`` instance (legacy / migration path)
+    or an ``OmadaConfig`` DB model (new path).  When given an
+    ``OmadaConfig``, the encrypted password is decrypted to produce the
+    plaintext needed by the Omada client.
+
     Args:
-        settings: Application settings.
+        settings: Application settings or OmadaConfig DB model.
         logger: Logger instance for diagnostics.
 
     Returns:
         Omada config dict or ``None`` if not configured.
     """
-    if not settings.omada_configured:
-        return None
+    # Extract fields from either source
+    if isinstance(settings, OmadaConfig):
+        if not settings.omada_configured:
+            return None
+        controller_url = settings.controller_url.strip()
+        username = settings.username.strip()
+        try:
+            password = decrypt_credential(settings.encrypted_password)
+        except Exception as exc:
+            logger.error("Failed to decrypt Omada password: %s", exc)
+            return None
+        site_name = settings.site_name.strip()
+        controller_id = settings.controller_id.strip()
+        verify_ssl = settings.verify_ssl
+    else:
+        if not settings.omada_configured:
+            return None
+        controller_url = settings.omada_controller_url.strip()
+        username = settings.omada_username.strip()
+        password = settings.omada_password.strip()
+        site_name = settings.omada_site_name.strip()
+        controller_id = settings.omada_controller_id.strip()
+        verify_ssl = settings.omada_verify_ssl
 
-    controller_id = settings.omada_controller_id.strip()
-
-    base_url = settings.omada_controller_url.strip()
+    base_url = controller_url
 
     if not controller_id:
         from captive_portal.controllers.tp_omada.base_client import (
@@ -65,7 +91,7 @@ async def build_omada_config(
         try:
             controller_id = await discover_controller_id(
                 base_url=base_url,
-                verify_ssl=settings.omada_verify_ssl,
+                verify_ssl=verify_ssl,
             )
             logger.info(
                 "Auto-discovered Omada controller ID: %s",
@@ -94,8 +120,8 @@ async def build_omada_config(
     return {
         "base_url": base_url,
         "controller_id": controller_id,
-        "username": settings.omada_username.strip(),
-        "password": settings.omada_password.strip(),
-        "verify_ssl": settings.omada_verify_ssl,
-        "site_id": settings.omada_site_name.strip(),
+        "username": username,
+        "password": password,
+        "verify_ssl": verify_ssl,
+        "site_id": site_name,
     }

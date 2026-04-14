@@ -1,0 +1,194 @@
+{% set rp = request.scope.root_path %}
+<!--
+SPDX-FileCopyrightText: 2026 Andrew Grimberg
+SPDX-License-Identifier: Apache-2.0
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omada Settings - Captive Portal Admin</title>
+    <link rel="stylesheet" href="{{ rp }}/static/themes/default/admin.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1>Captive Portal Admin</h1>
+            <nav>
+                <a href="{{ rp }}/admin/dashboard/" class="nav-link">Dashboard</a>
+                <a href="{{ rp }}/admin/grants/" class="nav-link">Grants</a>
+                <a href="{{ rp }}/admin/vouchers/" class="nav-link">Vouchers</a>
+                <a href="{{ rp }}/admin/integrations/" class="nav-link">Integrations</a>
+                <a href="{{ rp }}/admin/omada-settings/" class="nav-link active">Omada</a>
+                <a href="{{ rp }}/admin/portal-settings/" class="nav-link">Settings</a>
+                <form action="{{ rp }}/admin/logout" method="POST" class="nav-inline-form">
+                    <button type="submit" class="btn-link">Logout</button>
+                </form>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="settings-form">
+            <h2>Omada Controller Configuration</h2>
+
+            {% if success_message %}
+            <div class="alert alert-success">
+                {{ success_message }}
+            </div>
+            {% endif %}
+
+            {% if error_message %}
+            <div class="alert alert-error">
+                {{ error_message }}
+            </div>
+            {% endif %}
+
+            {% if connection_status == "connected" %}
+            <div class="alert alert-success">
+                <strong>Status:</strong> Connected to Omada controller
+            </div>
+            {% elif connection_status == "error" %}
+            <div class="alert alert-error">
+                <strong>Status:</strong> Connection error — check controller URL and credentials
+            </div>
+            {% endif %}
+
+            <form id="omada-config-form" method="POST" action="{{ rp }}/admin/omada-settings/">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="password_changed" id="password_changed" value="false">
+
+                <div class="form-section">
+                    <h3>Controller Connection</h3>
+                    <p class="form-help">Configure the TP-Link Omada controller connection</p>
+
+                    <div class="form-group">
+                        <label for="controller_url">Controller URL:</label>
+                        <input
+                            type="url"
+                            id="controller_url"
+                            name="controller_url"
+                            value="{{ config.controller_url }}"
+                            placeholder="https://omada.example.com:8043"
+                            maxlength="2048"
+                        >
+                        <span class="help-text">Omada controller URL (HTTP or HTTPS)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="username">Username:</label>
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            value="{{ config.username }}"
+                            maxlength="255"
+                        >
+                        <span class="help-text">Hotspot operator username</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            value=""
+                            maxlength="255"
+                            {% if has_password %}placeholder="••••••••"{% endif %}
+                        >
+                        <span class="help-text">
+                            {% if has_password %}
+                                Leave empty to keep existing password
+                            {% else %}
+                                Hotspot operator password
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Site Configuration</h3>
+                    <p class="form-help">Configure the Omada site and controller identification</p>
+
+                    <div class="form-group">
+                        <label for="site_name">Site Name:</label>
+                        <input
+                            type="text"
+                            id="site_name"
+                            name="site_name"
+                            value="{{ config.site_name }}"
+                            placeholder="Default"
+                            maxlength="255"
+                        >
+                        <span class="help-text">Omada site name (default: "Default")</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="controller_id">Controller ID:</label>
+                        <input
+                            type="text"
+                            id="controller_id"
+                            name="controller_id"
+                            value="{{ config.controller_id }}"
+                            placeholder="Leave empty for auto-discovery"
+                            maxlength="64"
+                        >
+                        <span class="help-text">Hex controller ID (auto-discovered if left empty)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="verify_ssl">
+                            <input
+                                type="checkbox"
+                                id="verify_ssl"
+                                name="verify_ssl"
+                                value="true"
+                                {% if config.verify_ssl %}checked{% endif %}
+                            >
+                            Verify SSL Certificate
+                        </label>
+                        <span class="help-text">Disable if using a self-signed certificate</span>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                    <button type="reset" class="btn btn-secondary">Reset</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="settings-info">
+            <h3>Configuration Notes</h3>
+            <ul class="info-list">
+                <li>
+                    <strong>Password Security:</strong> The password is encrypted before storage
+                    and is never displayed in the web interface.
+                </li>
+                <li>
+                    <strong>Controller ID:</strong> If left empty, the system will automatically
+                    discover the controller ID from the Omada API.
+                </li>
+                <li>
+                    <strong>SSL Verification:</strong> Disable only if your Omada controller uses
+                    a self-signed certificate.
+                </li>
+                <li>
+                    <strong>Live Reload:</strong> Settings take effect immediately after saving —
+                    no addon restart required.
+                </li>
+            </ul>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>Captive Portal v1.0 | Powered by Home Assistant</p>
+        </div>
+    </footer>
+
+    <script src="{{ rp }}/static/themes/default/admin-omada-settings.js"></script>
+</body>
+</html>
