@@ -78,9 +78,6 @@ def app(db_engine: Engine) -> FastAPI:
         vouchers_ui,
     )
 
-    # Initialize the integrations API router's DB engine
-    integrations.set_db_engine(db_engine)
-
     test_app.include_router(admin_accounts.router)
     test_app.include_router(admin_auth.router)
     test_app.include_router(admin_logout_ui.router)
