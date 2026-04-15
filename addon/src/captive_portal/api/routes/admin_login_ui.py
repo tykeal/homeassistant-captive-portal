@@ -16,9 +16,12 @@ from fastapi import APIRouter, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from captive_portal._version import __version__
+
 router = APIRouter(prefix="/admin", tags=["admin-ui-login"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+templates.env.globals["app_version"] = __version__
 
 
 @router.get("/login", response_class=HTMLResponse, response_model=None)

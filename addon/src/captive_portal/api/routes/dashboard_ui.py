@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 
+from captive_portal._version import __version__
 from captive_portal.persistence.database import get_session
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
 from captive_portal.security.session_middleware import require_admin
@@ -32,6 +33,7 @@ logger = logging.getLogger("captive_portal")
 router = APIRouter(prefix="/admin", tags=["admin-ui-dashboard"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+templates.env.globals["app_version"] = __version__
 
 
 @router.get("/dashboard/", response_class=HTMLResponse)

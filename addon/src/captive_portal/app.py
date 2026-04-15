@@ -16,6 +16,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
+from captive_portal._version import __version__
 from captive_portal.config.settings import AppSettings
 from captive_portal.integrations.ha_client import HAClient
 from captive_portal.integrations.ha_poller import HAPoller
@@ -221,7 +222,7 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
         * **Guest endpoints** (`/portal/*`): Rate-limited, CSRF-protected
         * **Health/Detection endpoints**: Unauthenticated public access
         """,
-        version="0.1.0",
+        version=__version__,
         contact={
             "name": "Andrew Grimberg",
             "email": "tykeal@bardicgrove.org",

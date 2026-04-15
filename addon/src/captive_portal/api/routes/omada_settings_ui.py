@@ -21,6 +21,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
+from captive_portal._version import __version__
 from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.omada_config import OmadaConfig
 from captive_portal.persistence.database import get_session
@@ -36,6 +37,7 @@ logger = logging.getLogger("captive_portal.routes.omada_settings")
 router = APIRouter(prefix="/admin/omada-settings", tags=["admin-ui-omada-settings"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+templates.env.globals["app_version"] = __version__
 
 _CONTROLLER_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{12,64}$")
 

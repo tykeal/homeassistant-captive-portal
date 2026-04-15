@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, col, select
 
+from captive_portal._version import __version__
 from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
 from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
@@ -37,6 +38,7 @@ logger = logging.getLogger("captive_portal")
 router = APIRouter(prefix="/admin/grants", tags=["admin-ui-grants"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+templates.env.globals["app_version"] = __version__
 
 
 def _recompute_status(grant: AccessGrant, now: datetime) -> str:

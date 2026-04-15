@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException
 
+from captive_portal._version import __version__
 from captive_portal.api.routes import booking_authorize
 from captive_portal.config.settings import AppSettings
 from captive_portal.persistence.database import (
@@ -42,6 +43,7 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent / "web" / "templates"
 
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 templates.env.autoescape = True
+templates.env.globals["app_version"] = __version__
 
 # Guest-specific Content-Security-Policy (stricter than ingress: no framing)
 _GUEST_CSP = (
