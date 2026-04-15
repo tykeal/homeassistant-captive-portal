@@ -110,10 +110,13 @@ class RentalControlService:
         """
         sensor_prefix = self._derive_sensor_prefix(config.integration_id)
 
+        sensor_count = 0
         for entity in all_states:
             entity_id = entity.get("entity_id", "")
             if not entity_id.startswith(sensor_prefix):
                 continue
+
+            sensor_count += 1
 
             state = entity.get("state", "")
             if state in (_NO_RESERVATION, "unavailable"):
@@ -143,6 +146,23 @@ class RentalControlService:
                 continue
 
             await self.process_single_event(config, event_index, entity, ha_tz=ha_tz)
+
+        if sensor_count == 0:
+            logger.warning(
+                "No event sensors found for integration",
+                extra={
+                    "integration_id": config.integration_id,
+                    "sensor_prefix": sensor_prefix,
+                },
+            )
+        else:
+            logger.info(
+                "Processed Rental Control events",
+                extra={
+                    "integration_id": config.integration_id,
+                    "sensor_count": sensor_count,
+                },
+            )
 
     @staticmethod
     def _derive_sensor_prefix(integration_id: str) -> str:
