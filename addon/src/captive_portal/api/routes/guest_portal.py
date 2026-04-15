@@ -601,13 +601,19 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             # Validate booking code and create grant
             booking_validator = BookingCodeValidator(session)
 
-            # Get integration config
-            stmt: Any = select(HAIntegrationConfig).limit(1)
-            integration: HAIntegrationConfig | None = session.exec(stmt).first()
-            if not integration:
+            # Check if any integrations exist
+            all_integrations = list(session.exec(select(HAIntegrationConfig)).all())
+            if not all_integrations:
                 raise IntegrationUnavailableError("No rental control integration configured")
 
-            # VLAN validation for booking path
+            # Search ALL integrations for matching code
+            event, integration = booking_validator.find_across_integrations(
+                validation_result.normalized_code
+            )
+            if not event or not integration:
+                raise BookingNotFoundError("Booking not found")
+
+            # VLAN validation against the MATCHED integration
             vlan_result = vlan_service.validate_booking_vlan(vid, integration)
             vlan_meta = {
                 "vlan_allowed": vlan_result.allowed,
@@ -633,11 +639,6 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="This code is not valid for your network.",
                 )
-
-            # Find matching event
-            event = booking_validator.validate_code(validation_result.normalized_code, integration)
-            if not event:
-                raise BookingNotFoundError("Booking not found")
 
             # Check time window with grace period
             now = datetime.now(timezone.utc)

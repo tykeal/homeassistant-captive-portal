@@ -147,6 +147,42 @@ class BookingCodeValidator:
         """
         return name.strip()
 
+    def find_across_integrations(
+        self, user_input: str
+    ) -> tuple[RentalControlEvent, HAIntegrationConfig] | tuple[None, None]:
+        """Search all integrations for a matching booking code.
+
+        Iterates through all configured integrations and checks each one
+        for a matching event using case-insensitive lookup.
+
+        Args:
+            user_input: Guest-provided booking code (any case)
+
+        Returns:
+            Tuple of (event, integration) if found, (None, None)
+            otherwise.
+        """
+        normalized_input = user_input.strip()
+
+        integrations: list[HAIntegrationConfig] = list(
+            self.session.exec(select(HAIntegrationConfig)).all()
+        )
+
+        for integration in integrations:
+            attr_name = integration.identifier_attr.value
+            statement: Any = (
+                select(RentalControlEvent)
+                .where(RentalControlEvent.integration_id == integration.integration_id)
+                .where(
+                    func.lower(getattr(RentalControlEvent, attr_name)) == normalized_input.lower()
+                )
+            )
+            result: RentalControlEvent | None = self.session.exec(statement).first()
+            if result:
+                return result, integration
+
+        return None, None
+
     async def validate_and_create_grant(self, code: str, device_id: str) -> AccessGrant:
         """
         Validate booking code and create access grant.
@@ -164,18 +200,17 @@ class BookingCodeValidator:
             BookingOutsideWindowError: Booking not in active window
             DuplicateGrantError: Active grant already exists
         """
-        # Get first integration (for now, single integration support)
-        integration: HAIntegrationConfig | None = self.session.exec(
-            select(HAIntegrationConfig).limit(1)
-        ).first()
-
-        if not integration:
+        # Check if any integrations exist
+        all_integrations: list[HAIntegrationConfig] = list(
+            self.session.exec(select(HAIntegrationConfig)).all()
+        )
+        if not all_integrations:
             raise IntegrationUnavailableError("No integration configured")
 
-        # Find matching event
-        event = self.validate_code(code, integration)
+        # Search all integrations for matching event
+        event, integration = self.find_across_integrations(code)
 
-        if not event:
+        if not event or not integration:
             raise BookingNotFoundError("Booking not found")
 
         # Check time window
