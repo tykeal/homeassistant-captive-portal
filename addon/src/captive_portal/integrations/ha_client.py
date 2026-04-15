@@ -131,6 +131,74 @@ class HAClient:
                 detail=str(exc),
             ) from exc
 
+    async def get_entity_registry(self, timeout: float = 10.0) -> List[Dict[str, Any]]:
+        """Retrieve all entity registry entries from Home Assistant.
+
+        Calls the ``/config/entity_registry/list`` endpoint which
+        returns metadata for every registered entity, including the
+        ``platform`` that created it.
+
+        Args:
+            timeout: Per-request timeout in seconds (overrides
+                client default).
+
+        Returns:
+            List of entity registry entry dicts.
+
+        Raises:
+            HAConnectionError: When HA API is unreachable.
+            HAAuthenticationError: On HTTP 401 responses.
+            HAServerError: On HTTP 5xx responses.
+            HATimeoutError: When the request times out.
+        """
+        url = f"{self.base_url}/config/entity_registry/list"
+
+        try:
+            response = await self.client.get(url, timeout=timeout)
+
+            if response.status_code == 401:
+                raise HAAuthenticationError(
+                    user_message="Authentication with Home Assistant failed",
+                    detail=f"HTTP 401 from {url}",
+                )
+
+            if response.status_code >= 500:
+                raise HAServerError(
+                    user_message="Home Assistant returned a server error",
+                    detail=f"HTTP {response.status_code} from {url}",
+                )
+
+            response.raise_for_status()
+            try:
+                result: List[Dict[str, Any]] = response.json()
+            except (ValueError, TypeError) as exc:
+                raise HAServerError(
+                    user_message="Home Assistant returned an invalid response",
+                    detail=f"JSON decode error from {url}: {exc}",
+                ) from exc
+            return result
+
+        except (
+            HAAuthenticationError,
+            HAServerError,
+        ):
+            raise
+        except httpx.ConnectError as exc:
+            raise HAConnectionError(
+                user_message="Cannot connect to Home Assistant",
+                detail=str(exc),
+            ) from exc
+        except httpx.TimeoutException as exc:
+            raise HATimeoutError(
+                user_message="Home Assistant request timed out",
+                detail=str(exc),
+            ) from exc
+        except httpx.HTTPStatusError as exc:
+            raise HAServerError(
+                user_message="Home Assistant returned an unexpected error",
+                detail=str(exc),
+            ) from exc
+
     async def get_timezone(self) -> str:
         """Fetch the configured timezone from Home Assistant.
 

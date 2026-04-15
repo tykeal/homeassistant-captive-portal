@@ -45,11 +45,18 @@ _CABIN_STATES: list[dict[str, Any]] = [
 ]
 
 
+_CABIN_REGISTRY: list[dict[str, Any]] = [
+    {"entity_id": "calendar.rental_control_cabin_a", "platform": "rental_control"},
+    {"entity_id": "calendar.rental_control_cabin_b", "platform": "rental_control"},
+]
+
+
 @pytest.fixture()
 def _mock_ha_cabins(app: FastAPI) -> MagicMock:
     """Attach mock HAClient returning cabin entities."""
     mock = MagicMock(spec=HAClient)
     mock.get_all_states = AsyncMock(return_value=_CABIN_STATES)
+    mock.get_entity_registry = AsyncMock(return_value=_CABIN_REGISTRY)
     app.state.ha_client = mock
     return mock
 
@@ -198,6 +205,7 @@ class TestAcceptanceFallbackFlow:
                 detail="connection refused",
             )
         )
+        mock.get_entity_registry = AsyncMock(return_value=[])
         app.state.ha_client = mock
 
         csrf = _login(client)

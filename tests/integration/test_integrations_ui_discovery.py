@@ -46,6 +46,12 @@ _HA_STATES_WITH_RENTALS: list[dict[str, Any]] = [
 ]
 
 
+_HA_REGISTRY: list[dict[str, Any]] = [
+    {"entity_id": "calendar.rental_control_unit_1", "platform": "rental_control"},
+    {"entity_id": "calendar.rental_control_unit_2", "platform": "rental_control"},
+]
+
+
 # ── Fixtures ─────────────────────────────────────────────────────────
 
 
@@ -54,6 +60,7 @@ def _mock_ha_available(app: FastAPI) -> MagicMock:
     """Attach a mock HAClient returning rental entities successfully."""
     mock = MagicMock(spec=HAClient)
     mock.get_all_states = AsyncMock(return_value=_HA_STATES_WITH_RENTALS)
+    mock.get_entity_registry = AsyncMock(return_value=_HA_REGISTRY)
     app.state.ha_client = mock
     return mock
 
@@ -68,6 +75,7 @@ def _mock_ha_unavailable(app: FastAPI) -> MagicMock:
             detail="connection refused",
         )
     )
+    mock.get_entity_registry = AsyncMock(return_value=[])
     app.state.ha_client = mock
     return mock
 

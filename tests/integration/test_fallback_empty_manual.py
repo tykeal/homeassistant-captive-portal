@@ -38,6 +38,7 @@ def _mock_ha_unavailable(app: FastAPI) -> MagicMock:
             detail="connection refused",
         )
     )
+    mock.get_entity_registry = AsyncMock(return_value=[])
     app.state.ha_client = mock
     return mock
 
@@ -55,6 +56,7 @@ def _mock_ha_empty(app: FastAPI) -> MagicMock:
             },
         ]
     )
+    mock.get_entity_registry = AsyncMock(return_value=[])
     app.state.ha_client = mock
     return mock
 

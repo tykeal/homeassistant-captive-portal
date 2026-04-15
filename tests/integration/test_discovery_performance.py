@@ -61,6 +61,11 @@ class TestDiscoveryPerformance:
 
         mock = MagicMock(spec=HAClient)
         mock.get_all_states = AsyncMock(return_value=entities)
+        registry = [
+            {"entity_id": f"calendar.rental_control_unit_{i}", "platform": "rental_control"}
+            for i in range(50)
+        ]
+        mock.get_entity_registry = AsyncMock(return_value=registry)
         app.state.ha_client = mock
 
         _login(client)
@@ -83,6 +88,7 @@ class TestDiscoveryPerformance:
         """Empty HA state list responds under 200ms."""
         mock = MagicMock(spec=HAClient)
         mock.get_all_states = AsyncMock(return_value=[])
+        mock.get_entity_registry = AsyncMock(return_value=[])
         app.state.ha_client = mock
 
         _login(client)

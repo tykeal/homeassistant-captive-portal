@@ -48,11 +48,19 @@ _ENRICHED_STATES: list[dict[str, Any]] = [
 ]
 
 
+_ENRICHED_REGISTRY: list[dict[str, Any]] = [
+    {"entity_id": "calendar.rental_control_unit_a", "platform": "rental_control"},
+    {"entity_id": "calendar.rental_control_unit_b", "platform": "rental_control"},
+    {"entity_id": "calendar.rental_control_unit_c", "platform": "rental_control"},
+]
+
+
 @pytest.fixture()
 def _mock_ha_enriched(app: FastAPI) -> MagicMock:
     """Attach a mock HAClient with enriched entity data."""
     mock = MagicMock(spec=HAClient)
     mock.get_all_states = AsyncMock(return_value=_ENRICHED_STATES)
+    mock.get_entity_registry = AsyncMock(return_value=_ENRICHED_REGISTRY)
     app.state.ha_client = mock
     return mock
 

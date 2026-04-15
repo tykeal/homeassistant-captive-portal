@@ -51,11 +51,18 @@ _RENTAL_STATES: list[dict[str, Any]] = [
 ]
 
 
+_RENTAL_REGISTRY: list[dict[str, Any]] = [
+    {"entity_id": "calendar.rental_control_cabin_a", "platform": "rental_control"},
+    {"entity_id": "calendar.rental_control_cabin_b", "platform": "rental_control"},
+]
+
+
 @pytest.fixture()
 def _mock_ha_available(app: FastAPI) -> MagicMock:
     """Attach a mock HAClient that returns rental control entities."""
     mock = MagicMock(spec=HAClient)
     mock.get_all_states = AsyncMock(return_value=_RENTAL_STATES)
+    mock.get_entity_registry = AsyncMock(return_value=_RENTAL_REGISTRY)
     app.state.ha_client = mock
     return mock
 
@@ -70,6 +77,7 @@ def _mock_ha_unreachable(app: FastAPI) -> MagicMock:
             detail=("http://supervisor:8123/api/states — connection refused"),
         )
     )
+    mock.get_entity_registry = AsyncMock(return_value=[])
     app.state.ha_client = mock
     return mock
 

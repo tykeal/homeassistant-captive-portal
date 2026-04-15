@@ -31,6 +31,15 @@ _INITIAL_STATES: list[dict[str, Any]] = [
     },
 ]
 
+_INITIAL_REGISTRY: list[dict[str, Any]] = [
+    {"entity_id": "calendar.rental_control_cabin_x", "platform": "rental_control"},
+]
+
+_REFRESHED_REGISTRY: list[dict[str, Any]] = [
+    {"entity_id": "calendar.rental_control_cabin_x", "platform": "rental_control"},
+    {"entity_id": "calendar.rental_control_cabin_y", "platform": "rental_control"},
+]
+
 _REFRESHED_STATES: list[dict[str, Any]] = [
     {
         "entity_id": "calendar.rental_control_cabin_x",
@@ -77,6 +86,7 @@ class TestRefreshEndpoint:
         """Consecutive discover calls reflect updated HA state."""
         mock = MagicMock(spec=HAClient)
         mock.get_all_states = AsyncMock(return_value=_INITIAL_STATES)
+        mock.get_entity_registry = AsyncMock(return_value=_INITIAL_REGISTRY)
         app.state.ha_client = mock
 
         _login(client)
@@ -90,6 +100,7 @@ class TestRefreshEndpoint:
 
         # Update mock to return new data
         mock.get_all_states = AsyncMock(return_value=_REFRESHED_STATES)
+        mock.get_entity_registry = AsyncMock(return_value=_REFRESHED_REGISTRY)
 
         # Second call (refresh)
         resp2 = client.get("/api/integrations/discover")
@@ -107,6 +118,7 @@ class TestRefreshEndpoint:
         """GET discover is safe to call repeatedly (idempotent)."""
         mock = MagicMock(spec=HAClient)
         mock.get_all_states = AsyncMock(return_value=_INITIAL_STATES)
+        mock.get_entity_registry = AsyncMock(return_value=_INITIAL_REGISTRY)
         app.state.ha_client = mock
 
         _login(client)
@@ -132,6 +144,7 @@ class TestRefreshButtonInTemplate:
         """Template includes a refresh/re-discover button or link."""
         mock = MagicMock(spec=HAClient)
         mock.get_all_states = AsyncMock(return_value=_INITIAL_STATES)
+        mock.get_entity_registry = AsyncMock(return_value=_INITIAL_REGISTRY)
         app.state.ha_client = mock
 
         _login(client)
