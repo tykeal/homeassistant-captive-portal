@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, computed_field
 from sqlmodel import Session, select
@@ -58,8 +58,8 @@ class DiscoveryResult(BaseModel):
 
 logger = logging.getLogger("captive_portal")
 
-_RENTAL_CONTROL_PREFIX = "calendar.rental_control_"
 _RENTAL_CONTROL_PLATFORM = "rental_control"
+_RENTAL_CONTROL_FRIENDLY_PREFIX = "Rental Control"
 
 _ERROR_CATEGORY_MAP: dict[type, str] = {
     HAConnectionError: "connection",
@@ -67,6 +67,33 @@ _ERROR_CATEGORY_MAP: dict[type, str] = {
     HATimeoutError: "timeout",
     HAServerError: "server_error",
 }
+
+
+def _is_rental_control_calendar(entity: dict[str, Any]) -> bool:
+    """Check whether an entity state dict looks like a Rental Control calendar.
+
+    Used as the fallback when the entity registry API is unavailable.
+    Matches calendar entities whose ``entity_id`` contains
+    ``rental_control`` or whose ``friendly_name`` starts with
+    ``"Rental Control"``.
+
+    Args:
+        entity: Entity state dict from ``/api/states``.
+
+    Returns:
+        ``True`` if the entity is likely a Rental Control calendar.
+    """
+    entity_id = entity.get("entity_id", "")
+    if not entity_id.startswith("calendar."):
+        return False
+    if _RENTAL_CONTROL_PLATFORM in entity_id:
+        return True
+    friendly = entity.get("attributes", {}).get("friendly_name", "")
+    if isinstance(friendly, str) and friendly.startswith(
+        _RENTAL_CONTROL_FRIENDLY_PREFIX,
+    ):
+        return True
+    return False
 
 
 class HADiscoveryService:
@@ -93,8 +120,12 @@ class HADiscoveryService:
         Queries the entity registry for entities created by the
         ``rental_control`` platform, then fetches full state objects
         for the matching calendar entities.  Falls back to
-        ``entity_id`` prefix matching when the entity registry is
-        unavailable (e.g. older HA versions).
+        attribute-based matching when the entity registry is
+        unavailable (e.g. HA Supervisor proxy, older HA versions).
+
+        The fallback matches calendar entities whose ``entity_id``
+        contains ``rental_control`` or whose ``friendly_name``
+        starts with ``"Rental Control"``.
 
         Returns:
             DiscoveryResult with available=True on success, or
@@ -111,7 +142,9 @@ class HADiscoveryService:
                 and entry.get("entity_id", "").startswith("calendar.")
             }
         except Exception:
-            logger.warning("Entity registry unavailable, falling back to prefix-based discovery")
+            logger.warning(
+                "Entity registry unavailable, falling back to attribute-based discovery",
+            )
 
         try:
             all_states = await self.ha_client.get_all_states()
@@ -138,9 +171,7 @@ class HADiscoveryService:
             ]
         else:
             rental_entities = [
-                entity
-                for entity in all_states
-                if entity.get("entity_id", "").startswith(_RENTAL_CONTROL_PREFIX)
+                entity for entity in all_states if _is_rental_control_calendar(entity)
             ]
 
         logger.info(

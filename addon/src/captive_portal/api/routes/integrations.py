@@ -3,13 +3,11 @@
 """API routes for Home Assistant integration configuration (admin-only)."""
 
 import logging
-from collections.abc import Generator
 from typing import Optional, cast, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
 from captive_portal.integrations.ha_discovery_service import (
@@ -21,6 +19,7 @@ from captive_portal.models.ha_integration_config import (
     HAIntegrationConfig,
     IdentifierAttr,
 )
+from captive_portal.persistence.database import get_session
 from captive_portal.security.session_middleware import require_admin
 from captive_portal.services.audit_service import AuditService
 
@@ -93,38 +92,6 @@ class IntegrationConfigResponse(BaseModel):
         return v if v is not None else []
 
 
-# Global engine instance - will be initialized by application startup
-_engine: Optional[Engine] = None
-
-
-def set_db_engine(engine: Engine) -> None:
-    """Set the global database engine instance.
-
-    This should be called during application startup.
-
-    Args:
-        engine: SQLAlchemy engine instance
-    """
-    global _engine
-    _engine = engine
-
-
-# Dependency: DB session
-def get_db_session() -> Generator[Session, None, None]:
-    """Get database session dependency.
-
-    Yields:
-        SQLModel Session instance
-
-    Raises:
-        RuntimeError: If database engine not initialized
-    """
-    if _engine is None:
-        raise RuntimeError("Database engine not initialized. Call set_db_engine() during startup.")
-    with Session(_engine) as session:
-        yield session
-
-
 @router.post(
     "",
     response_model=IntegrationConfigResponse,
@@ -132,7 +99,7 @@ def get_db_session() -> Generator[Session, None, None]:
 )
 async def create_integration(
     config: IntegrationConfigCreate,
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_session),
     admin_id: UUID = Depends(require_admin),
 ) -> HAIntegrationConfig:
     """Create new HA integration configuration.
@@ -195,7 +162,7 @@ async def create_integration(
 
 @router.get("", response_model=list[IntegrationConfigResponse])
 async def list_integrations(
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_session),
     _admin: UUID = Depends(require_admin),
 ) -> list[HAIntegrationConfig]:
     """List all HA integration configurations.
@@ -217,7 +184,7 @@ async def list_integrations(
 @router.get("/discover")
 async def discover_integrations(
     request: Request,
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_session),
     _admin: UUID = Depends(require_admin),
 ) -> DiscoveryResult:
     """Discover Rental Control calendar entities from Home Assistant.
@@ -248,7 +215,7 @@ async def discover_integrations(
 @router.get("/{config_id}", response_model=IntegrationConfigResponse)
 async def get_integration(
     config_id: UUID,
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_session),
     _admin: UUID = Depends(require_admin),
 ) -> HAIntegrationConfig:
     """Get specific HA integration configuration.
@@ -279,7 +246,7 @@ async def get_integration(
 async def update_integration(
     config_id: UUID,
     updates: IntegrationConfigUpdate,
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_session),
     admin_id: UUID = Depends(require_admin),
 ) -> HAIntegrationConfig:
     """Update HA integration configuration.
@@ -340,7 +307,7 @@ async def update_integration(
 @router.delete("/{config_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_integration(
     config_id: UUID,
-    session: Session = Depends(get_db_session),
+    session: Session = Depends(get_session),
     _admin: UUID = Depends(require_admin),
 ) -> None:
     """Delete HA integration configuration.
