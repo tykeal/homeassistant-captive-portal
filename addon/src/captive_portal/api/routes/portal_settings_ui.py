@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
+from captive_portal._version import __version__
 from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.portal_config import PortalConfig
 from captive_portal.persistence.database import get_session
@@ -21,6 +22,7 @@ from captive_portal.services.audit_service import AuditService
 router = APIRouter(prefix="/admin/portal-settings", tags=["admin-ui-portal-settings"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+templates.env.globals["app_version"] = __version__
 
 
 def get_current_admin(request: Request, db: Session = Depends(get_session)) -> AdminUser:

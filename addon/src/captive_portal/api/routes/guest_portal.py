@@ -43,6 +43,7 @@ from captive_portal.services.voucher_service import (
     VoucherRedemptionError,
     VoucherService,
 )
+from captive_portal._version import __version__
 from captive_portal.utils.network_utils import get_client_ip, validate_mac_address
 from captive_portal.utils.time_utils import ceil_to_minute, floor_to_minute
 
@@ -93,6 +94,7 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templa
 router = APIRouter(prefix="/guest", tags=["guest"])
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 templates.env.autoescape = True  # Explicitly enable auto-escaping for XSS protection
+templates.env.globals["app_version"] = __version__
 
 # Guest-specific CSRF configuration (lighter-weight since no session state)
 _guest_csrf_config = CSRFConfig(

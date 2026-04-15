@@ -21,6 +21,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, col, select
 
+from captive_portal._version import __version__
 from captive_portal.models.voucher import Voucher, VoucherStatus
 from captive_portal.persistence.database import get_session
 from captive_portal.persistence.repositories import (
@@ -44,6 +45,7 @@ logger = logging.getLogger("captive_portal")
 router = APIRouter(prefix="/admin/vouchers", tags=["admin-ui-vouchers"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+templates.env.globals["app_version"] = __version__
 
 
 def _parse_vlan_form_input(raw: str | None) -> list[int] | None:

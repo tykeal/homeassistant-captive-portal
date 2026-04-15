@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
+from captive_portal._version import __version__
 from captive_portal.integrations.ha_discovery_service import (
     DiscoveryResult,
     HADiscoveryService,
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/integrations", tags=["admin-ui-integrations"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
+templates.env.globals["app_version"] = __version__
 
 
 async def _run_discovery(request: Request, session: Session) -> DiscoveryResult:
