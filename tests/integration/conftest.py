@@ -56,6 +56,7 @@ def app(db_engine: Engine) -> FastAPI:
 
     mock_ha = MagicMock(spec=HAClient)
     mock_ha.get_all_states = AsyncMock(return_value=[])
+    mock_ha.get_entity_registry = AsyncMock(return_value=[])
     test_app.state.ha_client = mock_ha
 
     from captive_portal.api.routes import (

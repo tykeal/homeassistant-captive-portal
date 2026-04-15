@@ -58,6 +58,11 @@ class TestEdgeCaseEntityAttributes:
                 },
             ]
         )
+        mock.get_entity_registry = AsyncMock(
+            return_value=[
+                {"entity_id": "calendar.rental_control_bare", "platform": "rental_control"},
+            ]
+        )
         app.state.ha_client = mock
         _login(client)
 
@@ -87,6 +92,11 @@ class TestEdgeCaseEntityAttributes:
                 },
             ]
         )
+        mock.get_entity_registry = AsyncMock(
+            return_value=[
+                {"entity_id": "calendar.rental_control_empty_name", "platform": "rental_control"},
+            ]
+        )
         app.state.ha_client = mock
         _login(client)
 
@@ -110,6 +120,11 @@ class TestEdgeCaseEntityAttributes:
                     "state": "custom_state",
                     "attributes": {"friendly_name": "Weird Calendar"},
                 },
+            ]
+        )
+        mock.get_entity_registry = AsyncMock(
+            return_value=[
+                {"entity_id": "calendar.rental_control_weird", "platform": "rental_control"},
             ]
         )
         app.state.ha_client = mock
@@ -196,6 +211,7 @@ class TestEdgeCaseErrorCategories:
                 detail="test detail",
             )
         )
+        mock.get_entity_registry = AsyncMock(return_value=[])
         app.state.ha_client = mock
         _login(client)
 

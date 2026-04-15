@@ -59,6 +59,7 @@ class DiscoveryResult(BaseModel):
 logger = logging.getLogger("captive_portal")
 
 _RENTAL_CONTROL_PREFIX = "calendar.rental_control_"
+_RENTAL_CONTROL_PLATFORM = "rental_control"
 
 _ERROR_CATEGORY_MAP: dict[type, str] = {
     HAConnectionError: "connection",
@@ -89,14 +90,29 @@ class HADiscoveryService:
     async def discover(self) -> DiscoveryResult:
         """Discover Rental Control calendar entities from Home Assistant.
 
-        Calls get_all_states(), filters for calendar.rental_control_* entities,
-        cross-references existing HAIntegrationConfig rows, and maps to
-        DiscoveredIntegration models.
+        Queries the entity registry for entities created by the
+        ``rental_control`` platform, then fetches full state objects
+        for the matching calendar entities.  Falls back to
+        ``entity_id`` prefix matching when the entity registry is
+        unavailable (e.g. older HA versions).
 
         Returns:
             DiscoveryResult with available=True on success, or
             available=False with error details on failure.
         """
+        # Attempt platform-based discovery via entity registry
+        registry_entity_ids: set[str] | None = None
+        try:
+            registry = await self.ha_client.get_entity_registry()
+            registry_entity_ids = {
+                entry["entity_id"]
+                for entry in registry
+                if entry.get("platform") == _RENTAL_CONTROL_PLATFORM
+                and entry.get("entity_id", "").startswith("calendar.")
+            }
+        except Exception:
+            logger.warning("Entity registry unavailable, falling back to prefix-based discovery")
+
         try:
             all_states = await self.ha_client.get_all_states()
         except HADiscoveryError as exc:
@@ -114,11 +130,18 @@ class HADiscoveryService:
             )
 
         # Filter for Rental Control calendar entities
-        rental_entities = [
-            entity
-            for entity in all_states
-            if entity.get("entity_id", "").startswith(_RENTAL_CONTROL_PREFIX)
-        ]
+        if registry_entity_ids is not None:
+            rental_entities = [
+                entity
+                for entity in all_states
+                if entity.get("entity_id", "") in registry_entity_ids
+            ]
+        else:
+            rental_entities = [
+                entity
+                for entity in all_states
+                if entity.get("entity_id", "").startswith(_RENTAL_CONTROL_PREFIX)
+            ]
 
         logger.info(
             "HA discovery: total_entities=%d rental_entities=%d",

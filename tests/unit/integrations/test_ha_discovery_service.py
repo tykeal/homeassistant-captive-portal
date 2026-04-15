@@ -35,12 +35,20 @@ def _make_entity(
     }
 
 
+def _make_registry_entry(
+    entity_id: str,
+    platform: str = "rental_control",
+) -> dict[str, Any]:
+    """Build a fake HA entity registry entry."""
+    return {"entity_id": entity_id, "platform": platform}
+
+
 @pytest.mark.asyncio
 async def test_discover_filters_rental_control_entities(
     db_engine: Engine,  # noqa: ARG001
     db_session: Session,
 ) -> None:
-    """discover() only returns entities matching calendar.rental_control_*."""
+    """discover() only returns entities matching rental_control platform."""
     from captive_portal.integrations.ha_client import HAClient
     from captive_portal.integrations.ha_discovery_service import HADiscoveryService
 
@@ -52,8 +60,17 @@ async def test_discover_filters_rental_control_entities(
         _make_entity("light.living_room", "on", "Living Room"),
     ]
 
+    registry = [
+        _make_registry_entry("calendar.rental_control_unit1"),
+        _make_registry_entry("calendar.rental_control_unit2"),
+        _make_registry_entry("sensor.temperature", "sensor"),
+        _make_registry_entry("calendar.family_events", "google"),
+        _make_registry_entry("light.living_room", "hue"),
+    ]
+
     mock_client = MagicMock(spec=HAClient)
     mock_client.get_all_states = AsyncMock(return_value=all_entities)
+    mock_client.get_entity_registry = AsyncMock(return_value=registry)
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
@@ -87,8 +104,14 @@ async def test_discover_marks_already_configured(
         _make_entity("calendar.rental_control_unit2", "off", "Unit 2"),
     ]
 
+    registry = [
+        _make_registry_entry("calendar.rental_control_unit1"),
+        _make_registry_entry("calendar.rental_control_unit2"),
+    ]
+
     mock_client = MagicMock(spec=HAClient)
     mock_client.get_all_states = AsyncMock(return_value=all_entities)
+    mock_client.get_entity_registry = AsyncMock(return_value=registry)
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
@@ -113,8 +136,14 @@ async def test_discover_extracts_state_and_display(
         _make_entity("calendar.rental_control_unit2", "off", "Unit 2"),
     ]
 
+    registry = [
+        _make_registry_entry("calendar.rental_control_unit1"),
+        _make_registry_entry("calendar.rental_control_unit2"),
+    ]
+
     mock_client = MagicMock(spec=HAClient)
     mock_client.get_all_states = AsyncMock(return_value=all_entities)
+    mock_client.get_entity_registry = AsyncMock(return_value=registry)
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
@@ -148,6 +177,9 @@ async def test_discover_extracts_event_summary(
 
     mock_client = MagicMock(spec=HAClient)
     mock_client.get_all_states = AsyncMock(return_value=all_entities)
+    mock_client.get_entity_registry = AsyncMock(
+        return_value=[_make_registry_entry("calendar.rental_control_unit1")]
+    )
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
@@ -173,6 +205,9 @@ async def test_discover_handles_missing_event_attributes(
 
     mock_client = MagicMock(spec=HAClient)
     mock_client.get_all_states = AsyncMock(return_value=all_entities)
+    mock_client.get_entity_registry = AsyncMock(
+        return_value=[_make_registry_entry("calendar.rental_control_unit1")]
+    )
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
@@ -197,6 +232,7 @@ async def test_discover_returns_discovery_result(
 
     mock_client = MagicMock(spec=HAClient)
     mock_client.get_all_states = AsyncMock(return_value=[])
+    mock_client.get_entity_registry = AsyncMock(return_value=[])
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
@@ -225,6 +261,7 @@ async def test_discover_connection_error_returns_unavailable(
             detail="Connection refused",
         )
     )
+    mock_client.get_entity_registry = AsyncMock(return_value=[])
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
@@ -251,6 +288,7 @@ async def test_discover_auth_error_returns_unavailable(
             detail="401 Unauthorized",
         )
     )
+    mock_client.get_entity_registry = AsyncMock(return_value=[])
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
@@ -277,6 +315,7 @@ async def test_discover_timeout_error_returns_unavailable(
             detail="ReadTimeout after 10s",
         )
     )
+    mock_client.get_entity_registry = AsyncMock(return_value=[])
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
@@ -303,6 +342,7 @@ async def test_discover_server_error_returns_unavailable(
             detail="HTTP 500",
         )
     )
+    mock_client.get_entity_registry = AsyncMock(return_value=[])
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
@@ -331,8 +371,131 @@ async def test_discover_extracts_friendly_name(
 
     mock_client = MagicMock(spec=HAClient)
     mock_client.get_all_states = AsyncMock(return_value=all_entities)
+    mock_client.get_entity_registry = AsyncMock(
+        return_value=[
+            _make_registry_entry("calendar.rental_control_beach_house"),
+        ]
+    )
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
     result = await service.discover()
 
     assert result.integrations[0].friendly_name == "Rental Control Beach House"
+
+
+@pytest.mark.asyncio
+async def test_discover_nonstandard_ids_via_registry_platform(
+    db_engine: Engine,  # noqa: ARG001
+    db_session: Session,
+) -> None:
+    """Entities with non-standard IDs found via registry platform."""
+    from captive_portal.integrations.ha_client import HAClient
+    from captive_portal.integrations.ha_discovery_service import HADiscoveryService
+
+    all_entities = [
+        _make_entity(
+            "calendar.beach_house_rental_control",
+            "on",
+            "Beach House",
+        ),
+        _make_entity(
+            "calendar.other_rental_control_other",
+            "off",
+            "Other Rental",
+        ),
+        _make_entity("sensor.temperature", "22.5", "Temp"),
+    ]
+
+    registry = [
+        _make_registry_entry("calendar.beach_house_rental_control"),
+        _make_registry_entry(
+            "calendar.other_rental_control_other",
+        ),
+        _make_registry_entry("sensor.temperature", "sensor"),
+    ]
+
+    mock_client = MagicMock(spec=HAClient)
+    mock_client.get_all_states = AsyncMock(return_value=all_entities)
+    mock_client.get_entity_registry = AsyncMock(return_value=registry)
+
+    service = HADiscoveryService(ha_client=mock_client, session=db_session)
+    result = await service.discover()
+
+    assert result.available is True
+    assert len(result.integrations) == 2
+    ids = [i.entity_id for i in result.integrations]
+    assert "calendar.beach_house_rental_control" in ids
+    assert "calendar.other_rental_control_other" in ids
+    assert "sensor.temperature" not in ids
+
+
+@pytest.mark.asyncio
+async def test_discover_excludes_wrong_platform_with_prefix(
+    db_engine: Engine,  # noqa: ARG001
+    db_session: Session,
+) -> None:
+    """Prefix-matching entity excluded when platform is not rental_control."""
+    from captive_portal.integrations.ha_client import HAClient
+    from captive_portal.integrations.ha_discovery_service import HADiscoveryService
+
+    all_entities = [
+        _make_entity(
+            "calendar.rental_control_fake",
+            "on",
+            "Fake Rental Control",
+        ),
+        _make_entity(
+            "calendar.rental_control_real",
+            "off",
+            "Real Rental",
+        ),
+    ]
+
+    registry = [
+        _make_registry_entry("calendar.rental_control_fake", "google"),
+        _make_registry_entry("calendar.rental_control_real"),
+    ]
+
+    mock_client = MagicMock(spec=HAClient)
+    mock_client.get_all_states = AsyncMock(return_value=all_entities)
+    mock_client.get_entity_registry = AsyncMock(return_value=registry)
+
+    service = HADiscoveryService(ha_client=mock_client, session=db_session)
+    result = await service.discover()
+
+    assert result.available is True
+    assert len(result.integrations) == 1
+    assert result.integrations[0].entity_id == ("calendar.rental_control_real")
+
+
+@pytest.mark.asyncio
+async def test_discover_fallback_to_prefix_on_registry_failure(
+    db_engine: Engine,  # noqa: ARG001
+    db_session: Session,
+) -> None:
+    """Falls back to prefix matching when entity registry fails."""
+    from captive_portal.integrations.ha_client import HAClient
+    from captive_portal.integrations.ha_discovery_service import HADiscoveryService
+    from captive_portal.integrations.ha_errors import HAServerError
+
+    all_entities = [
+        _make_entity("calendar.rental_control_unit1", "on", "Unit 1"),
+        _make_entity("calendar.beach_house_rental", "off", "Beach"),
+        _make_entity("sensor.temperature", "22.5", "Temp"),
+    ]
+
+    mock_client = MagicMock(spec=HAClient)
+    mock_client.get_all_states = AsyncMock(return_value=all_entities)
+    mock_client.get_entity_registry = AsyncMock(
+        side_effect=HAServerError(
+            user_message="Server error",
+            detail="HTTP 500",
+        )
+    )
+
+    service = HADiscoveryService(ha_client=mock_client, session=db_session)
+    result = await service.discover()
+
+    assert result.available is True
+    assert len(result.integrations) == 1
+    assert result.integrations[0].entity_id == ("calendar.rental_control_unit1")
