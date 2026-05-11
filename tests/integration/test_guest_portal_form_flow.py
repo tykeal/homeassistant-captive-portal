@@ -10,7 +10,6 @@ extract the device MAC address without falling back to header sniffing.
 from __future__ import annotations
 
 import os
-import re
 import tempfile
 from collections.abc import Generator
 
@@ -20,6 +19,8 @@ from fastapi.testclient import TestClient
 from captive_portal.config.settings import AppSettings
 from captive_portal.guest_app import create_guest_app
 from captive_portal.persistence import database
+
+from .conftest import extract_csrf_token
 
 
 @pytest.fixture
@@ -78,9 +79,7 @@ class TestGuestPortalFormFlow:
         get_resp = guest_client.get(
             "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
         )
-        match = re.search(r'name="csrf_token" value="([^"]+)"', get_resp.text)
-        assert match is not None
-        csrf_token = match.group(1)
+        csrf_token = extract_csrf_token(get_resp.text)
 
         # Step 2: POST with form data including client_mac
         post_resp = guest_client.post(
@@ -115,9 +114,7 @@ class TestGuestPortalFormFlow:
             "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF"
             "&site=abc123&gatewayMac=11-22-33-44-55-66&vid=100",
         )
-        match = re.search(r'name="csrf_token" value="([^"]+)"', get_resp.text)
-        assert match is not None
-        csrf_token = match.group(1)
+        csrf_token = extract_csrf_token(get_resp.text)
 
         # Step 2: POST with form data – code is invalid → error
         post_resp = guest_client.post(
@@ -148,9 +145,7 @@ class TestGuestPortalFormFlow:
         get_resp = guest_client.get(
             "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
         )
-        match = re.search(r'name="csrf_token" value="([^"]+)"', get_resp.text)
-        assert match is not None
-        csrf_token = match.group(1)
+        csrf_token = extract_csrf_token(get_resp.text)
 
         post_resp = guest_client.post(
             "/guest/authorize",

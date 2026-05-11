@@ -4,7 +4,6 @@
 
 """Integration tests for guest authorization flow with booking code."""
 
-import re
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -14,6 +13,8 @@ from sqlmodel import Session
 from captive_portal.app import create_app
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.models.rental_control_event import RentalControlEvent
+
+from .conftest import extract_csrf_token
 
 
 @pytest.mark.asyncio
@@ -52,9 +53,7 @@ class TestGuestAuthorizationFlowBooking:
         assert response.status_code == 200
 
         # Extract CSRF token from form HTML
-        match = re.search(r'name="csrf_token" value="([^"]+)"', response.text)
-        assert match is not None
-        csrf_token = match.group(1)
+        csrf_token = extract_csrf_token(response.text)
 
         # POST booking code with CSRF token
         response = client.post(

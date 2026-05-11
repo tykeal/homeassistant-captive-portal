@@ -4,6 +4,7 @@
 """Shared fixtures for integration tests."""
 
 from collections.abc import Generator
+from html.parser import HTMLParser
 from typing import Any
 
 import pytest
@@ -19,6 +20,50 @@ from captive_portal.security.session_middleware import (
     SessionMiddleware,
     SessionStore,
 )
+
+
+def extract_csrf_token(html: str, field_name: str = "csrf_token") -> str:
+    """Extract CSRF token from an HTML form hidden field.
+
+    Uses a proper HTML parser instead of fragile regex to tolerate
+    attribute reordering, whitespace, and quoting style changes.
+
+    Args:
+        html: HTML response body.
+        field_name: Name attribute of the hidden input.
+
+    Returns:
+        The value of the CSRF token field.
+
+    Raises:
+        AssertionError: If the token field is not found.
+    """
+
+    class _TokenExtractor(HTMLParser):
+        """HTML parser that finds a hidden input by name."""
+
+        def __init__(self) -> None:
+            """Initialize the token extractor."""
+            super().__init__()
+            self.token: str | None = None
+
+        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+            """Process start tags looking for the CSRF hidden input.
+
+            Args:
+                tag: HTML tag name.
+                attrs: List of (attribute, value) pairs.
+            """
+            if tag != "input":
+                return
+            attr_dict = dict(attrs)
+            if attr_dict.get("name") == field_name:
+                self.token = attr_dict.get("value")
+
+    parser = _TokenExtractor()
+    parser.feed(html)
+    assert parser.token is not None, f'Hidden field "{field_name}" not found in HTML'
+    return parser.token
 
 
 @pytest.fixture

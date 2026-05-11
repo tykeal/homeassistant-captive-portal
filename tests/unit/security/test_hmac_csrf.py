@@ -255,3 +255,96 @@ class TestCustomConfig:
         c1 = HMACCSRFConfig()
         c2 = HMACCSRFConfig()
         assert c1.secret_key != c2.secret_key
+
+
+class TestOriginValidation:
+    """Tests for Origin/Referer header validation."""
+
+    @pytest.mark.asyncio
+    async def test_missing_origin_and_referer_allowed(self) -> None:
+        """Request without Origin or Referer is allowed."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(form_data={"csrf_token": token})
+        await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_matching_origin_allowed(self) -> None:
+        """Request with matching Origin header is allowed."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "origin": "http://portal.local",
+                "host": "portal.local",
+            },
+        )
+        await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_mismatched_origin_rejected(self) -> None:
+        """Request with mismatched Origin header is rejected."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "origin": "http://evil.example.com",
+                "host": "portal.local",
+            },
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await csrf.validate_token(request)
+        assert exc_info.value.status_code == 403
+        assert "origin" in str(exc_info.value.detail).lower()
+
+    @pytest.mark.asyncio
+    async def test_matching_referer_allowed(self) -> None:
+        """Request with matching Referer header is allowed."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "referer": "http://portal.local/guest/authorize",
+                "host": "portal.local",
+            },
+        )
+        await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_mismatched_referer_rejected(self) -> None:
+        """Request with mismatched Referer header is rejected."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "referer": "http://evil.example.com/attack",
+                "host": "portal.local",
+            },
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await csrf.validate_token(request)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_origin_check_disabled(self) -> None:
+        """Origin check can be disabled via config."""
+        config = HMACCSRFConfig(check_origin=False)
+        csrf = HMACCSRFProtection(config)
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "origin": "http://evil.example.com",
+                "host": "portal.local",
+            },
+        )
+        await csrf.validate_token(request)

@@ -8,8 +8,9 @@ Assistant (CNA) and other restricted WebViews where cookies are not
 reliably persisted between GET and POST requests.
 
 The token embeds a random nonce and UTC timestamp, signed with
-HMAC-SHA256.  Validation verifies the signature and checks the
-timestamp falls within a configurable expiry window.
+HMAC-SHA256.  Validation verifies the signature, checks the timestamp
+falls within a configurable expiry window, and validates the Origin or
+Referer header to prevent cross-site replay.
 """
 
 from __future__ import annotations
@@ -17,12 +18,16 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import logging
 import secrets
 import time
 from dataclasses import dataclass, field
 from typing import Optional
+from urllib.parse import urlparse
 
 from fastapi import HTTPException, Request, status
+
+_logger = logging.getLogger(__name__)
 
 
 def _default_secret() -> str:
@@ -41,12 +46,14 @@ class HMACCSRFConfig:
             the token.
         header_name: Alternative HTTP header for AJAX requests.
         max_age_seconds: Maximum token age before expiry.
+        check_origin: Whether to validate Origin/Referer headers.
     """
 
     secret_key: str = field(default_factory=_default_secret)
     form_field_name: str = "csrf_token"
     header_name: str = "X-CSRF-Token"
     max_age_seconds: int = 900  # 15 minutes
+    check_origin: bool = True
 
 
 class HMACCSRFProtection:
@@ -56,6 +63,11 @@ class HMACCSRFProtection:
     token only in the HTML form.  The server validates the token by
     verifying its HMAC signature and checking the embedded timestamp.
     No cookie round-trip is required.
+
+    When ``check_origin`` is enabled (default), the ``Origin`` or
+    ``Referer`` header is validated to ensure the POST originates
+    from the same host that served the form.  This prevents
+    cross-site token replay.
     """
 
     def __init__(self, config: Optional[HMACCSRFConfig] = None) -> None:
@@ -88,8 +100,9 @@ class HMACCSRFProtection:
         """Validate CSRF token from the request.
 
         Extracts the token from the form field or header, verifies
-        the HMAC signature, and checks the timestamp is within the
-        configured expiry window.
+        the HMAC signature, checks the timestamp is within the
+        configured expiry window, and validates the Origin/Referer
+        header when ``check_origin`` is enabled.
 
         Args:
             request: Incoming HTTP request.
@@ -103,6 +116,10 @@ class HMACCSRFProtection:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="CSRF token missing",
             )
+
+        # Validate Origin/Referer before signature check
+        if self.config.check_origin:
+            self._validate_origin(request)
 
         try:
             decoded = base64.urlsafe_b64decode(
@@ -156,6 +173,47 @@ class HMACCSRFProtection:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="CSRF token expired",
+            )
+
+    def _validate_origin(self, request: Request) -> None:
+        """Verify the request Origin or Referer matches the server host.
+
+        iOS CNA and some WebViews may omit these headers, so a
+        missing header is allowed — only a *mismatched* header is
+        rejected.
+
+        Args:
+            request: Incoming HTTP request.
+
+        Raises:
+            HTTPException: 403 if the origin does not match.
+        """
+        origin = request.headers.get("origin")
+        referer = request.headers.get("referer")
+
+        if not origin and not referer:
+            # Headers absent — allow (CNA may strip them)
+            return
+
+        request_host = request.headers.get("host", "")
+        source_host: str | None = None
+
+        if origin:
+            parsed = urlparse(origin)
+            source_host = parsed.netloc or parsed.path
+        elif referer:
+            parsed = urlparse(referer)
+            source_host = parsed.netloc
+
+        if source_host and source_host != request_host:
+            _logger.warning(
+                "CSRF origin mismatch: source=%s host=%s",
+                source_host,
+                request_host,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="CSRF origin validation failed",
             )
 
     async def _extract_request_token(self, request: Request) -> Optional[str]:
