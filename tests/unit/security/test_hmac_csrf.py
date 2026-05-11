@@ -41,20 +41,11 @@ def _make_request(
         hdrs["content-type"] = "application/x-www-form-urlencoded"
     request.headers = hdrs
 
-    # Provide a mock url attribute for origin validation
+    # Set url.hostname/port to None so validation falls back to
+    # Host header parsing (which handles IPv6 correctly).
     url_mock = AsyncMock()
-    host_header = hdrs.get("host", "")
-    if ":" in host_header:
-        host_part, _, port_str = host_header.rpartition(":")
-        try:
-            url_mock.hostname = host_part
-            url_mock.port = int(port_str)
-        except ValueError:
-            url_mock.hostname = host_header
-            url_mock.port = None
-    else:
-        url_mock.hostname = host_header or None
-        url_mock.port = None
+    url_mock.hostname = None
+    url_mock.port = None
     request.url = url_mock
 
     async def _form() -> dict[str, str]:
@@ -406,6 +397,21 @@ class TestOriginValidation:
                 "content-type": "application/x-www-form-urlencoded",
                 "origin": "http://Portal.Local",
                 "host": "portal.local",
+            },
+        )
+        await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_ipv6_host_not_misread_as_port(self) -> None:
+        """IPv6 Host header is not misinterpreted as hostname:port."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "origin": "http://[::1]:8099",
+                "host": "[::1]:8099",
             },
         )
         await csrf.validate_token(request)

@@ -35,6 +35,50 @@ def _default_secret() -> str:
     return secrets.token_hex(32)
 
 
+def _parse_host_header(host: str) -> tuple[str, int | None]:
+    """Parse a Host header into (hostname, port).
+
+    Handles IPv6 bracketed notation like ``[::1]:8099`` and plain
+    ``hostname:port``.
+
+    Args:
+        host: Raw Host header value.
+
+    Returns:
+        Tuple of (lowercase hostname, port or None).
+    """
+    host = host.strip().lower()
+    if not host:
+        return ("", None)
+
+    # Bracketed IPv6: [::1] or [::1]:8099
+    if host.startswith("["):
+        bracket_end = host.find("]")
+        if bracket_end == -1:
+            return (host, None)
+        hostname = host[1:bracket_end]
+        rest = host[bracket_end + 1 :]
+        if rest.startswith(":"):
+            try:
+                return (hostname, int(rest[1:]))
+            except ValueError:
+                return (hostname, None)
+        return (hostname, None)
+
+    # Plain host or host:port — only treat last colon as port
+    # separator if the part after it is numeric (avoids IPv6
+    # bare addresses like ::1).
+    if ":" in host:
+        head, _, tail = host.rpartition(":")
+        try:
+            return (head, int(tail))
+        except ValueError:
+            # Bare IPv6 address without brackets
+            return (host, None)
+
+    return (host, None)
+
+
 @dataclass
 class HMACCSRFConfig:
     """Configuration for HMAC-signed CSRF tokens.
@@ -202,19 +246,19 @@ class HMACCSRFProtection:
         source_hostname = (parsed.hostname or "").lower()
         source_port = parsed.port
 
-        request_hostname = (
-            getattr(request.url, "hostname", None) or request.headers.get("host", "")
-        ).lower()
-        # Strip port from Host header if present
-        if ":" in request_hostname:
-            host_part, _, port_part = request_hostname.rpartition(":")
-            try:
-                request_port: int | None = int(port_part)
-                request_hostname = host_part
-            except ValueError:
-                request_port = None
+        # Resolve request hostname and port.  Prefer structured URL
+        # attributes to avoid mis-parsing IPv6 Host headers like
+        # "[::1]:8099".
+        url_hostname = getattr(request.url, "hostname", None)
+        url_port = getattr(request.url, "port", None)
+
+        if url_hostname:
+            request_hostname = url_hostname.lower()
+            request_port: int | None = url_port
         else:
-            request_port = getattr(request.url, "port", None)
+            request_hostname, request_port = _parse_host_header(
+                request.headers.get("host", ""),
+            )
 
         # Treat default ports as equivalent to no port
         default_ports = {80, 443}
