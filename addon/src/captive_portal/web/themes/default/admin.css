@@ -12,6 +12,7 @@
     --success-color: #28a745;
     --warning-color: #ffc107;
     --danger-color: #dc3545;
+    --error-color: #fd7e14;
     --bg-color: #f8f9fa;
     --text-color: #212529;
     --border-color: #dee2e6;
@@ -378,6 +379,14 @@ h2 {
 .status-active { background-color: #d4edda; color: #155724; }
 .status-expired { background-color: #f8d7da; color: #721c24; }
 .status-revoked { background-color: #d6d8db; color: #383d41; }
+.status-failed { background-color: #f8d7da; color: #721c24; }
+
+/* Auth outcome badges */
+.status-success { background-color: var(--success-color); color: #fff; }
+.status-denied { background-color: var(--danger-color); color: #fff; }
+.status-error { background-color: var(--error-color); color: #fff; }
+.status-failure { background-color: var(--danger-color); color: #fff; }
+.status-rate_limited { background-color: var(--warning-color); color: var(--text-color); }
 
 /* Discovery state badges */
 .state-badge {

@@ -54,6 +54,7 @@ SPDX-License-Identifier: Apache-2.0
                         <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
                         <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>Expired</option>
                         <option value="revoked" {% if status_filter == 'revoked' %}selected{% endif %}>Revoked</option>
+                        <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
                     </select>
                 </div>
                 <div style="align-self: flex-end;">
@@ -71,6 +72,7 @@ SPDX-License-Identifier: Apache-2.0
                         <th>Booking Ref</th>
                         <th>Voucher</th>
                         <th>Integration</th>
+                        <th>VLAN</th>
                         <th>Start</th>
                         <th>End</th>
                         <th>Grace Period</th>
@@ -108,6 +110,13 @@ SPDX-License-Identifier: Apache-2.0
                                 <em>-</em>
                             {% endif %}
                         </td>
+                        <td>
+                            {% if grant.omada_vid %}
+                                {{ grant.omada_vid }}
+                            {% else %}
+                                <em>-</em>
+                            {% endif %}
+                        </td>
                         <td>{{ grant.start_utc.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>{{ grant.end_utc.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>
@@ -136,7 +145,7 @@ SPDX-License-Identifier: Apache-2.0
                     {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="9" class="empty-state">No grants found for the selected filter.</td>
+                        <td colspan="10" class="empty-state">No grants found for the selected filter.</td>
                     </tr>
                     {% endif %}
                 </tbody>

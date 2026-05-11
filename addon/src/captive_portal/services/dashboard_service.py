@@ -44,6 +44,7 @@ class ActivityLogEntry:
         target_type: Entity type affected.
         target_id: Entity identifier affected.
         admin_username: Resolved admin username or raw actor.
+        outcome: Action outcome (e.g. success, denied, error).
     """
 
     timestamp: datetime
@@ -51,6 +52,7 @@ class ActivityLogEntry:
     target_type: str
     target_id: str
     admin_username: str
+    outcome: str
 
 
 class DashboardService:
@@ -188,6 +190,7 @@ class DashboardService:
                     target_type=log.target_type or "",
                     target_id=log.target_id or "",
                     admin_username=admin_map.get(log.actor, log.actor),
+                    outcome=log.outcome,
                 )
             )
 
