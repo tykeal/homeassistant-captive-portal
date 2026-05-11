@@ -168,11 +168,16 @@ jobs:
       # yamllint disable-line rule:line-length
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
+      - name: "Symlink tests into addon prefix"
+        run: ln -s ../tests addon/tests
+
       - name: "Python tests [pytest] ${{ matrix.python-version }}"
         # yamllint disable-line rule:line-length
         uses: lfreleng-actions/python-test-action@aa753462f090101dcb0c4708e9499f55e276e373  # v1.1.2
         with:
           python_version: "${{ matrix.python-version }}"
+          path_prefix: 'addon/'
+          tests_path: 'tests'
 
   python-audit:
     name: 'Python Audit'
