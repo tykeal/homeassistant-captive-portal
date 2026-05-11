@@ -264,7 +264,7 @@ class RentalControlService:
         # Upsert event (update if exists, insert if new)
         await self.event_repo.upsert(event)
 
-        logger.info(
+        logger.debug(
             "Processed Rental Control event",
             extra={
                 "integration_id": str(integration_config.integration_id),
