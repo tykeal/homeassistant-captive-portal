@@ -13,6 +13,8 @@ from sqlmodel import Session
 from captive_portal.app import create_app
 from captive_portal.models.voucher import Voucher
 
+from .conftest import extract_csrf_token
+
 
 @pytest.mark.asyncio
 class TestGuestAuthorizationFlowVoucher:
@@ -36,9 +38,8 @@ class TestGuestAuthorizationFlowVoucher:
         response = client.get("/guest/authorize")
         assert response.status_code == 200
 
-        # Extract CSRF token from cookie
-        csrf_token = response.cookies.get("guest_csrftoken")
-        assert csrf_token is not None
+        # Extract CSRF token from form HTML
+        csrf_token = extract_csrf_token(response.text)
 
         # POST voucher code with CSRF token
         response = client.post(

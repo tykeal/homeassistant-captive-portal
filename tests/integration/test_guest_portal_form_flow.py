@@ -20,6 +20,8 @@ from captive_portal.config.settings import AppSettings
 from captive_portal.guest_app import create_guest_app
 from captive_portal.persistence import database
 
+from .conftest import extract_csrf_token
+
 
 @pytest.fixture
 def guest_client() -> Generator[TestClient, None, None]:
@@ -73,12 +75,11 @@ class TestGuestPortalFormFlow:
         (voucher not found) rather than 400 (MAC extraction
         failure), proving the form field was read correctly.
         """
-        # Step 1: GET to obtain CSRF token cookie
+        # Step 1: GET to obtain CSRF token from form
         get_resp = guest_client.get(
             "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
         )
-        csrf_token = get_resp.cookies.get("guest_csrftoken")
-        assert csrf_token is not None
+        csrf_token = extract_csrf_token(get_resp.text)
 
         # Step 2: POST with form data including client_mac
         post_resp = guest_client.post(
@@ -108,13 +109,12 @@ class TestGuestPortalFormFlow:
         back to /guest/authorize with the original Omada query
         parameters so the guest can try again without losing context.
         """
-        # Step 1: GET to obtain CSRF token cookie
+        # Step 1: GET to obtain CSRF token from form
         get_resp = guest_client.get(
             "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF"
             "&site=abc123&gatewayMac=11-22-33-44-55-66&vid=100",
         )
-        csrf_token = get_resp.cookies.get("guest_csrftoken")
-        assert csrf_token is not None
+        csrf_token = extract_csrf_token(get_resp.text)
 
         # Step 2: POST with form data – code is invalid → error
         post_resp = guest_client.post(
@@ -145,8 +145,7 @@ class TestGuestPortalFormFlow:
         get_resp = guest_client.get(
             "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
         )
-        csrf_token = get_resp.cookies.get("guest_csrftoken")
-        assert csrf_token is not None
+        csrf_token = extract_csrf_token(get_resp.text)
 
         post_resp = guest_client.post(
             "/guest/authorize",

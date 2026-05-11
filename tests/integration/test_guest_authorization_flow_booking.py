@@ -14,6 +14,8 @@ from captive_portal.app import create_app
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.models.rental_control_event import RentalControlEvent
 
+from .conftest import extract_csrf_token
+
 
 @pytest.mark.asyncio
 class TestGuestAuthorizationFlowBooking:
@@ -50,9 +52,8 @@ class TestGuestAuthorizationFlowBooking:
         response = client.get("/guest/authorize")
         assert response.status_code == 200
 
-        # Extract CSRF token from cookie
-        csrf_token = response.cookies.get("guest_csrftoken")
-        assert csrf_token is not None
+        # Extract CSRF token from form HTML
+        csrf_token = extract_csrf_token(response.text)
 
         # POST booking code with CSRF token
         response = client.post(
