@@ -325,10 +325,20 @@ async def show_authorize_form(
 
     # DEBUG: configurable logging for hardware testing
     if getattr(request.app.state, "debug_guest_portal", False):
+        form_action = f"{request.scope.get('root_path', '')}/guest/authorize"
         _logger.debug(
             "GET /authorize query_params=%s omada_params=%s",
             dict(request.query_params),
             omada_params,
+        )
+        _logger.debug(
+            "GET /authorize form_action=%s  User-Agent=%s",
+            form_action,
+            request.headers.get("user-agent", ""),
+        )
+        _logger.debug(
+            "GET /authorize effective_csp=%s",
+            _add_security_headers(HTMLResponse("")).headers.get("Content-Security-Policy", ""),
         )
 
     # Use redirectUrl as continue_url if no explicit continue was provided

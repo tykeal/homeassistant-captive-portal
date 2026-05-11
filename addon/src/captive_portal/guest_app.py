@@ -18,12 +18,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.types import ASGIApp
 
 from captive_portal._version import __version__
 from captive_portal.api.routes import booking_authorize
@@ -58,6 +60,56 @@ _GUEST_CSP = (
     "frame-ancestors 'none'; "
     "object-src 'none'"
 )
+
+
+class _DebugLoggingMiddleware(BaseHTTPMiddleware):
+    """Log request/response details when debug_guest_portal is enabled.
+
+    Captures HTTP method, path, and key headers for diagnosing
+    CNA (Captive Network Assistant) issues on iOS and Android.
+
+    Args:
+        app: ASGI application.
+        debug_enabled: Activate debug logging when ``True``.
+    """
+
+    def __init__(self, app: ASGIApp, debug_enabled: bool = False) -> None:
+        """Initialise with debug toggle.
+
+        Args:
+            app: ASGI application.
+            debug_enabled: Whether to emit debug log lines.
+        """
+        super().__init__(app)
+        self._debug = debug_enabled
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        """Log request and response details when debug is active."""
+        if self._debug:
+            logger.debug(
+                "REQUEST  %s %s  User-Agent=%s  Content-Type=%s  Origin=%s  Referer=%s",
+                request.method,
+                request.url.path,
+                request.headers.get("user-agent", ""),
+                request.headers.get("content-type", ""),
+                request.headers.get("origin", ""),
+                request.headers.get("referer", ""),
+            )
+
+        response: Response = await call_next(request)
+
+        if self._debug:
+            logger.debug(
+                "RESPONSE %s %s  status=%d  CSP=%s  X-Frame-Options=%s  Cache-Control=%s",
+                request.method,
+                request.url.path,
+                response.status_code,
+                response.headers.get("content-security-policy", ""),
+                response.headers.get("x-frame-options", ""),
+                response.headers.get("cache-control", ""),
+            )
+
+        return response
 
 
 def _make_guest_lifespan(
@@ -188,6 +240,13 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
         SecurityHeadersMiddleware,
         frame_options="DENY",
         csp=_GUEST_CSP,
+    )
+
+    # Debug logging middleware — runs before SecurityHeadersMiddleware
+    # (add_middleware reverses order, so adding after means it runs first)
+    app.add_middleware(
+        _DebugLoggingMiddleware,
+        debug_enabled=settings.debug_guest_portal,
     )
 
     # NO SessionMiddleware — guest routes do not use admin sessions
