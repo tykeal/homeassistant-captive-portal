@@ -126,14 +126,13 @@ class TestSessionCookieAttributes:
         assert resp.status_code == 200
         assert "csrftoken" in resp.cookies
 
-    def test_guest_csrf_cookie_samesite_lax(self, client: TestClient) -> None:
-        """Guest CSRF cookie should use SameSite=Lax for redirect scenarios."""
+    def test_guest_csrf_no_cookie_set(self, client: TestClient) -> None:
+        """Guest portal must NOT set a CSRF cookie (HMAC tokens are cookieless)."""
         resp = client.get("/guest/authorize")
         assert resp.status_code == 200
 
         set_cookie = _find_set_cookie_header(resp, "guest_csrftoken")
-        assert set_cookie is not None, "guest_csrftoken cookie not found"
-        assert "samesite=lax" in set_cookie.lower()
+        assert set_cookie is None, "guest_csrftoken cookie should not be set"
 
 
 # ---------------------------------------------------------------------------

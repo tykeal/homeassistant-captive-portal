@@ -4,6 +4,7 @@
 
 """Integration tests for guest authorization flow with booking code."""
 
+import re
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -50,9 +51,10 @@ class TestGuestAuthorizationFlowBooking:
         response = client.get("/guest/authorize")
         assert response.status_code == 200
 
-        # Extract CSRF token from cookie
-        csrf_token = response.cookies.get("guest_csrftoken")
-        assert csrf_token is not None
+        # Extract CSRF token from form HTML
+        match = re.search(r'name="csrf_token" value="([^"]+)"', response.text)
+        assert match is not None
+        csrf_token = match.group(1)
 
         # POST booking code with CSRF token
         response = client.post(
