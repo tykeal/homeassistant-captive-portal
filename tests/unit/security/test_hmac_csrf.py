@@ -415,3 +415,20 @@ class TestOriginValidation:
             },
         )
         await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_bare_ipv6_host_allowed(self) -> None:
+        """Bare (unbracketed) IPv6 Host like ::1 is parsed correctly."""
+        config = HMACCSRFConfig(check_origin=False)
+        csrf = HMACCSRFProtection(config)
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "host": "::1",
+            },
+        )
+        # No origin/referer so check is skipped; just verifying
+        # _parse_host_header doesn't crash on bare IPv6.
+        await csrf.validate_token(request)

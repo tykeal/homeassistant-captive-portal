@@ -66,14 +66,17 @@ def _parse_host_header(host: str) -> tuple[str, int | None]:
         return (hostname, None)
 
     # Plain host or host:port — only treat last colon as port
-    # separator if the part after it is numeric (avoids IPv6
-    # bare addresses like ::1).
+    # separator if there's exactly one colon (i.e. not an IPv6
+    # literal).  Bare IPv6 addresses like ::1 contain multiple
+    # colons and should be returned as-is.
     if ":" in host:
+        if host.count(":") > 1:
+            # Bare (unbracketed) IPv6 literal
+            return (host, None)
         head, _, tail = host.rpartition(":")
         try:
             return (head, int(tail))
         except ValueError:
-            # Bare IPv6 address without brackets
             return (host, None)
 
     return (host, None)
