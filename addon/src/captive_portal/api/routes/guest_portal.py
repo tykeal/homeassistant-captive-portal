@@ -25,7 +25,7 @@ from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.models.portal_config import PortalConfig
 from captive_portal.persistence.database import get_session
 from captive_portal.persistence.repositories import AccessGrantRepository
-from captive_portal.security.csrf import CSRFConfig, CSRFProtection
+from captive_portal.security.hmac_csrf import HMACCSRFProtection
 from captive_portal.security.rate_limiter import RateLimiter
 from captive_portal.services.audit_service import AuditService
 from captive_portal.services.booking_code_validator import (
@@ -96,14 +96,10 @@ templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 templates.env.autoescape = True  # Explicitly enable auto-escaping for XSS protection
 templates.env.globals["app_version"] = __version__
 
-# Guest-specific CSRF configuration (lighter-weight since no session state)
-_guest_csrf_config = CSRFConfig(
-    cookie_name="guest_csrftoken",
-    form_field_name="csrf_token",
-    cookie_secure=False,  # Allow HTTP for captive portal use
-    cookie_samesite="lax",  # Lax mode for redirect scenarios
-)
-_guest_csrf = CSRFProtection(_guest_csrf_config)
+# Guest CSRF uses HMAC-signed tokens (no cookie required).
+# iOS Captive Network Assistant does not persist cookies between
+# GET and POST, so the double-submit cookie pattern fails there.
+_guest_csrf = HMACCSRFProtection()
 
 
 def get_audit_service(session: Session = Depends(get_session)) -> AuditService:
@@ -353,10 +349,7 @@ async def show_authorize_form(
         },
     )
 
-    # Set CSRF token in cookie
-    _guest_csrf.set_csrf_cookie(response, csrf_token)
-
-    # Add security headers
+    # Add security headers (CSRF cookie no longer needed)
     return _add_security_headers(response)
 
 
