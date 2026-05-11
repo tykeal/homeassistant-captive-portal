@@ -47,7 +47,7 @@ templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 templates.env.autoescape = True
 templates.env.globals["app_version"] = __version__
 
-# Guest-specific Content-Security-Policy (stricter than ingress: no framing)
+# Guest-specific Content-Security-Policy (same-origin framing for CNA compat)
 _GUEST_CSP = (
     "default-src 'self'; "
     "script-src 'self'; "
@@ -56,8 +56,7 @@ _GUEST_CSP = (
     "font-src 'self'; "
     "connect-src 'self'; "
     "base-uri 'self'; "
-    "form-action 'self'; "
-    "frame-ancestors 'none'; "
+    "frame-ancestors 'self'; "
     "object-src 'none'"
 )
 
@@ -235,10 +234,10 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
     # Store debug toggle in app state for route handlers
     app.state.debug_guest_portal = settings.debug_guest_portal
 
-    # Security headers middleware — stricter policy for guest listener
+    # Security headers middleware — CNA-compatible policy for guest listener
     app.add_middleware(
         SecurityHeadersMiddleware,
-        frame_options="DENY",
+        frame_options="SAMEORIGIN",
         csp=_GUEST_CSP,
     )
 

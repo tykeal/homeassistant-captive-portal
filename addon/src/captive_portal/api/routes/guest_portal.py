@@ -158,13 +158,19 @@ def _add_security_headers(response: HTMLResponse) -> HTMLResponse:
     - X-Content-Type-Options: Prevents MIME-sniffing
     - Referrer-Policy: Limits referrer information leakage
 
+    Note:
+        On the guest listener, ``SecurityHeadersMiddleware`` overrides
+        the CSP set here with ``guest_app._GUEST_CSP``.  This
+        route-level CSP acts as a fallback for test clients that
+        bypass middleware.
+
     Args:
         response: HTMLResponse to add headers to
 
     Returns:
         Same response with security headers added
     """
-    # CSP allows inline styles (needed for our templates) but blocks inline scripts
+    # Route-level CSP (middleware may override in production)
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "style-src 'self' 'unsafe-inline'; "
@@ -173,11 +179,12 @@ def _add_security_headers(response: HTMLResponse) -> HTMLResponse:
         "font-src 'self'; "
         "object-src 'none'; "
         "base-uri 'self'; "
-        "form-action 'self'"
+        "frame-ancestors 'self'"
     )
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Cache-Control"] = "no-store"
     return response
 
 
@@ -327,17 +334,20 @@ async def show_authorize_form(
     if getattr(request.app.state, "debug_guest_portal", False):
         form_action = f"{request.scope.get('root_path', '')}/guest/authorize"
         _logger.debug(
-            "GET /authorize query_params=%s omada_params=%s",
+            "GET %s query_params=%s omada_params=%s",
+            request.url.path,
             dict(request.query_params),
             omada_params,
         )
         _logger.debug(
-            "GET /authorize form_action=%s  User-Agent=%s",
+            "GET %s form_action=%s  User-Agent=%s",
+            request.url.path,
             form_action,
             request.headers.get("user-agent", ""),
         )
         _logger.debug(
-            "GET /authorize effective_csp=%s",
+            "GET %s route_csp=%s",
+            request.url.path,
             _add_security_headers(HTMLResponse("")).headers.get("Content-Security-Policy", ""),
         )
 

@@ -77,6 +77,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
             response.headers["Pragma"] = "no-cache"
             response.headers["Expires"] = "0"
+        else:
+            # Guest portal: prevent CNA/browser caching of auth pages
+            if path.startswith("/guest") and "Cache-Control" not in response.headers:
+                response.headers["Cache-Control"] = "no-store"
 
         # Permissions Policy - disable unnecessary features
         permissions = (
