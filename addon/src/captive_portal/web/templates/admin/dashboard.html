@@ -56,6 +56,7 @@ SPDX-License-Identifier: Apache-2.0
                     <tr>
                         <th>Time</th>
                         <th>Action</th>
+                        <th>Outcome</th>
                         <th>Target</th>
                         <th>Admin</th>
                     </tr>
@@ -66,13 +67,18 @@ SPDX-License-Identifier: Apache-2.0
                     <tr>
                         <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>{{ log.action }}</td>
+                        <td>
+                            <span class="status-badge status-{{ log.outcome }}">
+                                {{ log.outcome }}
+                            </span>
+                        </td>
                         <td>{{ log.target_type }} {{ log.target_id }}</td>
                         <td>{{ log.admin_username }}</td>
                     </tr>
                     {% endfor %}
                     {% else %}
                     <tr>
-                        <td colspan="4" class="empty-state">No recent activity</td>
+                        <td colspan="5" class="empty-state">No recent activity</td>
                     </tr>
                     {% endif %}
                 </tbody>
