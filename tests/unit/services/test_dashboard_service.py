@@ -106,6 +106,7 @@ def _make_audit_log(
     action: str = "test.action",
     target_type: str = "grant",
     target_id: str = "id-1",
+    outcome: str = "success",
     timestamp_utc: datetime | None = None,
 ) -> AuditLog:
     """Create a test AuditLog instance."""
@@ -114,7 +115,7 @@ def _make_audit_log(
         action=action,
         target_type=target_type,
         target_id=target_id,
-        outcome="success",
+        outcome=outcome,
     )
     if timestamp_utc is not None:
         log.timestamp_utc = timestamp_utc
@@ -481,4 +482,23 @@ class TestGetRecentActivityEntryFields:
         assert entry.target_type == "voucher"
         assert entry.target_id == "ABCD1234"
         assert entry.admin_username == "system"
+        assert entry.outcome == "success"
         assert isinstance(entry.timestamp, datetime)
+
+
+class TestGetRecentActivityOutcome:
+    """Verify outcome field is populated from audit log."""
+
+    def test_denied_outcome_populates_entry(self, db_session: Session) -> None:
+        """Verify non-success outcome is passed through."""
+        _make_audit_log(
+            db_session,
+            action="auth.login",
+            outcome="denied",
+        )
+
+        svc = DashboardService(db_session)
+        entries = svc.get_recent_activity()
+
+        assert len(entries) == 1
+        assert entries[0].outcome == "denied"
