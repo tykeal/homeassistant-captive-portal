@@ -41,6 +41,22 @@ def _make_request(
         hdrs["content-type"] = "application/x-www-form-urlencoded"
     request.headers = hdrs
 
+    # Provide a mock url attribute for origin validation
+    url_mock = AsyncMock()
+    host_header = hdrs.get("host", "")
+    if ":" in host_header:
+        host_part, _, port_str = host_header.rpartition(":")
+        try:
+            url_mock.hostname = host_part
+            url_mock.port = int(port_str)
+        except ValueError:
+            url_mock.hostname = host_header
+            url_mock.port = None
+    else:
+        url_mock.hostname = host_header or None
+        url_mock.port = None
+    request.url = url_mock
+
     async def _form() -> dict[str, str]:
         """Return form data."""
         return form_data or {}
@@ -344,6 +360,51 @@ class TestOriginValidation:
             headers={
                 "content-type": "application/x-www-form-urlencoded",
                 "origin": "http://evil.example.com",
+                "host": "portal.local",
+            },
+        )
+        await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_default_port_normalization(self) -> None:
+        """Origin with default port matches Host without port."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "origin": "http://portal.local:80",
+                "host": "portal.local",
+            },
+        )
+        await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_host_with_port_matches_origin(self) -> None:
+        """Host header with default port matches Origin without port."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "origin": "http://portal.local",
+                "host": "portal.local:80",
+            },
+        )
+        await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_case_insensitive_origin(self) -> None:
+        """Origin comparison is case-insensitive."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "origin": "http://Portal.Local",
                 "host": "portal.local",
             },
         )

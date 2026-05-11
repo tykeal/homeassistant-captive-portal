@@ -180,7 +180,8 @@ class HMACCSRFProtection:
 
         iOS CNA and some WebViews may omit these headers, so a
         missing header is allowed — only a *mismatched* header is
-        rejected.
+        rejected.  Comparison normalises hostnames to lowercase and
+        strips default ports (80 for HTTP, 443 for HTTPS).
 
         Args:
             request: Incoming HTTP request.
@@ -195,21 +196,38 @@ class HMACCSRFProtection:
             # Headers absent — allow (CNA may strip them)
             return
 
-        request_host = request.headers.get("host", "")
-        source_host: str | None = None
+        source_url = origin or referer
+        assert source_url is not None  # guaranteed by guard above
+        parsed = urlparse(source_url)
+        source_hostname = (parsed.hostname or "").lower()
+        source_port = parsed.port
 
-        if origin:
-            parsed = urlparse(origin)
-            source_host = parsed.netloc or parsed.path
-        elif referer:
-            parsed = urlparse(referer)
-            source_host = parsed.netloc
+        request_hostname = (
+            getattr(request.url, "hostname", None) or request.headers.get("host", "")
+        ).lower()
+        # Strip port from Host header if present
+        if ":" in request_hostname:
+            host_part, _, port_part = request_hostname.rpartition(":")
+            try:
+                request_port: int | None = int(port_part)
+                request_hostname = host_part
+            except ValueError:
+                request_port = None
+        else:
+            request_port = getattr(request.url, "port", None)
 
-        if source_host and source_host != request_host:
+        # Treat default ports as equivalent to no port
+        default_ports = {80, 443}
+        if source_port in default_ports:
+            source_port = None
+        if request_port in default_ports:
+            request_port = None
+
+        if source_hostname != request_hostname or source_port != request_port:
             _logger.warning(
                 "CSRF origin mismatch: source=%s host=%s",
-                source_host,
-                request_host,
+                source_url,
+                request.headers.get("host", ""),
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
