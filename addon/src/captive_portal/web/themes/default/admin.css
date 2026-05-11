@@ -384,6 +384,7 @@ h2 {
 .status-success { background-color: #28a745; color: #fff; }
 .status-denied { background-color: #dc3545; color: #fff; }
 .status-error { background-color: #fd7e14; color: #fff; }
+.status-failure { background-color: #dc3545; color: #fff; }
 .status-rate_limited { background-color: #ffc107; color: #212529; }
 
 /* Discovery state badges */
