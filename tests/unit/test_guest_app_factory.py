@@ -125,16 +125,16 @@ class TestGuestAppRootRedirect:
 class TestGuestAppSecurityHeaders:
     """Test that guest app has correct security headers."""
 
-    def test_x_frame_options_deny(self, guest_client: TestClient) -> None:
-        """Guest app sets X-Frame-Options to DENY (not framed)."""
+    def test_x_frame_options_sameorigin(self, guest_client: TestClient) -> None:
+        """Guest app sets X-Frame-Options to SAMEORIGIN for CNA compat."""
         response = guest_client.get("/api/health")
-        assert response.headers["X-Frame-Options"] == "DENY"
+        assert response.headers["X-Frame-Options"] == "SAMEORIGIN"
 
-    def test_csp_frame_ancestors_none(self, guest_client: TestClient) -> None:
-        """Guest app CSP includes frame-ancestors 'none'."""
+    def test_csp_frame_ancestors_self(self, guest_client: TestClient) -> None:
+        """Guest app CSP includes frame-ancestors 'self'."""
         response = guest_client.get("/api/health")
         csp = response.headers["Content-Security-Policy"]
-        assert "frame-ancestors 'none'" in csp
+        assert "frame-ancestors 'self'" in csp
 
     def test_csp_base_uri_self(self, guest_client: TestClient) -> None:
         """Guest app CSP includes base-uri 'self'."""
@@ -142,11 +142,16 @@ class TestGuestAppSecurityHeaders:
         csp = response.headers["Content-Security-Policy"]
         assert "base-uri 'self'" in csp
 
-    def test_csp_form_action_self(self, guest_client: TestClient) -> None:
-        """Guest app CSP includes form-action 'self'."""
+    def test_csp_no_form_action(self, guest_client: TestClient) -> None:
+        """Guest app CSP omits form-action for iOS CNA compat."""
         response = guest_client.get("/api/health")
         csp = response.headers["Content-Security-Policy"]
-        assert "form-action 'self'" in csp
+        assert "form-action" not in csp
+
+    def test_guest_cache_control_no_store(self, guest_client: TestClient) -> None:
+        """Guest portal paths include Cache-Control: no-store."""
+        response = guest_client.get("/guest/welcome")
+        assert "no-store" in response.headers.get("Cache-Control", "")
 
 
 class TestGuestAppNoSessionMiddleware:
