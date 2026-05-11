@@ -387,6 +387,38 @@ class TestOriginValidation:
         await csrf.validate_token(request)
 
     @pytest.mark.asyncio
+    async def test_https_default_port_normalization(self) -> None:
+        """HTTPS origin on port 443 matches Host without port."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "origin": "https://portal.local:443",
+                "host": "portal.local",
+            },
+        )
+        await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_http_443_not_stripped(self) -> None:
+        """Port 443 on http scheme is NOT treated as default."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            form_data={"csrf_token": token},
+            headers={
+                "content-type": "application/x-www-form-urlencoded",
+                "origin": "http://portal.local:443",
+                "host": "portal.local",
+            },
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await csrf.validate_token(request)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
     async def test_case_insensitive_origin(self) -> None:
         """Origin comparison is case-insensitive."""
         csrf = HMACCSRFProtection()

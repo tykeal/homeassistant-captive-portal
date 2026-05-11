@@ -228,7 +228,8 @@ class HMACCSRFProtection:
         iOS CNA and some WebViews may omit these headers, so a
         missing header is allowed — only a *mismatched* header is
         rejected.  Comparison normalises hostnames to lowercase and
-        strips default ports (80 for HTTP, 443 for HTTPS).
+        strips default ports based on scheme (80 for HTTP, 443 for
+        HTTPS).
 
         Args:
             request: Incoming HTTP request.
@@ -243,11 +244,14 @@ class HMACCSRFProtection:
             # Headers absent — allow (CNA may strip them)
             return
 
-        source_url = origin or referer
-        assert source_url is not None  # guaranteed by guard above
+        source_url = origin if origin else referer
+        if source_url is None:  # pragma: no cover – defensive
+            return
+
         parsed = urlparse(source_url)
         source_hostname = (parsed.hostname or "").lower()
         source_port = parsed.port
+        source_scheme = (parsed.scheme or "").lower()
 
         # Resolve request hostname and port.  Prefer structured URL
         # attributes to avoid mis-parsing IPv6 Host headers like
@@ -263,12 +267,15 @@ class HMACCSRFProtection:
                 request.headers.get("host", ""),
             )
 
-        # Treat default ports as equivalent to no port
-        default_ports = {80, 443}
-        if source_port in default_ports:
-            source_port = None
-        if request_port in default_ports:
-            request_port = None
+        # Strip the default port for the source scheme so that
+        # http://host:80 matches http://host.
+        _scheme_default: dict[str, int] = {"http": 80, "https": 443}
+        default_port = _scheme_default.get(source_scheme)
+        if default_port is not None:
+            if source_port == default_port:
+                source_port = None
+            if request_port == default_port:
+                request_port = None
 
         if source_hostname != request_hostname or source_port != request_port:
             _logger.warning(
