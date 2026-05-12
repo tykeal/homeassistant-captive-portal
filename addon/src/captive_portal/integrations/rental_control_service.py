@@ -156,7 +156,7 @@ class RentalControlService:
                 },
             )
         else:
-            logger.info(
+            logger.debug(
                 "Processed Rental Control events",
                 extra={
                     "integration_id": config.integration_id,
