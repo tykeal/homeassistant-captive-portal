@@ -18,14 +18,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, Request, Response, status
+from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from captive_portal._version import __version__
 from captive_portal.api.routes import booking_authorize
@@ -61,11 +60,12 @@ _GUEST_CSP = (
 )
 
 
-class _DebugLoggingMiddleware(BaseHTTPMiddleware):
+class _DebugLoggingMiddleware:
     """Log request/response details when debug_guest_portal is enabled.
 
-    Captures HTTP method, path, and key headers for diagnosing
-    CNA (Captive Network Assistant) issues on iOS and Android.
+    Implemented as a pure ASGI middleware (not BaseHTTPMiddleware) to
+    avoid the body-consumption bug that breaks Form() parsing when
+    multiple BaseHTTPMiddleware subclasses are stacked.
 
     Args:
         app: ASGI application.
@@ -79,36 +79,60 @@ class _DebugLoggingMiddleware(BaseHTTPMiddleware):
             app: ASGI application.
             debug_enabled: Whether to emit debug log lines.
         """
-        super().__init__(app)
+        self._app = app
         self._debug = debug_enabled
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Log request and response details when debug is active."""
-        if self._debug:
-            logger.debug(
-                "REQUEST  %s %s  User-Agent=%s  Content-Type=%s  Origin=%s  Referer=%s",
-                request.method,
-                request.url.path,
-                request.headers.get("user-agent", ""),
-                request.headers.get("content-type", ""),
-                request.headers.get("origin", ""),
-                request.headers.get("referer", ""),
-            )
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """ASGI entry point — log request/response when debug is active."""
+        if scope["type"] != "http" or not self._debug:
+            await self._app(scope, receive, send)
+            return
 
-        response: Response = await call_next(request)
+        method = scope.get("method", "")
+        path = scope.get("path", "")
+        headers = dict(
+            (k.decode("latin-1"), v.decode("latin-1")) for k, v in scope.get("headers", [])
+        )
 
-        if self._debug:
-            logger.debug(
-                "RESPONSE %s %s  status=%d  CSP=%s  X-Frame-Options=%s  Cache-Control=%s",
-                request.method,
-                request.url.path,
-                response.status_code,
-                response.headers.get("content-security-policy", ""),
-                response.headers.get("x-frame-options", ""),
-                response.headers.get("cache-control", ""),
-            )
+        logger.debug(
+            "REQUEST  %s %s  User-Agent=%s  Content-Type=%s  Origin=%s  Referer=%s",
+            method,
+            path,
+            headers.get("user-agent", ""),
+            headers.get("content-type", ""),
+            headers.get("origin", ""),
+            headers.get("referer", ""),
+        )
 
-        return response
+        response_started = False
+        status_code = 0
+        response_headers: dict[str, str] = {}
+
+        async def send_wrapper(message: Message) -> None:
+            """Capture response metadata and log before forwarding."""
+            nonlocal response_started, status_code, response_headers
+            if message["type"] == "http.response.start":
+                response_started = True
+                status_code = message.get("status", 0)
+                response_headers = dict(
+                    (
+                        k.decode("latin-1").lower(),
+                        v.decode("latin-1"),
+                    )
+                    for k, v in message.get("headers", [])
+                )
+                logger.debug(
+                    "RESPONSE %s %s  status=%d  CSP=%s  X-Frame-Options=%s  Cache-Control=%s",
+                    method,
+                    path,
+                    status_code,
+                    response_headers.get("content-security-policy", ""),
+                    response_headers.get("x-frame-options", ""),
+                    response_headers.get("cache-control", ""),
+                )
+            await send(message)
+
+        await self._app(scope, receive, send_wrapper)
 
 
 def _make_guest_lifespan(
