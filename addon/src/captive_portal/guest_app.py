@@ -104,15 +104,13 @@ class _DebugLoggingMiddleware:
             headers.get("referer", ""),
         )
 
-        response_started = False
         status_code = 0
         response_headers: dict[str, str] = {}
 
         async def send_wrapper(message: Message) -> None:
             """Capture response metadata and log before forwarding."""
-            nonlocal response_started, status_code, response_headers
+            nonlocal status_code, response_headers
             if message["type"] == "http.response.start":
-                response_started = True
                 status_code = message.get("status", 0)
                 response_headers = dict(
                     (
