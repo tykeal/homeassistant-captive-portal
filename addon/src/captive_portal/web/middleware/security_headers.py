@@ -4,13 +4,15 @@
 
 from __future__ import annotations
 
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.types import ASGIApp
+from starlette.datastructures import MutableHeaders
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+class SecurityHeadersMiddleware:
     """Add security headers to all responses.
+
+    Implemented as a pure ASGI middleware to avoid body-consumption
+    bugs with Starlette's BaseHTTPMiddleware.
 
     Args:
         app: ASGI application.
@@ -35,64 +37,73 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             frame_options: Value for ``X-Frame-Options`` header.
             csp: Explicit ``Content-Security-Policy`` value or ``None``.
         """
-        super().__init__(app)
+        self._app = app
         self._frame_options = frame_options
         self._csp = csp
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Process request and add security headers to response."""
-        response: Response = await call_next(request)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """ASGI entry point — inject security headers on responses."""
+        if scope["type"] != "http":
+            await self._app(scope, receive, send)
+            return
 
-        # Prevent clickjacking — configurable for different listener policies
-        response.headers["X-Frame-Options"] = self._frame_options
+        path = scope.get("path", "")
 
-        # Prevent MIME type sniffing
-        response.headers["X-Content-Type-Options"] = "nosniff"
+        async def send_wrapper(message: Message) -> None:
+            """Inject security headers into response start messages."""
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
 
-        # Additional security headers
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+                # Prevent clickjacking
+                headers["X-Frame-Options"] = self._frame_options
 
-        # Content Security Policy
-        if self._csp is not None:
-            # Explicit CSP always overrides route-level CSP
-            response.headers["Content-Security-Policy"] = self._csp
-        elif "Content-Security-Policy" not in response.headers:
-            # Default CSP: only set when no route handler has provided one
-            csp = (
-                "default-src 'self'; "
-                "script-src 'self'; "
-                "style-src 'self'; "
-                "img-src 'self' data:; "
-                "font-src 'self'; "
-                "connect-src 'self'; "
-                "frame-ancestors 'self'"
-            )
-            response.headers["Content-Security-Policy"] = csp
+                # Prevent MIME type sniffing
+                headers["X-Content-Type-Options"] = "nosniff"
 
-        # Cache-control headers for admin pages (FR-028)
-        # Prevents back-button content leakage after logout
-        path = request.scope.get("path", request.url.path)
-        if path == "/admin" or path.startswith("/admin/"):
-            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
-            response.headers["Pragma"] = "no-cache"
-            response.headers["Expires"] = "0"
-        else:
-            # Guest portal: prevent CNA/browser caching of auth pages
-            if path.startswith("/guest") and "Cache-Control" not in response.headers:
-                response.headers["Cache-Control"] = "no-store"
+                # Additional security headers
+                headers["X-XSS-Protection"] = "1; mode=block"
+                headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-        # Permissions Policy - disable unnecessary features
-        permissions = (
-            "geolocation=(), "
-            "microphone=(), "
-            "camera=(), "
-            "payment=(), "
-            "usb=(), "
-            "magnetometer=(), "
-            "gyroscope=(), "
-            "accelerometer=()"
-        )
-        response.headers["Permissions-Policy"] = permissions
+                # Content Security Policy
+                if self._csp is not None:
+                    # Explicit CSP always overrides route-level CSP
+                    headers["Content-Security-Policy"] = self._csp
+                elif "content-security-policy" not in headers:
+                    # Default CSP: only set when no route handler
+                    # has provided one
+                    headers["Content-Security-Policy"] = (
+                        "default-src 'self'; "
+                        "script-src 'self'; "
+                        "style-src 'self'; "
+                        "img-src 'self' data:; "
+                        "font-src 'self'; "
+                        "connect-src 'self'; "
+                        "frame-ancestors 'self'"
+                    )
 
-        return response
+                # Cache-control headers for admin pages (FR-028)
+                # Prevents back-button content leakage after logout
+                if path == "/admin" or path.startswith("/admin/"):
+                    headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+                    headers["Pragma"] = "no-cache"
+                    headers["Expires"] = "0"
+                else:
+                    # Guest portal: prevent CNA/browser caching
+                    if path.startswith("/guest") and "cache-control" not in headers:
+                        headers["Cache-Control"] = "no-store"
+
+                # Permissions Policy - disable unnecessary features
+                headers["Permissions-Policy"] = (
+                    "geolocation=(), "
+                    "microphone=(), "
+                    "camera=(), "
+                    "payment=(), "
+                    "usb=(), "
+                    "magnetometer=(), "
+                    "gyroscope=(), "
+                    "accelerometer=()"
+                )
+
+            await send(message)
+
+        await self._app(scope, receive, send_wrapper)
