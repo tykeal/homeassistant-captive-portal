@@ -109,7 +109,9 @@ async def test_logs_debug_when_sensors_found(
     with caplog.at_level(logging.DEBUG):
         await service._process_integration(integration_config, all_states)
 
-    assert any("Processed Rental Control events" in r.message for r in caplog.records)
+    matched = [r for r in caplog.records if "Processed Rental Control events" in r.message]
+    assert matched, "Expected 'Processed Rental Control events' log"
+    assert all(r.levelno == logging.DEBUG for r in matched)
 
 
 @pytest.mark.asyncio
