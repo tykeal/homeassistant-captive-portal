@@ -4,7 +4,7 @@
 
 Stacking two BaseHTTPMiddleware subclasses causes call_next() to
 double-wrap the ASGI receive channel, making Form() body unreadable.
-The guest app previously used two such subclasses (DebugLoggingMiddleware
+The guest app previously used two such subclasses (_DebugLoggingMiddleware
 and SecurityHeadersMiddleware), causing all POST requests with Form data
 to return 400 on iOS captive portal authorizations.
 
