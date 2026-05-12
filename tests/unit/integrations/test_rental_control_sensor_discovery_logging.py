@@ -78,13 +78,13 @@ async def test_warns_when_no_sensors_found(
 
 
 @pytest.mark.asyncio
-async def test_logs_info_when_sensors_found(
+async def test_logs_debug_when_sensors_found(
     integration_config: HAIntegrationConfig,
     mock_ha_client: MagicMock,
     mock_event_repo: MagicMock,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Log info with sensor count when sensors are found."""
+    """Log debug with sensor count when sensors are found."""
     service = RentalControlService(ha_client=mock_ha_client, event_repo=mock_event_repo)
 
     all_states = [
@@ -106,7 +106,7 @@ async def test_logs_info_when_sensors_found(
         },
     ]
 
-    with caplog.at_level(logging.INFO):
+    with caplog.at_level(logging.DEBUG):
         await service._process_integration(integration_config, all_states)
 
     assert any("Processed Rental Control events" in r.message for r in caplog.records)
