@@ -5,6 +5,7 @@
 import logging
 import re
 import urllib.parse
+from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Optional
@@ -112,6 +113,30 @@ def get_audit_service(session: Session = Depends(get_session)) -> AuditService:
         Configured AuditService instance
     """
     return AuditService(session)
+
+
+def _get_optional_session() -> Generator[Optional[Session], None, None]:
+    """Yield a database session when available, else ``None``.
+
+    Used by the GET authorize handler so that form-display
+    requests succeed even when the database engine has not been
+    initialized (e.g. in security-header-only test harnesses).
+
+    Yields:
+        Database session or ``None``.
+    """
+    try:
+        gen = get_session()
+        session = next(gen)
+        try:
+            yield session
+        finally:
+            try:
+                next(gen)
+            except StopIteration:
+                pass
+    except RuntimeError:
+        yield None
 
 
 def get_portal_config_dep(session: Session = Depends(get_session)) -> PortalConfig:
@@ -292,13 +317,15 @@ async def _handle_get_submission(
     vid: str | None,
     ssid_name: str | None,
     radio_id: str | None,
+    session: Session,
 ) -> RedirectResponse:
-    """Resolve dependencies and delegate to ``_process_authorization``.
+    """Resolve remaining deps and delegate to ``_process_authorization``.
 
     Called by the GET handler when a form submission is detected
-    (both ``code`` and ``csrf_token`` present).  Dependencies are
-    resolved here rather than in the GET handler signature so that
-    plain form-display requests do not require a database session.
+    (both ``code`` and ``csrf_token`` present).  The database
+    session is provided by the caller (resolved via FastAPI DI
+    on the GET handler) so dependency overrides work correctly
+    in tests.
 
     Args:
         request: FastAPI request object.
@@ -311,6 +338,7 @@ async def _handle_get_submission(
         vid: VLAN ID for Gateway auth mode.
         ssid_name: SSID name for EAP auth mode.
         radio_id: Radio identifier for EAP auth mode.
+        session: Database session (from FastAPI DI).
 
     Returns:
         RedirectResponse on successful authorization.
@@ -319,36 +347,28 @@ async def _handle_get_submission(
         HTTPException: On CSRF, rate-limit, or validation
             failures.
     """
-    db_gen = get_session()
-    session = next(db_gen)
-    try:
-        audit_service = get_audit_service(session)
-        portal_config = get_portal_config_dep(session)
-        omada_adapter = get_omada_adapter(request)
-        return await _process_authorization(
-            request=request,
-            code=code,
-            continue_url=continue_url,
-            client_mac=client_mac,
-            site=site,
-            gateway_mac=gateway_mac,
-            ap_mac=ap_mac,
-            vid=vid,
-            ssid_name=ssid_name,
-            radio_id=radio_id,
-            rate_limiter=RateLimiter(),
-            unified_code_service=UnifiedCodeService(),
-            redirect_validator=RedirectValidator(),
-            session=session,
-            audit_service=audit_service,
-            portal_config=portal_config,
-            omada_adapter=omada_adapter,
-        )
-    finally:
-        try:
-            next(db_gen)
-        except StopIteration:
-            pass
+    audit_service = get_audit_service(session)
+    portal_config = get_portal_config_dep(session)
+    omada_adapter = get_omada_adapter(request)
+    return await _process_authorization(
+        request=request,
+        code=code,
+        continue_url=continue_url,
+        client_mac=client_mac,
+        site=site,
+        gateway_mac=gateway_mac,
+        ap_mac=ap_mac,
+        vid=vid,
+        ssid_name=ssid_name,
+        radio_id=radio_id,
+        rate_limiter=RateLimiter(),
+        unified_code_service=UnifiedCodeService(),
+        redirect_validator=RedirectValidator(),
+        session=session,
+        audit_service=audit_service,
+        portal_config=portal_config,
+        omada_adapter=omada_adapter,
+    )
 
 
 @router.get("/authorize", response_class=HTMLResponse, response_model=None)
@@ -367,6 +387,7 @@ async def show_authorize_form(  # noqa: C901
     continue_url: Annotated[Optional[str], Query(alias="continue")] = None,
     code: Annotated[Optional[str], Query()] = None,
     csrf_token: Annotated[Optional[str], Query()] = None,
+    session: Optional[Session] = Depends(_get_optional_session),
 ) -> HTMLResponse | RedirectResponse:
     """Display authorization form or process a GET submission.
 
@@ -391,6 +412,7 @@ async def show_authorize_form(  # noqa: C901
         continue_url: Redirect destination after success
         code: Authorization code (present on form submission)
         csrf_token: CSRF token (present on form submission)
+        session: Database session (used on form submission)
 
     Returns:
         HTMLResponse with the form, or RedirectResponse on
@@ -398,6 +420,11 @@ async def show_authorize_form(  # noqa: C901
     """
     # --- Form submission path (GET with code + csrf_token) ---
     if code and csrf_token:
+        if session is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Service temporarily unavailable.",
+            )
         if getattr(request.app.state, "debug_guest_portal", False):
             redacted_params = {
                 k: ("[REDACTED]" if k in {"code", "csrf_token"} else v)
@@ -420,6 +447,7 @@ async def show_authorize_form(  # noqa: C901
             vid=vid,
             ssid_name=ssid_name,
             radio_id=radio_id,
+            session=session,
         )
 
     # --- Form display path ---

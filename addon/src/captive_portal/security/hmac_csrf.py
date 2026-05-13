@@ -306,7 +306,7 @@ class HMACCSRFProtection:
         if header_token:
             return header_token
 
-        # 2. Check form body for POST/PUT/PATCH
+        # 2. Check form body (content-type gated, any method)
         content_type = request.headers.get("content-type", "")
         if (
             "application/x-www-form-urlencoded" in content_type
