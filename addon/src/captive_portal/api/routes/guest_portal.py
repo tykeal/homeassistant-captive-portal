@@ -391,13 +391,6 @@ async def show_authorize_form(  # noqa: C901
         continue_url: Redirect destination after success
         code: Authorization code (present on form submission)
         csrf_token: CSRF token (present on form submission)
-        rate_limiter: Rate limiting service
-        unified_code_service: Code validation service
-        redirect_validator: Redirect URL validation service
-        session: Database session
-        audit_service: Audit logging service
-        portal_config: Portal configuration
-        omada_adapter: Optional Omada controller adapter
 
     Returns:
         HTMLResponse with the form, or RedirectResponse on
@@ -1087,6 +1080,8 @@ async def _process_authorization(  # noqa: C901
         url=redirect_dest,
         status_code=status.HTTP_303_SEE_OTHER,
     )
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = "no-store"
     response.set_cookie(
         key="grant_id",
         value=str(grant.id),
