@@ -138,7 +138,11 @@ def _get_optional_session(
         return
 
     try:
-        gen = get_session()
+        session_factory = request.app.dependency_overrides.get(
+            get_session,
+            get_session,
+        )
+        gen = session_factory()
         session = next(gen)
         try:
             yield session
@@ -335,9 +339,9 @@ async def _handle_get_submission(
 
     Called by the GET handler when a form submission is detected
     (both ``code`` and ``csrf_token`` present).  The database
-    session is provided by the caller (resolved via FastAPI DI
-    on the GET handler) so dependency overrides work correctly
-    in tests.
+    session is provided by the caller via ``_get_optional_session``
+    which honours ``app.dependency_overrides`` so tests can
+    substitute the session factory.
 
     Args:
         request: FastAPI request object.
