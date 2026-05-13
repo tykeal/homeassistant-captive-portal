@@ -363,12 +363,19 @@ async def _handle_get_submission(
         HTTPException: On CSRF, rate-limit, or validation
             failures.
     """
-    audit_service = get_audit_service(session)
-    portal_config = get_portal_config_dep(session)
-
     overrides = request.app.dependency_overrides
+
+    audit_factory = overrides.get(get_audit_service, get_audit_service)
+    audit_service = audit_factory(session)
+
+    config_factory = overrides.get(get_portal_config_dep, get_portal_config_dep)
+    portal_config = config_factory(session)
+
     omada_factory = overrides.get(get_omada_adapter, get_omada_adapter)
-    omada_adapter = omada_factory(request)
+    try:
+        omada_adapter = omada_factory(request)
+    except TypeError:
+        omada_adapter = omada_factory()
 
     rate_limiter_cls = overrides.get(RateLimiter, RateLimiter)
     code_service_cls = overrides.get(UnifiedCodeService, UnifiedCodeService)
