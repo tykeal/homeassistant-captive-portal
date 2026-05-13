@@ -500,8 +500,14 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     }
     request.state.retry_query = urllib.parse.urlencode(retry_params) if retry_params else ""
 
+    if getattr(request.app.state, "debug_guest_portal", False):
+        _logger.debug("POST /authorize step=csrf_start")
+
     # Validate CSRF token
     await _guest_csrf.validate_token(request)
+
+    if getattr(request.app.state, "debug_guest_portal", False):
+        _logger.debug("POST /authorize step=csrf_ok")
 
     # Get trusted proxy networks from configuration
     trusted_networks = portal_config.get_trusted_networks()
@@ -569,6 +575,13 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             detail=str(e),
         ) from e
 
+    if getattr(request.app.state, "debug_guest_portal", False):
+        _logger.debug(
+            "POST /authorize step=code_validated  type=%s  code=%r",
+            validation_result.code_type.value,
+            validation_result.normalized_code,
+        )
+
     # Process code and create access grant based on type
     grant: AccessGrant
     vlan_service = VlanValidationService()
@@ -627,6 +640,13 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             )
             if not event or not integration:
                 raise BookingNotFoundError("Booking not found")
+
+            if getattr(request.app.state, "debug_guest_portal", False):
+                _logger.debug(
+                    "POST /authorize step=booking_found  event=%r  integration=%r",
+                    event.slot_code if event else None,
+                    integration.integration_id if integration else None,
+                )
 
             # VLAN validation against the MATCHED integration
             vlan_result = vlan_service.validate_booking_vlan(vid, integration)
@@ -718,6 +738,13 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             grant_repo.add(grant)
             session.commit()
             session.refresh(grant)
+
+            if getattr(request.app.state, "debug_guest_portal", False):
+                _logger.debug(
+                    "POST /authorize step=grant_created  grant_id=%s  mac=%s",
+                    grant.id,
+                    grant.mac,
+                )
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -853,6 +880,12 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     # Override adapter site_id if Omada controller sent a site identifier
     if omada_adapter is not None:
         omada_adapter.site_id = _apply_site_override(site, omada_adapter.site_id, _SITE_ID_PATTERN)
+
+    if getattr(request.app.state, "debug_guest_portal", False):
+        _logger.debug(
+            "POST /authorize step=controller_auth_start  adapter=%s",
+            type(omada_adapter).__name__ if omada_adapter else "None",
+        )
 
     grant, error_detail = await _authorize_with_controller(
         adapter=omada_adapter,
