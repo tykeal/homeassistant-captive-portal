@@ -183,7 +183,7 @@ def _add_security_headers(response: HTMLResponse) -> HTMLResponse:
     )
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -280,8 +280,79 @@ async def _authorize_with_controller(
     return grant, error_detail
 
 
-@router.get("/authorize", response_class=HTMLResponse)
-async def show_authorize_form(
+async def _handle_get_submission(
+    *,
+    request: Request,
+    code: str,
+    continue_url: str | None,
+    client_mac: str | None,
+    site: str | None,
+    gateway_mac: str | None,
+    ap_mac: str | None,
+    vid: str | None,
+    ssid_name: str | None,
+    radio_id: str | None,
+) -> RedirectResponse:
+    """Resolve dependencies and delegate to ``_process_authorization``.
+
+    Called by the GET handler when a form submission is detected
+    (both ``code`` and ``csrf_token`` present).  Dependencies are
+    resolved here rather than in the GET handler signature so that
+    plain form-display requests do not require a database session.
+
+    Args:
+        request: FastAPI request object.
+        code: Authorization code submitted by the guest.
+        continue_url: Redirect destination after success.
+        client_mac: Device MAC address.
+        site: Omada site identifier.
+        gateway_mac: Gateway MAC for Gateway auth mode.
+        ap_mac: Access point MAC for EAP auth mode.
+        vid: VLAN ID for Gateway auth mode.
+        ssid_name: SSID name for EAP auth mode.
+        radio_id: Radio identifier for EAP auth mode.
+
+    Returns:
+        RedirectResponse on successful authorization.
+
+    Raises:
+        HTTPException: On CSRF, rate-limit, or validation
+            failures.
+    """
+    db_gen = get_session()
+    session = next(db_gen)
+    try:
+        audit_service = get_audit_service(session)
+        portal_config = get_portal_config_dep(session)
+        omada_adapter = get_omada_adapter(request)
+        return await _process_authorization(
+            request=request,
+            code=code,
+            continue_url=continue_url,
+            client_mac=client_mac,
+            site=site,
+            gateway_mac=gateway_mac,
+            ap_mac=ap_mac,
+            vid=vid,
+            ssid_name=ssid_name,
+            radio_id=radio_id,
+            rate_limiter=RateLimiter(),
+            unified_code_service=UnifiedCodeService(),
+            redirect_validator=RedirectValidator(),
+            session=session,
+            audit_service=audit_service,
+            portal_config=portal_config,
+            omada_adapter=omada_adapter,
+        )
+    finally:
+        try:
+            next(db_gen)
+        except StopIteration:
+            pass
+
+
+@router.get("/authorize", response_class=HTMLResponse, response_model=None)
+async def show_authorize_form(  # noqa: C901
     request: Request,
     client_mac: Annotated[Optional[str], Query(alias="clientMac")] = None,
     client_ip: Annotated[Optional[str], Query(alias="clientIp")] = None,
@@ -294,49 +365,94 @@ async def show_authorize_form(
     t: Annotated[Optional[str], Query()] = None,
     redirect_url: Annotated[Optional[str], Query(alias="redirectUrl")] = None,
     continue_url: Annotated[Optional[str], Query(alias="continue")] = None,
-) -> HTMLResponse:
-    """Display guest authorization form.
+    code: Annotated[Optional[str], Query()] = None,
+    csrf_token: Annotated[Optional[str], Query()] = None,
+) -> HTMLResponse | RedirectResponse:
+    """Display authorization form or process a GET submission.
 
-    Captures Omada controller redirect query parameters and passes them
-    through as hidden form fields so they survive the GET→POST transition.
+    When both ``code`` and ``csrf_token`` query parameters are
+    present the request is treated as a form submission (the HTML
+    form uses ``method="get"`` so that captive-portal gateways
+    that drop POST bodies can still authorize guests).  Otherwise
+    the authorization form is rendered.
 
     Args:
         request: FastAPI request object
-        client_mac: Device MAC address (from Omada redirect)
-        client_ip: Device IP address (from Omada redirect)
-        site: Omada site identifier hash (from Omada redirect)
-        ap_mac: Access point MAC (from Omada redirect)
-        gateway_mac: Gateway MAC (from Omada redirect)
-        radio_id: Radio identifier (from Omada redirect)
-        ssid_name: SSID name (from Omada redirect)
-        vid: VLAN ID (from Omada redirect)
+        client_mac: Device MAC (from Omada redirect or form)
+        client_ip: Device IP (from Omada redirect or form)
+        site: Omada site identifier hash
+        ap_mac: Access point MAC
+        gateway_mac: Gateway MAC
+        radio_id: Radio identifier
+        ssid_name: SSID name
+        vid: VLAN ID
         t: Timestamp (from Omada redirect)
-        redirect_url: Original redirect URL (from Omada redirect)
-        continue_url: Optional redirect destination after successful authorization
+        redirect_url: Original redirect URL
+        continue_url: Redirect destination after success
+        code: Authorization code (present on form submission)
+        csrf_token: CSRF token (present on form submission)
+        rate_limiter: Rate limiting service
+        unified_code_service: Code validation service
+        redirect_validator: Redirect URL validation service
+        session: Database session
+        audit_service: Audit logging service
+        portal_config: Portal configuration
+        omada_adapter: Optional Omada controller adapter
 
     Returns:
-        HTMLResponse: Rendered authorization form with CSRF token
+        HTMLResponse with the form, or RedirectResponse on
+        successful authorization.
     """
+    # --- Form submission path (GET with code + csrf_token) ---
+    if code and csrf_token:
+        if getattr(request.app.state, "debug_guest_portal", False):
+            redacted_params = {
+                k: ("[REDACTED]" if k in {"code", "csrf_token"} else v)
+                for k, v in request.query_params.items()
+            }
+            _logger.debug(
+                "GET %s (submission) query_params=%s",
+                request.url.path,
+                redacted_params,
+            )
+
+        return await _handle_get_submission(
+            request=request,
+            code=code,
+            continue_url=continue_url,
+            client_mac=client_mac,
+            site=site,
+            gateway_mac=gateway_mac,
+            ap_mac=ap_mac,
+            vid=vid,
+            ssid_name=ssid_name,
+            radio_id=radio_id,
+        )
+
+    # --- Form display path ---
     omada_params = {
-        "client_mac": client_mac or "",
-        "client_ip": client_ip or "",
+        "clientMac": client_mac or "",
+        "clientIp": client_ip or "",
         "site": site or "",
-        "ap_mac": ap_mac or "",
-        "gateway_mac": gateway_mac or "",
-        "radio_id": radio_id or "",
-        "ssid_name": ssid_name or "",
+        "apMac": ap_mac or "",
+        "gatewayMac": gateway_mac or "",
+        "radioId": radio_id or "",
+        "ssidName": ssid_name or "",
         "vid": vid or "",
         "t": t or "",
-        "redirect_url": redirect_url or "",
+        "redirectUrl": redirect_url or "",
     }
 
-    # DEBUG: configurable logging for hardware testing
     if getattr(request.app.state, "debug_guest_portal", False):
+        redacted_params = {
+            k: ("[REDACTED]" if k in {"code", "csrf_token"} else v)
+            for k, v in request.query_params.items()
+        }
         form_action = f"{request.scope.get('root_path', '')}/guest/authorize"
         _logger.debug(
             "GET %s query_params=%s omada_params=%s",
             request.url.path,
-            dict(request.query_params),
+            redacted_params,
             omada_params,
         )
         _logger.debug(
@@ -348,28 +464,28 @@ async def show_authorize_form(
         _logger.debug(
             "GET %s route_csp=%s",
             request.url.path,
-            _add_security_headers(HTMLResponse("")).headers.get("Content-Security-Policy", ""),
+            _add_security_headers(HTMLResponse("")).headers.get(
+                "Content-Security-Policy",
+                "",
+            ),
         )
 
-    # Use redirectUrl as continue_url if no explicit continue was provided
     effective_continue = (
         continue_url or redirect_url or f"{request.scope.get('root_path', '')}/guest/welcome"
     )
 
-    # Generate CSRF token
-    csrf_token = _guest_csrf.generate_token()
+    generated_csrf = _guest_csrf.generate_token()
 
     response = templates.TemplateResponse(
         request=request,
         name="guest/authorize.html",
         context={
             "continue_url": effective_continue,
-            "csrf_token": csrf_token,
+            "csrf_token": generated_csrf,
             "omada_params": omada_params,
         },
     )
 
-    # Add security headers (CSRF cookie no longer needed)
     return _add_security_headers(response)
 
 

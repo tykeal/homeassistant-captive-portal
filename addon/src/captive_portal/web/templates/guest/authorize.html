@@ -125,8 +125,8 @@ SPDX-License-Identifier: Apache-2.0
         <div class="error">{{ error_message }}</div>
         {% endif %}
 
-        <form method="post" action="{{ rp }}/guest/authorize">
-            <input type="hidden" name="continue_url" value="{{ continue_url }}">
+        <form method="get" action="{{ rp }}/guest/authorize">
+            <input type="hidden" name="continue" value="{{ continue_url }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
             {% for key, value in omada_params.items() %}

@@ -56,13 +56,13 @@ class TestGuestPortalFormFlow:
         self,
         guest_client: TestClient,
     ) -> None:
-        """GET with clientMac embeds client_mac hidden field."""
+        """GET with clientMac embeds clientMac hidden field."""
         resp = guest_client.get(
             "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
         )
         assert resp.status_code == 200
         text = resp.text
-        assert 'name="client_mac"' in text
+        assert 'name="clientMac"' in text
         assert 'value="AA-BB-CC-DD-EE-FF"' in text
 
     def test_post_authorize_receives_mac_from_form(
@@ -161,3 +161,24 @@ class TestGuestPortalFormFlow:
         # Params that were not provided should be absent
         assert "gatewayMac=" not in body
         assert "vid=" not in body
+
+    def test_get_form_submits_via_get(
+        self,
+        guest_client: TestClient,
+    ) -> None:
+        """Form uses GET method so the template renders method=get."""
+        resp = guest_client.get(
+            "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
+        )
+        assert resp.status_code == 200
+        assert 'method="get"' in resp.text
+
+    def test_get_submission_continue_param_alias(
+        self,
+        guest_client: TestClient,
+    ) -> None:
+        """Hidden continue field uses 'continue' alias."""
+        resp = guest_client.get(
+            "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
+        )
+        assert 'name="continue"' in resp.text
