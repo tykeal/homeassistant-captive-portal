@@ -12,6 +12,7 @@ This module is the entry point for the guest listener's uvicorn process
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -24,6 +25,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException
+from starlette.requests import ClientDisconnect
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from captive_portal._version import __version__
@@ -82,6 +84,51 @@ class _DebugLoggingMiddleware:
         self._app = app
         self._debug = debug_enabled
 
+    @staticmethod
+    def _wrap_receive(receive: Receive, method: str, path: str) -> Receive:
+        """Create a logging wrapper around the ASGI receive callable.
+
+        Args:
+            receive: Original ASGI receive callable.
+            method: HTTP method for log context.
+            path: Request path for log context.
+
+        Returns:
+            A wrapped receive callable that logs each message.
+        """
+
+        async def receive_wrapper() -> Message:
+            """Log each ASGI receive message before forwarding."""
+            message = await receive()
+            msg_type = message.get("type", "")
+            if msg_type == "http.request":
+                body_len = len(message.get("body", b""))
+                more = message.get("more_body", False)
+                logger.debug(
+                    "RECEIVE  %s %s  type=%s  body_len=%d  more_body=%s",
+                    method,
+                    path,
+                    msg_type,
+                    body_len,
+                    more,
+                )
+            elif msg_type == "http.disconnect":
+                logger.warning(
+                    "RECEIVE  %s %s  type=http.disconnect (client closed connection)",
+                    method,
+                    path,
+                )
+            else:
+                logger.debug(
+                    "RECEIVE  %s %s  type=%s",
+                    method,
+                    path,
+                    msg_type,
+                )
+            return message
+
+        return receive_wrapper
+
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """ASGI entry point — log request/response when debug is active."""
         if scope["type"] != "http" or not self._debug:
@@ -130,7 +177,34 @@ class _DebugLoggingMiddleware:
                 )
             await send(message)
 
-        await self._app(scope, receive, send_wrapper)
+        # Wrap receive for body-bearing methods to trace ASGI messages
+        effective_receive: Receive = receive
+        if method in {"POST", "PUT", "PATCH"}:
+            effective_receive = self._wrap_receive(receive, method, path)
+
+        try:
+            await self._app(scope, effective_receive, send_wrapper)
+        except ClientDisconnect:
+            logger.warning(
+                "CLIENT_DISCONNECT  %s %s  (body read failed — client closed connection)",
+                method,
+                path,
+            )
+            raise
+        except asyncio.CancelledError:
+            logger.warning(
+                "REQUEST_CANCELLED  %s %s  (task cancelled — possible server shutdown or timeout)",
+                method,
+                path,
+            )
+            raise
+        except Exception:
+            logger.exception(
+                "UNHANDLED_ERROR  %s %s",
+                method,
+                path,
+            )
+            raise
 
 
 def _make_guest_lifespan(
