@@ -115,16 +115,28 @@ def get_audit_service(session: Session = Depends(get_session)) -> AuditService:
     return AuditService(session)
 
 
-def _get_optional_session() -> Generator[Optional[Session], None, None]:
-    """Yield a database session when available, else ``None``.
+def _get_optional_session(
+    request: Request,
+) -> Generator[Optional[Session], None, None]:
+    """Yield a database session only for form submissions.
 
-    Used by the GET authorize handler so that form-display
-    requests succeed even when the database engine has not been
-    initialized (e.g. in security-header-only test harnesses).
+    Inspects query parameters to detect a form submission
+    (both ``code`` and ``csrf_token`` present). For plain
+    form-display requests the dependency yields ``None``,
+    avoiding unnecessary database overhead.
+
+    Args:
+        request: Incoming HTTP request.
 
     Yields:
-        Database session or ``None``.
+        Database session for submissions, ``None`` otherwise.
     """
+    qp = request.query_params
+    is_submission = "code" in qp and "csrf_token" in qp
+    if not is_submission:
+        yield None
+        return
+
     try:
         gen = get_session()
         session = next(gen)

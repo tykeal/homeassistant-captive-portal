@@ -62,7 +62,9 @@ class SecurityHeadersMiddleware:
 
                 # Additional security headers
                 headers["X-XSS-Protection"] = "1; mode=block"
-                headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+                headers["Referrer-Policy"] = (
+                    headers.get("referrer-policy") or "strict-origin-when-cross-origin"
+                )
 
                 # Content Security Policy
                 if self._csp is not None:
