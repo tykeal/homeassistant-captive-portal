@@ -182,3 +182,31 @@ class TestGuestPortalFormFlow:
             "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
         )
         assert 'name="continue"' in resp.text
+
+    def test_get_submission_reaches_code_validation(
+        self,
+        guest_client: TestClient,
+    ) -> None:
+        """GET with code and csrf_token triggers authorization.
+
+        The handler should detect form submission, reach code
+        validation (410 = voucher not found), proving the GET
+        submission path works end-to-end.
+        """
+        get_resp = guest_client.get(
+            "/guest/authorize?clientMac=AA-BB-CC-DD-EE-FF",
+        )
+        csrf_token = extract_csrf_token(get_resp.text)
+
+        submit_resp = guest_client.get(
+            "/guest/authorize"
+            f"?clientMac=AA-BB-CC-DD-EE-FF"
+            f"&code=TEST123"
+            f"&csrf_token={csrf_token}"
+            f"&continue=/guest/welcome",
+        )
+
+        assert submit_resp.status_code == 410
+        body = submit_resp.text.lower()
+        assert "unable to determine device mac" not in body
+        assert "not found" in body

@@ -25,12 +25,16 @@ def _make_request(
     *,
     form_data: Optional[dict[str, str]] = None,
     headers: Optional[dict[str, str]] = None,
+    query_params: Optional[dict[str, str]] = None,
+    method: str = "POST",
 ) -> AsyncMock:
     """Build a mock Request with optional form data and headers.
 
     Args:
         form_data: Key/value pairs returned by ``await request.form()``.
         headers: HTTP headers.
+        query_params: Query string key/value pairs.
+        method: HTTP method (default ``POST``).
 
     Returns:
         Mock request object compatible with HMACCSRFProtection.
@@ -40,6 +44,8 @@ def _make_request(
     if form_data is not None and "content-type" not in hdrs:
         hdrs["content-type"] = "application/x-www-form-urlencoded"
     request.headers = hdrs
+    request.method = method
+    request.query_params = query_params or {}
 
     # Set url.hostname/port to None so validation falls back to
     # Host header parsing (which handles IPv6 correctly).
@@ -463,4 +469,44 @@ class TestOriginValidation:
         )
         # No origin/referer so check is skipped; just verifying
         # _parse_host_header doesn't crash on bare IPv6.
+        await csrf.validate_token(request)
+
+
+class TestQueryParamExtraction:
+    """Tests for CSRF token extraction from GET query parameters."""
+
+    @pytest.mark.asyncio
+    async def test_get_request_reads_query_param(self) -> None:
+        """GET request extracts CSRF token from query params."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            query_params={"csrf_token": token},
+            method="GET",
+        )
+        await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_post_ignores_query_param(self) -> None:
+        """POST request does not extract CSRF from query params."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            query_params={"csrf_token": token},
+            method="POST",
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await csrf.validate_token(request)
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_header_takes_precedence_over_query(self) -> None:
+        """Header token is preferred even on GET requests."""
+        csrf = HMACCSRFProtection()
+        token = csrf.generate_token()
+        request = _make_request(
+            headers={"X-CSRF-Token": token},
+            query_params={"csrf_token": "bad-token"},
+            method="GET",
+        )
         await csrf.validate_token(request)
