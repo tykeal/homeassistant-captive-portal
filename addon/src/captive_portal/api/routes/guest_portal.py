@@ -147,12 +147,12 @@ def _get_optional_session(
         try:
             yield session
         finally:
-            try:
-                next(gen)
-            except StopIteration:
-                pass
-    except RuntimeError:
-        yield None
+            gen.close()
+    except RuntimeError as exc:
+        if "not initialized" in str(exc):
+            yield None
+        else:
+            raise
 
 
 def get_portal_config_dep(session: Session = Depends(get_session)) -> PortalConfig:
