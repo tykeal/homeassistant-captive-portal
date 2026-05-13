@@ -289,7 +289,11 @@ class HMACCSRFProtection:
             )
 
     async def _extract_request_token(self, request: Request) -> Optional[str]:
-        """Extract CSRF token from form field or header.
+        """Extract CSRF token from header, form body, or query string.
+
+        The query-string path is restricted to GET requests and exists
+        as a workaround for captive-portal gateways that drop POST
+        bodies, forcing form submission via GET.
 
         Args:
             request: Incoming HTTP request.
@@ -297,10 +301,12 @@ class HMACCSRFProtection:
         Returns:
             Token string or None if not found.
         """
+        # 1. Check header (always)
         header_token = request.headers.get(self.config.header_name)
         if header_token:
             return header_token
 
+        # 2. Check form body (content-type gated, any method)
         content_type = request.headers.get("content-type", "")
         if (
             "application/x-www-form-urlencoded" in content_type
@@ -313,5 +319,13 @@ class HMACCSRFProtection:
                     return token
             except Exception:
                 pass
+
+        # 3. Check query params for GET (captive portal workaround)
+        if request.method == "GET":
+            token = request.query_params.get(
+                self.config.form_field_name,
+            )
+            if isinstance(token, str):
+                return token
 
         return None

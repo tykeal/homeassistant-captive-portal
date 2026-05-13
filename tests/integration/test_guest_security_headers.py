@@ -30,8 +30,8 @@ def test_authorize_page_has_security_headers(client: TestClient) -> None:
     # MIME-sniffing protection
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
 
-    # Referrer policy
-    assert "Referrer-Policy" in response.headers
+    # Referrer policy — route-level header (no middleware in fixture)
+    assert response.headers.get("Referrer-Policy") == "strict-origin"
 
 
 @pytest.mark.integration

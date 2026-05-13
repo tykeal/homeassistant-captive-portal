@@ -5,6 +5,7 @@
 import logging
 import re
 import urllib.parse
+from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Any, Optional
@@ -114,6 +115,46 @@ def get_audit_service(session: Session = Depends(get_session)) -> AuditService:
     return AuditService(session)
 
 
+def _get_optional_session(
+    request: Request,
+) -> Generator[Optional[Session], None, None]:
+    """Yield a database session only for form submissions.
+
+    Inspects query parameters to detect a form submission
+    (both ``code`` and ``csrf_token`` present). For plain
+    form-display requests the dependency yields ``None``,
+    avoiding unnecessary database overhead.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Yields:
+        Database session for submissions, ``None`` otherwise.
+    """
+    qp = request.query_params
+    is_submission = bool(qp.get("code")) and bool(qp.get("csrf_token"))
+    if not is_submission:
+        yield None
+        return
+
+    try:
+        session_factory = request.app.dependency_overrides.get(
+            get_session,
+            get_session,
+        )
+        gen = session_factory()
+        session = next(gen)
+        try:
+            yield session
+        finally:
+            gen.close()
+    except RuntimeError as exc:
+        if "not initialized" in str(exc):
+            yield None
+        else:
+            raise
+
+
 def get_portal_config_dep(session: Session = Depends(get_session)) -> PortalConfig:
     """Dependency for fetching portal configuration.
 
@@ -183,7 +224,7 @@ def _add_security_headers(response: HTMLResponse) -> HTMLResponse:
     )
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Referrer-Policy"] = "strict-origin"
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -280,8 +321,89 @@ async def _authorize_with_controller(
     return grant, error_detail
 
 
-@router.get("/authorize", response_class=HTMLResponse)
-async def show_authorize_form(
+async def _handle_get_submission(
+    *,
+    request: Request,
+    code: str,
+    continue_url: str | None,
+    client_mac: str | None,
+    site: str | None,
+    gateway_mac: str | None,
+    ap_mac: str | None,
+    vid: str | None,
+    ssid_name: str | None,
+    radio_id: str | None,
+    session: Session,
+) -> RedirectResponse:
+    """Resolve remaining deps and delegate to ``_process_authorization``.
+
+    Called by the GET handler when a form submission is detected
+    (both ``code`` and ``csrf_token`` present).  The database
+    session comes from ``_get_optional_session`` and remaining
+    dependencies are resolved via ``app.dependency_overrides``
+    so tests can substitute any factory or class.
+
+    Args:
+        request: FastAPI request object.
+        code: Authorization code submitted by the guest.
+        continue_url: Redirect destination after success.
+        client_mac: Device MAC address.
+        site: Omada site identifier.
+        gateway_mac: Gateway MAC for Gateway auth mode.
+        ap_mac: Access point MAC for EAP auth mode.
+        vid: VLAN ID for Gateway auth mode.
+        ssid_name: SSID name for EAP auth mode.
+        radio_id: Radio identifier for EAP auth mode.
+        session: Database session (from FastAPI DI).
+
+    Returns:
+        RedirectResponse on successful authorization.
+
+    Raises:
+        HTTPException: On CSRF, rate-limit, or validation
+            failures.
+    """
+    overrides = request.app.dependency_overrides
+
+    audit_factory = overrides.get(get_audit_service, get_audit_service)
+    audit_service = audit_factory(session)
+
+    config_factory = overrides.get(get_portal_config_dep, get_portal_config_dep)
+    portal_config = config_factory(session)
+
+    omada_factory = overrides.get(get_omada_adapter, get_omada_adapter)
+    try:
+        omada_adapter = omada_factory(request)
+    except TypeError:
+        omada_adapter = omada_factory()
+
+    rate_limiter_cls = overrides.get(RateLimiter, RateLimiter)
+    code_service_cls = overrides.get(UnifiedCodeService, UnifiedCodeService)
+    redirect_validator_cls = overrides.get(RedirectValidator, RedirectValidator)
+
+    return await _process_authorization(
+        request=request,
+        code=code,
+        continue_url=continue_url,
+        client_mac=client_mac,
+        site=site,
+        gateway_mac=gateway_mac,
+        ap_mac=ap_mac,
+        vid=vid,
+        ssid_name=ssid_name,
+        radio_id=radio_id,
+        rate_limiter=rate_limiter_cls(),
+        unified_code_service=code_service_cls(),
+        redirect_validator=redirect_validator_cls(),
+        session=session,
+        audit_service=audit_service,
+        portal_config=portal_config,
+        omada_adapter=omada_adapter,
+    )
+
+
+@router.get("/authorize", response_class=HTMLResponse, response_model=None)
+async def show_authorize_form(  # noqa: C901
     request: Request,
     client_mac: Annotated[Optional[str], Query(alias="clientMac")] = None,
     client_ip: Annotated[Optional[str], Query(alias="clientIp")] = None,
@@ -294,49 +416,95 @@ async def show_authorize_form(
     t: Annotated[Optional[str], Query()] = None,
     redirect_url: Annotated[Optional[str], Query(alias="redirectUrl")] = None,
     continue_url: Annotated[Optional[str], Query(alias="continue")] = None,
-) -> HTMLResponse:
-    """Display guest authorization form.
+    code: Annotated[Optional[str], Query()] = None,
+    csrf_token: Annotated[Optional[str], Query()] = None,
+    session: Optional[Session] = Depends(_get_optional_session),
+) -> HTMLResponse | RedirectResponse:
+    """Display authorization form or process a GET submission.
 
-    Captures Omada controller redirect query parameters and passes them
-    through as hidden form fields so they survive the GET→POST transition.
+    When both ``code`` and ``csrf_token`` query parameters are
+    present the request is treated as a form submission (the HTML
+    form uses ``method="get"`` so that captive-portal gateways
+    that drop POST bodies can still authorize guests).  Otherwise
+    the authorization form is rendered.
 
     Args:
         request: FastAPI request object
-        client_mac: Device MAC address (from Omada redirect)
-        client_ip: Device IP address (from Omada redirect)
-        site: Omada site identifier hash (from Omada redirect)
-        ap_mac: Access point MAC (from Omada redirect)
-        gateway_mac: Gateway MAC (from Omada redirect)
-        radio_id: Radio identifier (from Omada redirect)
-        ssid_name: SSID name (from Omada redirect)
-        vid: VLAN ID (from Omada redirect)
+        client_mac: Device MAC (from Omada redirect or form)
+        client_ip: Device IP (from Omada redirect or form)
+        site: Omada site identifier hash
+        ap_mac: Access point MAC
+        gateway_mac: Gateway MAC
+        radio_id: Radio identifier
+        ssid_name: SSID name
+        vid: VLAN ID
         t: Timestamp (from Omada redirect)
-        redirect_url: Original redirect URL (from Omada redirect)
-        continue_url: Optional redirect destination after successful authorization
+        redirect_url: Original redirect URL
+        continue_url: Redirect destination after success
+        code: Authorization code (present on form submission)
+        csrf_token: CSRF token (present on form submission)
+        session: Database session (used on form submission)
 
     Returns:
-        HTMLResponse: Rendered authorization form with CSRF token
+        HTMLResponse with the form, or RedirectResponse on
+        successful authorization.
     """
+    # --- Form submission path (GET with code + csrf_token) ---
+    if code and csrf_token:
+        if session is None:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Service temporarily unavailable.",
+            )
+        if getattr(request.app.state, "debug_guest_portal", False):
+            redacted_params = {
+                k: ("[REDACTED]" if k in {"code", "csrf_token"} else v)
+                for k, v in request.query_params.items()
+            }
+            _logger.debug(
+                "GET %s (submission) query_params=%s",
+                request.url.path,
+                redacted_params,
+            )
+
+        return await _handle_get_submission(
+            request=request,
+            code=code,
+            continue_url=continue_url,
+            client_mac=client_mac,
+            site=site,
+            gateway_mac=gateway_mac,
+            ap_mac=ap_mac,
+            vid=vid,
+            ssid_name=ssid_name,
+            radio_id=radio_id,
+            session=session,
+        )
+
+    # --- Form display path ---
     omada_params = {
-        "client_mac": client_mac or "",
-        "client_ip": client_ip or "",
+        "clientMac": client_mac or "",
+        "clientIp": client_ip or "",
         "site": site or "",
-        "ap_mac": ap_mac or "",
-        "gateway_mac": gateway_mac or "",
-        "radio_id": radio_id or "",
-        "ssid_name": ssid_name or "",
+        "apMac": ap_mac or "",
+        "gatewayMac": gateway_mac or "",
+        "radioId": radio_id or "",
+        "ssidName": ssid_name or "",
         "vid": vid or "",
         "t": t or "",
-        "redirect_url": redirect_url or "",
+        "redirectUrl": redirect_url or "",
     }
 
-    # DEBUG: configurable logging for hardware testing
     if getattr(request.app.state, "debug_guest_portal", False):
+        redacted_params = {
+            k: ("[REDACTED]" if k in {"code", "csrf_token"} else v)
+            for k, v in request.query_params.items()
+        }
         form_action = f"{request.scope.get('root_path', '')}/guest/authorize"
         _logger.debug(
             "GET %s query_params=%s omada_params=%s",
             request.url.path,
-            dict(request.query_params),
+            redacted_params,
             omada_params,
         )
         _logger.debug(
@@ -348,28 +516,28 @@ async def show_authorize_form(
         _logger.debug(
             "GET %s route_csp=%s",
             request.url.path,
-            _add_security_headers(HTMLResponse("")).headers.get("Content-Security-Policy", ""),
+            _add_security_headers(HTMLResponse("")).headers.get(
+                "Content-Security-Policy",
+                "",
+            ),
         )
 
-    # Use redirectUrl as continue_url if no explicit continue was provided
     effective_continue = (
         continue_url or redirect_url or f"{request.scope.get('root_path', '')}/guest/welcome"
     )
 
-    # Generate CSRF token
-    csrf_token = _guest_csrf.generate_token()
+    generated_csrf = _guest_csrf.generate_token()
 
     response = templates.TemplateResponse(
         request=request,
         name="guest/authorize.html",
         context={
             "continue_url": effective_continue,
-            "csrf_token": csrf_token,
+            "csrf_token": generated_csrf,
             "omada_params": omada_params,
         },
     )
 
-    # Add security headers (CSRF cookie no longer needed)
     return _add_security_headers(response)
 
 
@@ -423,67 +591,62 @@ def _extract_mac_address(
         ) from e
 
 
-@router.post("/authorize")
-async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complexity
+async def _process_authorization(  # noqa: C901
+    *,
     request: Request,
-    code: Annotated[str, Form()],
-    continue_url: Annotated[Optional[str], Form()] = None,
-    client_mac: Annotated[Optional[str], Form()] = None,
-    site: Annotated[Optional[str], Form()] = None,
-    gateway_mac: Annotated[Optional[str], Form()] = None,
-    ap_mac: Annotated[Optional[str], Form()] = None,
-    vid: Annotated[Optional[str], Form()] = None,
-    ssid_name: Annotated[Optional[str], Form()] = None,
-    radio_id: Annotated[Optional[str], Form()] = None,
-    rate_limiter: RateLimiter = Depends(),
-    unified_code_service: UnifiedCodeService = Depends(),
-    redirect_validator: RedirectValidator = Depends(),
-    session: Session = Depends(get_session),
-    audit_service: AuditService = Depends(get_audit_service),
-    portal_config: PortalConfig = Depends(get_portal_config_dep),
-    omada_adapter: OmadaAdapter | None = Depends(get_omada_adapter),
+    code: str,
+    continue_url: str | None,
+    client_mac: str | None,
+    site: str | None,
+    gateway_mac: str | None,
+    ap_mac: str | None,
+    vid: str | None,
+    ssid_name: str | None,
+    radio_id: str | None,
+    rate_limiter: RateLimiter,
+    unified_code_service: UnifiedCodeService,
+    redirect_validator: RedirectValidator,
+    session: Session,
+    audit_service: AuditService,
+    portal_config: PortalConfig,
+    omada_adapter: OmadaAdapter | None,
 ) -> RedirectResponse:
-    """Process guest authorization code submission.
+    """Execute the full guest authorization flow.
 
-    Validates the authorization code, creates an access grant, and authorizes the
-    client device on the network controller.
+    Shared logic for both GET and POST authorization paths.
+    Validates the CSRF token, checks the rate limit, extracts
+    the device MAC, validates the submitted code, creates an
+    access grant, and authorizes the client on the controller.
 
     Args:
-        request: FastAPI request object
-        code: Authorization code (voucher or booking code)
-        continue_url: Optional redirect destination
-        client_mac: Device MAC from Omada controller redirect
-        site: Omada site identifier from controller redirect
-        gateway_mac: Gateway MAC for Gateway auth mode
-        ap_mac: Access point MAC for EAP auth mode
-        vid: VLAN ID for Gateway auth mode
-        ssid_name: SSID name for EAP auth mode
-        radio_id: Radio identifier for EAP auth mode
-        rate_limiter: Rate limiting service
-        unified_code_service: Code validation and grant creation service
-        redirect_validator: Redirect URL validation service
-        session: Database session
-        audit_service: Audit logging service
-        portal_config: Portal configuration
-        omada_adapter: Optional Omada controller adapter
+        request: FastAPI request object.
+        code: Authorization code (voucher or booking code).
+        continue_url: Optional redirect destination.
+        client_mac: Device MAC from Omada controller redirect.
+        site: Omada site identifier from controller redirect.
+        gateway_mac: Gateway MAC for Gateway auth mode.
+        ap_mac: Access point MAC for EAP auth mode.
+        vid: VLAN ID for Gateway auth mode.
+        ssid_name: SSID name for EAP auth mode.
+        radio_id: Radio identifier for EAP auth mode.
+        rate_limiter: Rate limiting service.
+        unified_code_service: Code validation service.
+        redirect_validator: Redirect URL validation service.
+        session: Database session.
+        audit_service: Audit logging service.
+        portal_config: Portal configuration.
+        omada_adapter: Optional Omada controller adapter.
 
     Returns:
-        RedirectResponse: Redirect to success page or original destination
+        RedirectResponse to the success page or original
+        destination.
 
     Raises:
-        HTTPException: 403 for CSRF validation, 429 if rate limit exceeded, 400/404/409/410 for validation errors
+        HTTPException: On CSRF, rate-limit, or validation
+            failures.
     """
-    # DEBUG: configurable logging for hardware testing
-    if getattr(request.app.state, "debug_guest_portal", False):
-        _logger.debug(
-            "POST /authorize client_mac=%r site=%r headers=%s",
-            client_mac,
-            site,
-            {k: v for k, v in request.headers.items() if "mac" in k.lower()},
-        )
-
-    # Store retry URL query params so the error page can link back
-    # with the original Omada parameters preserved.
+    # Store retry URL query params so the error page can link
+    # back with the original Omada parameters preserved.
     retry_params = {
         k: v
         for k, v in {
@@ -500,53 +663,72 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     }
     request.state.retry_query = urllib.parse.urlencode(retry_params) if retry_params else ""
 
-    if getattr(request.app.state, "debug_guest_portal", False):
-        _logger.debug("POST /authorize step=csrf_start")
+    debug = getattr(request.app.state, "debug_guest_portal", False)
+
+    if debug:
+        _logger.debug(
+            "%s /authorize step=csrf_start",
+            request.method,
+        )
 
     # Validate CSRF token
     await _guest_csrf.validate_token(request)
 
-    if getattr(request.app.state, "debug_guest_portal", False):
-        _logger.debug("POST /authorize step=csrf_ok")
+    if debug:
+        _logger.debug(
+            "%s /authorize step=csrf_ok",
+            request.method,
+        )
 
     # Get trusted proxy networks from configuration
     trusted_networks = portal_config.get_trusted_networks()
-    client_ip = get_client_ip(request, trust_proxies=True, trusted_networks=trusted_networks)
+    client_ip = get_client_ip(
+        request,
+        trust_proxies=True,
+        trusted_networks=trusted_networks,
+    )
 
     # Check rate limit
     if not rate_limiter.is_allowed(client_ip):
         retry_after = rate_limiter.get_retry_after_seconds(client_ip)
 
-        # Log rate limit violation
         await audit_service.log(
             actor=f"guest@{client_ip}",
             action="guest.authorize",
             outcome="rate_limited",
             meta={
                 "client_ip": client_ip,
-                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "user_agent": request.headers.get(
+                    "User-Agent",
+                    "unknown",
+                ),
                 "retry_after": retry_after,
             },
         )
 
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many authorization attempts. Please try again later.",
+            detail=("Too many authorization attempts. Please try again later."),
             headers={"Retry-After": str(retry_after or 60)},
         )
 
     # Extract device MAC address
     try:
-        mac_address = _extract_mac_address(request, form_mac=client_mac)
+        mac_address = _extract_mac_address(
+            request,
+            form_mac=client_mac,
+        )
     except HTTPException as e:
-        # Log MAC extraction failure
         await audit_service.log(
             actor=f"guest@{client_ip}",
             action="guest.authorize",
             outcome="error",
             meta={
                 "client_ip": client_ip,
-                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "user_agent": request.headers.get(
+                    "User-Agent",
+                    "unknown",
+                ),
                 "error": "mac_extraction_failed",
                 "detail": str(e.detail),
             },
@@ -555,9 +737,10 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
 
     # Validate code format and determine type
     try:
-        validation_result = await unified_code_service.validate_code(code)
+        validation_result = await unified_code_service.validate_code(
+            code,
+        )
     except ValueError as e:
-        # Log code validation failure
         await audit_service.log(
             actor=f"guest@{client_ip}",
             action="guest.authorize",
@@ -565,7 +748,10 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             meta={
                 "client_ip": client_ip,
                 "mac": mac_address,
-                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "user_agent": request.headers.get(
+                    "User-Agent",
+                    "unknown",
+                ),
                 "error": "invalid_code_format",
                 "detail": str(e),
             },
@@ -575,9 +761,10 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             detail=str(e),
         ) from e
 
-    if getattr(request.app.state, "debug_guest_portal", False):
+    if debug:
         _logger.debug(
-            "POST /authorize step=code_validated  type=%s  code=%r",
+            "%s /authorize step=code_validated  type=%s  code=%r",
+            request.method,
             validation_result.code_type.value,
             validation_result.normalized_code,
         )
@@ -641,9 +828,10 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             if not event or not integration:
                 raise BookingNotFoundError("Booking not found")
 
-            if getattr(request.app.state, "debug_guest_portal", False):
+            if debug:
                 _logger.debug(
-                    "POST /authorize step=booking_found  event=%r  integration=%r",
+                    "%s /authorize step=booking_found  event=%r  integration=%r",
+                    request.method,
                     event.slot_code if event else None,
                     integration.integration_id if integration else None,
                 )
@@ -739,9 +927,10 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             session.commit()
             session.refresh(grant)
 
-            if getattr(request.app.state, "debug_guest_portal", False):
+            if debug:
                 _logger.debug(
-                    "POST /authorize step=grant_created  grant_id=%s  mac=%s",
+                    "%s /authorize step=grant_created  grant_id=%s  mac=%s",
+                    request.method,
                     grant.id,
                     grant.mac,
                 )
@@ -752,7 +941,6 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             )
 
     except VoucherDeviceLimitError:
-        # Log device limit reached
         await audit_service.log(
             actor=f"guest@{client_ip}",
             action="guest.authorize",
@@ -771,7 +959,6 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             detail="This code has reached its maximum number of devices.",
         )
     except VoucherRedemptionError as e:
-        # Log voucher redemption failure
         await audit_service.log(
             actor=f"guest@{client_ip}",
             action="guest.authorize",
@@ -791,7 +978,6 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             detail=str(e),
         ) from e
     except BookingNotFoundError as e:
-        # Log booking not found
         await audit_service.log(
             actor=f"guest@{client_ip}",
             action="guest.authorize",
@@ -811,7 +997,6 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             detail=str(e),
         ) from e
     except BookingOutsideWindowError as e:
-        # Log booking outside time window
         await audit_service.log(
             actor=f"guest@{client_ip}",
             action="guest.authorize",
@@ -831,7 +1016,6 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             detail=str(e),
         ) from e
     except DuplicateGrantError as e:
-        # Log duplicate grant attempt
         await audit_service.log(
             actor=f"guest@{client_ip}",
             action="guest.authorize",
@@ -851,7 +1035,6 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
             detail=str(e),
         ) from e
     except IntegrationUnavailableError as e:
-        # Log integration unavailable
         await audit_service.log(
             actor=f"guest@{client_ip}",
             action="guest.authorize",
@@ -881,9 +1064,10 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     if omada_adapter is not None:
         omada_adapter.site_id = _apply_site_override(site, omada_adapter.site_id, _SITE_ID_PATTERN)
 
-    if getattr(request.app.state, "debug_guest_portal", False):
+    if debug:
         _logger.debug(
-            "POST /authorize step=controller_auth_start  adapter=%s",
+            "%s /authorize step=controller_auth_start  adapter=%s",
+            request.method,
             type(omada_adapter).__name__ if omada_adapter else "None",
         )
 
@@ -902,7 +1086,6 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
     session.refresh(grant)
 
     if grant.status == GrantStatus.FAILED:
-        # Log controller failure
         await audit_service.log(
             actor=f"guest@{client_ip}",
             action="guest.authorize",
@@ -947,12 +1130,17 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
 
     # Validate and determine redirect destination
     if continue_url and redirect_validator.is_safe(continue_url):
-        redirect_url = continue_url
+        redirect_dest = continue_url
     else:
-        redirect_url = f"{request.scope.get('root_path', '')}/guest/welcome"
+        redirect_dest = f"{request.scope.get('root_path', '')}/guest/welcome"
 
-    # Success - redirect with grant ID in session/cookie for controller integration
-    response = RedirectResponse(url=redirect_url, status_code=status.HTTP_303_SEE_OTHER)
+    # Success — redirect with grant ID cookie
+    response = RedirectResponse(
+        url=redirect_dest,
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+    response.headers["Referrer-Policy"] = "strict-origin"
+    response.headers["Cache-Control"] = "no-store"
     response.set_cookie(
         key="grant_id",
         value=str(grant.id),
@@ -961,6 +1149,86 @@ async def handle_authorization(  # noqa: C901 - TODO: refactor to reduce complex
         max_age=3600,  # 1 hour cookie lifetime
     )
     return response
+
+
+@router.post("/authorize")
+async def handle_authorization(
+    request: Request,
+    code: Annotated[str, Form()],
+    continue_url: Annotated[Optional[str], Form()] = None,
+    client_mac: Annotated[Optional[str], Form()] = None,
+    site: Annotated[Optional[str], Form()] = None,
+    gateway_mac: Annotated[Optional[str], Form()] = None,
+    ap_mac: Annotated[Optional[str], Form()] = None,
+    vid: Annotated[Optional[str], Form()] = None,
+    ssid_name: Annotated[Optional[str], Form()] = None,
+    radio_id: Annotated[Optional[str], Form()] = None,
+    rate_limiter: RateLimiter = Depends(),
+    unified_code_service: UnifiedCodeService = Depends(),
+    redirect_validator: RedirectValidator = Depends(),
+    session: Session = Depends(get_session),
+    audit_service: AuditService = Depends(get_audit_service),
+    portal_config: PortalConfig = Depends(get_portal_config_dep),
+    omada_adapter: OmadaAdapter | None = Depends(get_omada_adapter),
+) -> RedirectResponse:
+    """Process guest authorization code via POST submission.
+
+    Delegates to ``_process_authorization`` after resolving
+    FastAPI dependencies.
+
+    Args:
+        request: FastAPI request object
+        code: Authorization code (voucher or booking code)
+        continue_url: Optional redirect destination
+        client_mac: Device MAC from Omada controller redirect
+        site: Omada site identifier from controller redirect
+        gateway_mac: Gateway MAC for Gateway auth mode
+        ap_mac: Access point MAC for EAP auth mode
+        vid: VLAN ID for Gateway auth mode
+        ssid_name: SSID name for EAP auth mode
+        radio_id: Radio identifier for EAP auth mode
+        rate_limiter: Rate limiting service
+        unified_code_service: Code validation service
+        redirect_validator: Redirect URL validation service
+        session: Database session
+        audit_service: Audit logging service
+        portal_config: Portal configuration
+        omada_adapter: Optional Omada controller adapter
+
+    Returns:
+        RedirectResponse to success page or original destination
+
+    Raises:
+        HTTPException: On CSRF, rate-limit, or validation
+            failures.
+    """
+    if getattr(request.app.state, "debug_guest_portal", False):
+        _logger.debug(
+            "POST /authorize client_mac=%r site=%r headers=%s",
+            client_mac,
+            site,
+            {k: v for k, v in request.headers.items() if "mac" in k.lower()},
+        )
+
+    return await _process_authorization(
+        request=request,
+        code=code,
+        continue_url=continue_url,
+        client_mac=client_mac,
+        site=site,
+        gateway_mac=gateway_mac,
+        ap_mac=ap_mac,
+        vid=vid,
+        ssid_name=ssid_name,
+        radio_id=radio_id,
+        rate_limiter=rate_limiter,
+        unified_code_service=unified_code_service,
+        redirect_validator=redirect_validator,
+        session=session,
+        audit_service=audit_service,
+        portal_config=portal_config,
+        omada_adapter=omada_adapter,
+    )
 
 
 @router.get("/welcome", response_class=HTMLResponse)
