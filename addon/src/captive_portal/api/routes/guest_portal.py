@@ -132,7 +132,7 @@ def _get_optional_session(
         Database session for submissions, ``None`` otherwise.
     """
     qp = request.query_params
-    is_submission = "code" in qp and "csrf_token" in qp
+    is_submission = bool(qp.get("code")) and bool(qp.get("csrf_token"))
     if not is_submission:
         yield None
         return
@@ -224,7 +224,7 @@ def _add_security_headers(response: HTMLResponse) -> HTMLResponse:
     )
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Referrer-Policy"] = "strict-origin"
     response.headers["Cache-Control"] = "no-store"
     return response
 
@@ -339,9 +339,9 @@ async def _handle_get_submission(
 
     Called by the GET handler when a form submission is detected
     (both ``code`` and ``csrf_token`` present).  The database
-    session is provided by the caller via ``_get_optional_session``
-    which honours ``app.dependency_overrides`` so tests can
-    substitute the session factory.
+    session comes from ``_get_optional_session`` and remaining
+    dependencies are resolved via ``app.dependency_overrides``
+    so tests can substitute any factory or class.
 
     Args:
         request: FastAPI request object.
@@ -365,7 +365,15 @@ async def _handle_get_submission(
     """
     audit_service = get_audit_service(session)
     portal_config = get_portal_config_dep(session)
-    omada_adapter = get_omada_adapter(request)
+
+    overrides = request.app.dependency_overrides
+    omada_factory = overrides.get(get_omada_adapter, get_omada_adapter)
+    omada_adapter = omada_factory(request)
+
+    rate_limiter_cls = overrides.get(RateLimiter, RateLimiter)
+    code_service_cls = overrides.get(UnifiedCodeService, UnifiedCodeService)
+    redirect_validator_cls = overrides.get(RedirectValidator, RedirectValidator)
+
     return await _process_authorization(
         request=request,
         code=code,
@@ -377,9 +385,9 @@ async def _handle_get_submission(
         vid=vid,
         ssid_name=ssid_name,
         radio_id=radio_id,
-        rate_limiter=RateLimiter(),
-        unified_code_service=UnifiedCodeService(),
-        redirect_validator=RedirectValidator(),
+        rate_limiter=rate_limiter_cls(),
+        unified_code_service=code_service_cls(),
+        redirect_validator=redirect_validator_cls(),
         session=session,
         audit_service=audit_service,
         portal_config=portal_config,
@@ -1124,7 +1132,7 @@ async def _process_authorization(  # noqa: C901
         url=redirect_dest,
         status_code=status.HTTP_303_SEE_OTHER,
     )
-    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Referrer-Policy"] = "strict-origin"
     response.headers["Cache-Control"] = "no-store"
     response.set_cookie(
         key="grant_id",
