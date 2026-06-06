@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Unit tests for booking code case-insensitive validation (D10)."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Generator
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlmodel import Session, create_engine
@@ -182,3 +183,108 @@ def test_booking_code_respects_identifier_attr_slot_name(
     # Should NOT match slot_code since we're using slot_name
     result = validator.validate_code("999999", integration)
     assert result is None
+
+
+def test_booking_code_prefers_active_event_when_code_reused(
+    test_db_session: Session,
+    sample_integration: HAIntegrationConfig,
+) -> None:
+    """Prefer the active booking when multiple events share a code."""
+    from captive_portal.services.booking_code_validator import BookingCodeValidator
+
+    now = datetime.now(timezone.utc)
+    expired_event = RentalControlEvent(
+        integration_id=sample_integration.integration_id,
+        event_index=0,
+        slot_code="6709",
+        slot_name="Expired Guest",
+        last_four="6709",
+        start_utc=now - timedelta(days=2),
+        end_utc=now - timedelta(hours=2),
+        raw_attributes="{}",
+    )
+    active_event = RentalControlEvent(
+        integration_id=sample_integration.integration_id,
+        event_index=1,
+        slot_code="6709",
+        slot_name="Current Guest",
+        last_four="6709",
+        start_utc=now - timedelta(minutes=30),
+        end_utc=now + timedelta(hours=2),
+        raw_attributes="{}",
+    )
+    test_db_session.add(expired_event)
+    test_db_session.add(active_event)
+    test_db_session.commit()
+
+    validator = BookingCodeValidator(test_db_session)
+
+    result = validator.validate_code("6709", sample_integration)
+
+    assert result is not None
+    assert result.event_index == active_event.event_index
+    assert result.slot_name == "Current Guest"
+
+
+def test_booking_code_prefers_nearest_future_event_when_no_active_match(
+    test_db_session: Session,
+    sample_integration: HAIntegrationConfig,
+) -> None:
+    """Prefer the soonest upcoming booking when no active event matches."""
+    from captive_portal.services.booking_code_validator import BookingCodeValidator
+
+    now = datetime.now(timezone.utc)
+    expired_event = RentalControlEvent(
+        integration_id=sample_integration.integration_id,
+        event_index=0,
+        slot_code="6709",
+        slot_name="Expired Guest",
+        last_four="6709",
+        start_utc=now - timedelta(days=2),
+        end_utc=now - timedelta(hours=2),
+        raw_attributes="{}",
+    )
+    near_future_event = RentalControlEvent(
+        integration_id=sample_integration.integration_id,
+        event_index=1,
+        slot_code="6709",
+        slot_name="Near Future Guest",
+        last_four="6709",
+        start_utc=now + timedelta(hours=2),
+        end_utc=now + timedelta(days=1),
+        raw_attributes="{}",
+    )
+    far_future_event = RentalControlEvent(
+        integration_id=sample_integration.integration_id,
+        event_index=2,
+        slot_code="6709",
+        slot_name="Far Future Guest",
+        last_four="6709",
+        start_utc=now + timedelta(days=4),
+        end_utc=now + timedelta(days=5),
+        raw_attributes="{}",
+    )
+    test_db_session.add(expired_event)
+    test_db_session.add(near_future_event)
+    test_db_session.add(far_future_event)
+    test_db_session.commit()
+
+    validator = BookingCodeValidator(test_db_session)
+
+    result = validator.validate_code("6709", sample_integration)
+
+    assert result is not None
+    assert result.event_index == near_future_event.event_index
+    assert result.slot_name == "Near Future Guest"
+
+
+def test_booking_code_normalizes_aware_datetimes_to_utc() -> None:
+    """Normalize non-UTC aware datetimes before comparing booking windows."""
+    from captive_portal.services.booking_code_validator import BookingCodeValidator
+
+    pacific_time = datetime(2026, 6, 5, 12, 0, tzinfo=ZoneInfo("America/Los_Angeles"))
+
+    normalized_time = BookingCodeValidator._ensure_timezone_aware(pacific_time)
+
+    assert normalized_time == datetime(2026, 6, 5, 19, 0, tzinfo=timezone.utc)
+    assert normalized_time.tzinfo == timezone.utc
