@@ -10,6 +10,22 @@ from captive_portal.services.audit_service import AuditService
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_EVENT_RETENTION_DAYS = 1
+
+
+def build_event_retention_cutoff(
+    retention_days: int = DEFAULT_EVENT_RETENTION_DAYS,
+) -> datetime:
+    """Return the shared cutoff used for expired Rental Control events.
+
+    Args:
+        retention_days: Number of full days to retain events after checkout
+
+    Returns:
+        UTC cutoff datetime for deleting stale events
+    """
+    return datetime.now(timezone.utc) - timedelta(days=retention_days)
+
 
 class CleanupService:
     """Service for cleaning up expired Rental Control events.
@@ -24,14 +40,14 @@ class CleanupService:
         self,
         event_repo: RentalControlEventRepository,
         audit_service: AuditService,
-        retention_days: int = 7,
+        retention_days: int = DEFAULT_EVENT_RETENTION_DAYS,
     ) -> None:
         """Initialize cleanup service.
 
         Args:
             event_repo: Event repository
             audit_service: Audit logging service
-            retention_days: Retention period in days (default 7)
+            retention_days: Retention period in days (default 1)
         """
         self.event_repo = event_repo
         self.audit_service = audit_service
@@ -46,7 +62,7 @@ class CleanupService:
         Raises:
             Exception: On database errors
         """
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=self.retention_days)
+        cutoff_date = build_event_retention_cutoff(self.retention_days)
 
         logger.info(
             "Starting event cleanup",
