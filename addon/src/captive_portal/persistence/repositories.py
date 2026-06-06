@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Generic, Optional, TypeVar, List, cast, Any
 from uuid import UUID
 
+from sqlalchemy import delete as sa_delete
 from sqlmodel import Session, col, select
 
 
@@ -499,11 +500,15 @@ class RentalControlEventRepository(BaseRepository[RentalControlEvent]):
         Returns:
             Number of deleted events
         """
-        statement: Any = select(RentalControlEvent).where(RentalControlEvent.end_utc < cutoff_date)
-        events_to_delete: list[RentalControlEvent] = list(self.session.exec(statement).all())
-
-        for event in events_to_delete:
-            self.session.delete(event)
-
+        # SQLite stores naive datetimes — normalize aware cutoffs before delete
+        cutoff_naive = (
+            cutoff_date.astimezone(timezone.utc).replace(tzinfo=None)
+            if cutoff_date.tzinfo
+            else cutoff_date
+        )
+        statement = sa_delete(RentalControlEvent).where(
+            RentalControlEvent.end_utc < cutoff_naive  # type: ignore[arg-type]
+        )
+        result: Any = self.session.execute(statement.execution_options(synchronize_session=False))
         self.session.flush()
-        return len(events_to_delete)
+        return int(result.rowcount or 0)

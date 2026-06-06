@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Unit tests for BookingCodeValidator.find_across_integrations."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Generator
 
 import pytest
@@ -212,6 +212,60 @@ class TestFindAcrossIntegrationsMultipleIntegrations:
         assert found_integration is not None
         assert found_integration.integration_id == "calendar.rental_2"
 
+    def test_prefers_active_match_across_integrations(
+        self,
+        test_db_session: Session,
+    ) -> None:
+        """Pick the globally best match when the same code exists in multiple integrations."""
+        expired_integration = HAIntegrationConfig(
+            integration_id="calendar.rental_1",
+            identifier_attr=IdentifierAttr.SLOT_CODE,
+            checkout_grace_minutes=15,
+        )
+        active_integration = HAIntegrationConfig(
+            integration_id="calendar.rental_2",
+            identifier_attr=IdentifierAttr.SLOT_CODE,
+            checkout_grace_minutes=15,
+        )
+        test_db_session.add(expired_integration)
+        test_db_session.add(active_integration)
+        test_db_session.commit()
+
+        now = datetime.now(timezone.utc)
+        expired_event = RentalControlEvent(
+            integration_id=expired_integration.integration_id,
+            event_index=0,
+            slot_code="6709",
+            slot_name="Expired Guest",
+            last_four="6709",
+            start_utc=now - timedelta(days=2),
+            end_utc=now - timedelta(hours=2),
+            raw_attributes="{}",
+        )
+        active_event = RentalControlEvent(
+            integration_id=active_integration.integration_id,
+            event_index=0,
+            slot_code="6709",
+            slot_name="Current Guest",
+            last_four="6709",
+            start_utc=now - timedelta(minutes=30),
+            end_utc=now + timedelta(hours=2),
+            raw_attributes="{}",
+        )
+        test_db_session.add(expired_event)
+        test_db_session.add(active_event)
+        test_db_session.commit()
+
+        validator = BookingCodeValidator(test_db_session)
+
+        found_event, found_integration = validator.find_across_integrations("6709")
+
+        assert found_event is not None
+        assert found_event.slot_name == "Current Guest"
+        assert found_event.integration_id == active_integration.integration_id
+        assert found_integration is not None
+        assert found_integration.integration_id == active_integration.integration_id
+
     def test_whitespace_trimmed_across_integrations(
         self,
         test_db_session: Session,
@@ -223,6 +277,54 @@ class TestFindAcrossIntegrationsMultipleIntegrations:
 
         assert found_event is not None
         assert found_event.slot_code == "SECOND222"
+
+    def test_prefers_active_event_when_code_reused(
+        self,
+        test_db_session: Session,
+    ) -> None:
+        """Return the active event when expired and active bookings share a code."""
+        integration = HAIntegrationConfig(
+            integration_id="calendar.rental_1",
+            identifier_attr=IdentifierAttr.SLOT_CODE,
+            checkout_grace_minutes=15,
+        )
+        test_db_session.add(integration)
+        test_db_session.commit()
+
+        now = datetime.now(timezone.utc)
+        expired_event = RentalControlEvent(
+            integration_id=integration.integration_id,
+            event_index=0,
+            slot_code="6709",
+            slot_name="Expired Guest",
+            last_four="6709",
+            start_utc=now - timedelta(days=2),
+            end_utc=now - timedelta(hours=2),
+            raw_attributes="{}",
+        )
+        active_event = RentalControlEvent(
+            integration_id=integration.integration_id,
+            event_index=1,
+            slot_code="6709",
+            slot_name="Current Guest",
+            last_four="6709",
+            start_utc=now - timedelta(minutes=30),
+            end_utc=now + timedelta(hours=2),
+            raw_attributes="{}",
+        )
+        test_db_session.add(expired_event)
+        test_db_session.add(active_event)
+        test_db_session.commit()
+
+        validator = BookingCodeValidator(test_db_session)
+
+        found_event, found_integration = validator.find_across_integrations("6709")
+
+        assert found_event is not None
+        assert found_event.event_index == active_event.event_index
+        assert found_event.slot_name == "Current Guest"
+        assert found_integration is not None
+        assert found_integration.integration_id == integration.integration_id
 
 
 class TestFindAcrossIntegrationsDifferentAttrs:

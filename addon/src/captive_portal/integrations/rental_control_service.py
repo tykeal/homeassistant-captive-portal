@@ -14,6 +14,7 @@ from captive_portal.integrations.ha_client import HAClient
 from captive_portal.models.ha_integration_config import HAIntegrationConfig, IdentifierAttr
 from captive_portal.models.rental_control_event import RentalControlEvent
 from captive_portal.persistence.repositories import RentalControlEventRepository
+from captive_portal.services.cleanup_service import build_event_retention_cutoff
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,7 @@ class RentalControlService:
             )
             ha_tz = timezone.utc
 
+        had_failures = False
         for config in configs:
             try:
                 await self._process_integration(config, all_states, ha_tz=ha_tz)
@@ -83,12 +85,16 @@ class RentalControlService:
                 session.add(config)
                 session.commit()
             except Exception:
+                had_failures = True
                 session.rollback()
                 logger.error(
                     "Failed to process integration",
                     extra={"integration_id": config.integration_id},
                     exc_info=True,
                 )
+
+        if not had_failures:
+            await self._purge_stale_events()
 
     async def _process_integration(
         self,
@@ -163,6 +169,31 @@ class RentalControlService:
                     "sensor_count": sensor_count,
                 },
             )
+
+    async def _purge_stale_events(self) -> None:
+        """Delete stale Rental Control events after a poll cycle.
+
+        Events remain for one day after checkout to allow short-lived
+        follow-up operations while preventing unbounded table growth.
+
+        Raises:
+            Exception: Propagates repository errors after rolling back
+        """
+        cutoff = build_event_retention_cutoff()
+
+        try:
+            deleted_count = await self.event_repo.delete_events_older_than(cutoff)
+            if deleted_count:
+                self.event_repo.session.commit()
+                logger.debug(
+                    "Purged stale Rental Control events",
+                    extra={"deleted_count": deleted_count, "cutoff": cutoff.isoformat()},
+                )
+            else:
+                self.event_repo.session.rollback()
+        except Exception:
+            self.event_repo.session.rollback()
+            raise
 
     @staticmethod
     def _derive_sensor_prefix(integration_id: str) -> str:

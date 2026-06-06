@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Test Rental Control event syncing from HA sensors."""
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
@@ -123,6 +123,7 @@ def _make_service(
     if event_repo is None:
         event_repo = MagicMock()
         event_repo.upsert = AsyncMock()
+        event_repo.delete_events_older_than = AsyncMock(return_value=0)
 
     mock_session = MagicMock()
     if configs is None:
@@ -290,6 +291,39 @@ class TestProcessEvents:
         await service.process_events()
 
         mock_repo.session.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_purges_stale_events_after_successful_poll(self, integration_config):
+        """Completed polling purges stale events older than one day."""
+        service, mock_client, mock_repo = _make_service(
+            configs=[integration_config],
+        )
+        mock_client.get_all_states = AsyncMock(return_value=[])
+        mock_repo.delete_events_older_than = AsyncMock(return_value=2)
+
+        before = datetime.now(timezone.utc)
+        await service.process_events()
+        after = datetime.now(timezone.utc)
+
+        mock_repo.delete_events_older_than.assert_awaited_once()
+        cutoff = mock_repo.delete_events_older_than.call_args[0][0]
+        assert before - timedelta(days=1) <= cutoff <= after - timedelta(days=1)
+        assert mock_repo.session.commit.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_ends_cleanup_transaction_when_nothing_is_deleted(self, integration_config):
+        """Cleanup rolls back the read-only transaction when no rows are purged."""
+        service, mock_client, mock_repo = _make_service(
+            configs=[integration_config],
+        )
+        mock_client.get_all_states = AsyncMock(return_value=[])
+        mock_repo.delete_events_older_than = AsyncMock(return_value=0)
+
+        await service.process_events()
+
+        mock_repo.delete_events_older_than.assert_awaited_once()
+        mock_repo.session.commit.assert_called_once()
+        mock_repo.session.rollback.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_event_index_extracted_from_entity_id(

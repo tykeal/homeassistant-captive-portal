@@ -4,7 +4,7 @@
 
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from sqlmodel import Session, func, select
 
@@ -77,20 +77,7 @@ class BookingCodeValidator:
         """
         # Normalize input: trim whitespace
         normalized_input = user_input.strip()
-
-        # Get the configured attribute name
-        attr_name = integration.identifier_attr.value
-
-        # Build case-insensitive query
-        # LOWER(field) = LOWER(input)
-        statement: Any = (
-            select(RentalControlEvent)
-            .where(RentalControlEvent.integration_id == integration.integration_id)
-            .where(func.lower(getattr(RentalControlEvent, attr_name)) == normalized_input.lower())
-        )
-
-        result: RentalControlEvent | None = self.session.exec(statement).first()
-        return result
+        return self._find_preferred_event(normalized_input, integration)
 
     @staticmethod
     def is_valid_slot_code(code: str) -> bool:
@@ -168,20 +155,146 @@ class BookingCodeValidator:
             self.session.exec(select(HAIntegrationConfig)).all()
         )
 
-        for integration in integrations:
-            attr_name = integration.identifier_attr.value
-            statement: Any = (
-                select(RentalControlEvent)
-                .where(RentalControlEvent.integration_id == integration.integration_id)
-                .where(
-                    func.lower(getattr(RentalControlEvent, attr_name)) == normalized_input.lower()
-                )
-            )
-            result: RentalControlEvent | None = self.session.exec(statement).first()
-            if result:
-                return result, integration
+        now = datetime.now(timezone.utc)
+        candidates: list[tuple[RentalControlEvent, HAIntegrationConfig]] = []
 
-        return None, None
+        for integration in integrations:
+            matches = self._find_matching_events(normalized_input, integration)
+            candidates.extend((event, integration) for event in matches)
+
+        if not candidates:
+            return None, None
+
+        result, integration = min(
+            candidates,
+            key=lambda candidate: self._event_preference_key(
+                candidate[0],
+                grace_minutes=candidate[1].checkout_grace_minutes,
+                now=now,
+            ),
+        )
+        return result, integration
+
+    def _find_matching_events(
+        self,
+        normalized_input: str,
+        integration: HAIntegrationConfig,
+    ) -> list[RentalControlEvent]:
+        """Find all matching events for a booking code within one integration.
+
+        Args:
+            normalized_input: Trimmed guest-provided booking code
+            integration: Integration config specifying auth attribute and grace
+
+        Returns:
+            Matching events ordered by ``start_utc`` descending
+        """
+        attr_name = integration.identifier_attr.value
+        statement: Any = (
+            select(RentalControlEvent)
+            .where(RentalControlEvent.integration_id == integration.integration_id)
+            .where(func.lower(getattr(RentalControlEvent, attr_name)) == normalized_input.lower())
+            .order_by(cast(Any, RentalControlEvent.start_utc).desc())
+        )
+        return list(self.session.exec(statement).all())
+
+    def _find_preferred_event(
+        self,
+        normalized_input: str,
+        integration: HAIntegrationConfig,
+    ) -> RentalControlEvent | None:
+        """Find the best-matching event for a booking code.
+
+        Prefers events that are currently within the access window, then the
+        nearest future booking, and finally the most recent matching event.
+
+        Args:
+            normalized_input: Trimmed guest-provided booking code
+            integration: Integration config specifying auth attribute and grace
+
+        Returns:
+            Preferred matching event, or None when no event matches
+        """
+        matches = self._find_matching_events(normalized_input, integration)
+        return self._select_preferred_event(
+            matches,
+            grace_minutes=integration.checkout_grace_minutes,
+        )
+
+    @staticmethod
+    def _select_preferred_event(
+        events: list[RentalControlEvent],
+        *,
+        grace_minutes: int,
+        now: datetime | None = None,
+    ) -> RentalControlEvent | None:
+        """Choose the most relevant event from ordered matches.
+
+        Args:
+            events: Matching events ordered by ``start_utc`` descending
+            grace_minutes: Checkout grace period for the integration
+            now: Optional comparison timestamp for deterministic selection
+
+        Returns:
+            Active event when present, otherwise the nearest future event,
+            otherwise the most recent expired match, or None if no events exist
+        """
+        if not events:
+            return None
+
+        comparison_time = now or datetime.now(timezone.utc)
+        return min(
+            events,
+            key=lambda event: BookingCodeValidator._event_preference_key(
+                event,
+                grace_minutes=grace_minutes,
+                now=comparison_time,
+            ),
+        )
+
+    @staticmethod
+    def _event_preference_key(
+        event: RentalControlEvent,
+        *,
+        grace_minutes: int,
+        now: datetime,
+    ) -> tuple[int, float]:
+        """Build a sortable preference key for matching events.
+
+        Args:
+            event: Matching event candidate
+            grace_minutes: Checkout grace period for the integration
+            now: Comparison timestamp
+
+        Returns:
+            Tuple ordering active events first, then nearest future events,
+            then the most recent expired event
+        """
+        start_utc = BookingCodeValidator._ensure_timezone_aware(event.start_utc)
+        end_utc = BookingCodeValidator._ensure_timezone_aware(event.end_utc)
+        early_checkin_window = start_utc - timedelta(minutes=60)
+        effective_end = end_utc + timedelta(minutes=grace_minutes)
+        start_timestamp = start_utc.timestamp()
+
+        if early_checkin_window <= now <= effective_end:
+            return 0, -start_timestamp
+        if now < early_checkin_window:
+            return 1, start_timestamp
+        return 2, -start_timestamp
+
+    @staticmethod
+    def _ensure_timezone_aware(value: datetime) -> datetime:
+        """Return a timezone-aware UTC datetime for comparisons.
+
+        Args:
+            value: Datetime read from persistence
+
+        Returns:
+            Timezone-aware datetime in UTC
+        """
+        if not value.tzinfo:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
 
     async def validate_and_create_grant(self, code: str, device_id: str) -> AccessGrant:
         """

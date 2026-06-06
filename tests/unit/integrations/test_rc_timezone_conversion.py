@@ -393,6 +393,7 @@ class TestProcessEventsTimezoneIntegration:
 
         mock_repo = MagicMock()
         mock_repo.upsert = AsyncMock()
+        mock_repo.delete_events_older_than = AsyncMock(return_value=0)
         mock_session = MagicMock()
         mock_session.exec.return_value.all.return_value = [
             integration_config,
@@ -434,6 +435,7 @@ class TestProcessEventsTimezoneIntegration:
 
         mock_repo = MagicMock()
         mock_repo.upsert = AsyncMock()
+        mock_repo.delete_events_older_than = AsyncMock(return_value=0)
         mock_session = MagicMock()
         mock_session.exec.return_value.all.return_value = [
             integration_config,
@@ -492,6 +494,7 @@ class TestProcessEventsTimezoneIntegration:
 
         mock_repo = MagicMock()
         mock_repo.upsert = AsyncMock()
+        mock_repo.delete_events_older_than = AsyncMock(return_value=0)
         mock_session = MagicMock()
         mock_session.exec.return_value.all.return_value = [
             integration_config,

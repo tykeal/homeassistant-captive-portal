@@ -116,3 +116,46 @@ class TestBookingCodeLookupHappyPath:
         # Grant end should be event.end_utc + grace_period
         expected_end = event.end_utc + timedelta(minutes=30)
         assert grant.end_utc <= expected_end + timedelta(seconds=60)  # tolerance
+
+    async def test_prefers_active_booking_when_code_reused(self, db_session: Session) -> None:
+        """Back-to-back bookings sharing a code should grant the active stay."""
+        config = HAIntegrationConfig(
+            integration_id="rental1",
+            auth_attribute="slot_code",
+            checkout_grace_minutes=15,
+        )
+        db_session.add(config)
+        db_session.commit()
+
+        now = datetime.now(timezone.utc)
+        expired_event = RentalControlEvent(
+            integration_id="rental1",
+            event_index=0,
+            start_utc=now - timedelta(days=2),
+            end_utc=now - timedelta(hours=2),
+            slot_code="6709",
+            slot_name="Expired Guest",
+            last_four="6709",
+            raw_attributes="{}",
+        )
+        active_event = RentalControlEvent(
+            integration_id="rental1",
+            event_index=1,
+            start_utc=now - timedelta(minutes=30),
+            end_utc=now + timedelta(hours=2),
+            slot_code="6709",
+            slot_name="Current Guest",
+            last_four="6709",
+            raw_attributes="{}",
+        )
+        db_session.add(expired_event)
+        db_session.add(active_event)
+        db_session.commit()
+
+        validator = BookingCodeValidator(db_session)
+
+        grant = await validator.validate_and_create_grant(code="6709", device_id="device4")
+
+        assert grant is not None
+        assert grant.start_utc == active_event.start_utc.replace(second=0, microsecond=0)
+        assert grant.integration_id == "rental1"
