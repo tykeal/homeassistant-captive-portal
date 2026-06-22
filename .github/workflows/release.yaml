@@ -31,7 +31,7 @@ jobs:
           egress-policy: 'audit'
 
       # yamllint disable-line rule:line-length
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 0
 
@@ -63,7 +63,7 @@ jobs:
 
       - name: 'Checkout repository'
         # yamllint disable-line rule:line-length
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -135,7 +135,7 @@ jobs:
           egress-policy: 'audit'
 
       # yamllint disable-line rule:line-length
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -166,7 +166,7 @@ jobs:
           egress-policy: 'audit'
 
       # yamllint disable-line rule:line-length
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: "Symlink tests into addon prefix"
         run: ln -s ../tests addon/tests
@@ -196,7 +196,7 @@ jobs:
           egress-policy: 'audit'
 
       # yamllint disable-line rule:line-length
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: "Audit dependencies ${{ matrix.python-version }}"
         # yamllint disable-line rule:line-length
@@ -219,7 +219,7 @@ jobs:
           egress-policy: 'audit'
 
       # yamllint disable-line rule:line-length
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: "Generate SBOM"
         id: sbom
@@ -298,7 +298,7 @@ jobs:
           egress-policy: 'audit'
 
       # yamllint disable-line rule:line-length
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: 'Update config.yaml version'
         shell: bash
@@ -339,7 +339,7 @@ jobs:
           egress-policy: 'audit'
 
       # yamllint disable-line rule:line-length
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: 'Set architectures'
         id: 'arch'
@@ -377,7 +377,7 @@ jobs:
           egress-policy: 'audit'
 
       # yamllint disable-line rule:line-length
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -537,7 +537,7 @@ jobs:
           egress-policy: 'audit'
 
       # yamllint disable-line rule:line-length
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: '⬇ Download build artefacts'
         # yamllint disable-line rule:line-length
@@ -588,7 +588,7 @@ jobs:
           egress-policy: 'audit'
 
       # yamllint disable-line rule:line-length
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: 'Append container info to release'
         shell: bash
