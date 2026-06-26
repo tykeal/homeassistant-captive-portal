@@ -78,8 +78,8 @@ class GrantExpiryService:
             )
             grants = list(session.exec(statement).all())
             expired_count = 0
+            adapter = self._build_adapter()
             for grant in grants:
-                adapter = self._build_adapter()
                 if await self._expire_grant(session, grant, adapter):
                     expired_count += 1
             if expired_count:
