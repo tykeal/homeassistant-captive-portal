@@ -14,12 +14,12 @@ from functools import lru_cache
 
 import pytest
 from fastapi import FastAPI
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 from captive_portal.app import create_app
 from captive_portal.config.settings import AppSettings
 from captive_portal.guest_app import create_guest_app
+from tests.route_helpers import iter_api_routes
 
 _PLACEHOLDER = "00000000-0000-0000-0000-000000000000"
 
@@ -37,8 +37,8 @@ def _admin_only_get_paths() -> tuple[str, ...]:
     def _get_paths(app: FastAPI) -> set[str]:
         """Extract concrete GET paths from an app's routes."""
         paths: set[str] = set()
-        for route in app.routes:
-            if isinstance(route, APIRoute) and "GET" in (route.methods or set()):
+        for route in iter_api_routes(app):
+            if "GET" in (route.methods or set()):
                 concrete = re.sub(r"\{[^}]+\}", _PLACEHOLDER, route.path)
                 paths.add(concrete)
         return paths
