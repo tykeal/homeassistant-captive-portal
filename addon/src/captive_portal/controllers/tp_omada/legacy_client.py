@@ -89,6 +89,7 @@ class OmadaLegacyClient:
         """Async context manager exit."""
         if self._client:
             await self._client.aclose()
+            self._client = None
 
     async def _authenticate(self) -> None:
         """Authenticate with Omada controller and obtain CSRF token.
