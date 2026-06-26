@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from captive_portal.config.settings import AppSettings
 from captive_portal.persistence import database
+from tests.route_helpers import route_paths
 
 
 def test_create_app_with_settings_initializes_db() -> None:
@@ -148,7 +149,7 @@ def test_existing_route_prefixes_registered() -> None:
 
         app = create_app(settings=settings)
 
-        route_paths = {r.path for r in app.routes if hasattr(r, "path")}
+        registered_paths = route_paths(app)
 
         # Check key route prefixes exist
         expected_prefixes = [
@@ -159,8 +160,8 @@ def test_existing_route_prefixes_registered() -> None:
             "/admin/integrations/",
         ]
         for prefix in expected_prefixes:
-            assert any(p == prefix or p.startswith(prefix) for p in route_paths), (
-                f"Route prefix '{prefix}' not found in {route_paths}"
+            assert any(p == prefix or p.startswith(prefix) for p in registered_paths), (
+                f"Route prefix '{prefix}' not found in {registered_paths}"
             )
     finally:
         database.dispose_engine()
