@@ -74,12 +74,14 @@ class GrantExpiryService:
                 .where(col(AccessGrant.end_utc) <= now)
             )
             grants = list(session.exec(statement).all())
-            adapter = self._build_adapter()
+            expired_count = 0
             for grant in grants:
-                await self._expire_grant(session, grant, adapter)
-            if grants:
+                adapter = self._build_adapter()
+                if await self._expire_grant(session, grant, adapter):
+                    expired_count += 1
+            if expired_count:
                 session.commit()
-            return len(grants)
+            return expired_count
 
     def _build_adapter(self) -> OmadaControllerAdapter | None:
         """Build a worker-local adapter from runtime config.
@@ -102,13 +104,16 @@ class GrantExpiryService:
         session: Session,
         grant: AccessGrant,
         adapter: OmadaControllerAdapter | None,
-    ) -> None:
+    ) -> bool:
         """Expire one grant and attempt controller revocation.
 
         Args:
             session: Database session.
             grant: Due active grant.
             adapter: Selected controller adapter, if any.
+
+        Returns:
+            True when the grant was marked expired.
         """
         if adapter is not None and grant.mac:
             try:
@@ -123,6 +128,8 @@ class GrantExpiryService:
                 )
             except (OmadaClientError, OmadaRetryExhaustedError) as exc:
                 self.logger.error("Controller expiry revoke failed for MAC %s: %s", grant.mac, exc)
+                return False
         grant.status = GrantStatus.EXPIRED
         grant.updated_utc = datetime.now(timezone.utc)
         session.add(grant)
+        return True
