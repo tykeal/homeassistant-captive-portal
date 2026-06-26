@@ -62,6 +62,24 @@ async def test_auto_falls_back_to_legacy_on_probe_failure(
 
 
 @pytest.mark.asyncio
+async def test_auto_probe_failure_without_legacy_reports_no_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Automatic mode reports probe failure when no legacy fallback exists."""
+
+    async def probe_failure(*_args: object) -> bool:
+        """Return failed probe result."""
+        return False
+
+    monkeypatch.setattr(adapter_factory, "_probe_openapi", probe_failure)
+    with pytest.raises(OmadaBackendSelectionError, match="OpenAPI probe failed"):
+        await select_omada_backend(
+            _input(username="", password=""),
+            logging.getLogger(__name__),
+        )
+
+
+@pytest.mark.asyncio
 async def test_forced_openapi_does_not_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     """Forced OpenAPI raises on failed probe instead of selecting legacy."""
 

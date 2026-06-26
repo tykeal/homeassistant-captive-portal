@@ -113,6 +113,29 @@ async def test_token_errors_redact_secret_and_token() -> None:
 
 
 @pytest.mark.asyncio
+async def test_token_http_error_mentions_status_code() -> None:
+    """Token HTTP errors include status while remaining secret-safe."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Return an authentication failure."""
+        return httpx.Response(401, json={"errorCode": 401, "msg": "bad secret"})
+
+    client = OpenApiClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="0123456789ab",
+        client_id="client-id",
+        client_secret="client-secret",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(Exception) as excinfo:
+        await client.get_access_token()
+    message = str(excinfo.value)
+    assert "401" in message
+    assert "client-secret" not in message
+
+
+@pytest.mark.asyncio
 async def test_unauthorized_request_refreshes_token_once() -> None:
     """A stale token rejected by OpenAPI is refreshed and retried once."""
     seen_authorization: list[str] = []

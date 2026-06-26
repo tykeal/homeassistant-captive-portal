@@ -128,7 +128,7 @@ class OpenApiClient:
             ) from exc
         if response.status_code >= 400:
             raise OmadaAuthenticationError(
-                "OpenAPI token request failed with HTTP status",
+                f"OpenAPI token request failed with HTTP status {response.status_code}",
                 status_code=response.status_code,
             )
         self._cache_token_response(response)

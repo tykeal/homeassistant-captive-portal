@@ -146,6 +146,10 @@ async def _select_auto(
     if selection_input.openapi_ready:
         if await _probe_openapi(selection_input, logger):
             return _openapi_runtime(selection_input, "OpenAPI token probe succeeded")
+        if not selection_input.legacy_ready:
+            raise OmadaBackendSelectionError(
+                "OpenAPI probe failed and no legacy fallback is configured"
+            )
         logger.warning("OpenAPI probe failed; falling back to legacy backend")
         return _select_legacy(selection_input, "OpenAPI probe failed; legacy fallback selected")
     if selection_input.client_id or selection_input.client_secret:
