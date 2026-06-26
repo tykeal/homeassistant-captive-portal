@@ -121,12 +121,12 @@ class TestMigrateYamlToDb:
         assert omada.username == "existing_user"
 
     @pytest.mark.asyncio
-    async def test_openapi_secret_preserved_when_unchanged(
+    async def test_existing_openapi_settings_are_not_overwritten(
         self,
         db_session: Session,
         key_path: str,
     ) -> None:
-        """Existing OpenAPI secret ciphertext is preserved when no new secret is supplied."""
+        """Existing OpenAPI settings are treated as UI-managed after migration."""
         existing = OmadaConfig(
             id=1,
             controller_url="https://existing.omada:8043",
@@ -151,9 +151,9 @@ class TestMigrateYamlToDb:
 
         omada = db_session.get(OmadaConfig, 1)
         assert omada is not None
-        assert omada.client_id == "new-client"
+        assert omada.client_id == "old-client"
         assert omada.encrypted_client_secret == "existing-openapi-cipher"
-        assert omada.openapi_mode == "legacy"
+        assert omada.openapi_mode == "auto"
 
     @pytest.mark.asyncio
     async def test_openapi_only_config_skips_default_migration(

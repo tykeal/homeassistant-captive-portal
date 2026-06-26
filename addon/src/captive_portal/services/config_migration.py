@@ -160,6 +160,22 @@ def _apply_shared_omada_fields(omada_config: OmadaConfig, legacy: dict[str, Any]
     return changed
 
 
+def _openapi_fields_default(omada_config: OmadaConfig) -> bool:
+    """Return whether OpenAPI DB fields are still migration defaults.
+
+    Args:
+        omada_config: Existing Omada configuration record.
+
+    Returns:
+        True when no OpenAPI client ID, secret, or explicit mode is stored.
+    """
+    return (
+        not omada_config.client_id.strip()
+        and not omada_config.encrypted_client_secret.strip()
+        and omada_config.openapi_mode == "auto"
+    )
+
+
 def _apply_legacy_omada_fields(
     omada_config: OmadaConfig,
     legacy: dict[str, Any],
@@ -212,7 +228,8 @@ def _migrate_omada_settings(
         _apply_legacy_omada_fields(omada_config, legacy, key_path)
         changed = True
 
-    if can_write_base or _openapi_values_present(legacy):
+    can_write_openapi = can_write_base or _openapi_fields_default(omada_config)
+    if can_write_openapi and _openapi_values_present(legacy):
         changed = _apply_openapi_fields(omada_config, legacy, key_path) or changed
 
     if changed:
