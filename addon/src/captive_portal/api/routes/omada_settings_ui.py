@@ -227,9 +227,7 @@ def _validate_omada_form(
     if openapi_mode not in {"auto", "openapi", "legacy"}:
         return "Backend+mode+must+be+auto,+openapi,+or+legacy"
 
-    openapi_secret_available = bool(client_id) and bool(
-        client_secret if client_secret_changed == "true" else client_secret_exists
-    )
+    openapi_secret_available = bool(client_id) and bool(client_secret or client_secret_exists)
     legacy_required = openapi_mode == "legacy" or (
         openapi_mode == "auto" and not openapi_secret_available
     )
@@ -374,7 +372,7 @@ async def update_omada_settings(
     if password_changed == "true" and password:
         config.encrypted_password = encrypt_credential(password)
     # If password_changed is false, preserve existing encrypted_password
-    if client_secret_changed == "true" and client_secret:
+    if client_secret:
         config.encrypted_client_secret = encrypt_credential(client_secret)
 
     session.add(config)

@@ -90,6 +90,26 @@ def test_forced_openapi_requires_new_or_stored_secret() -> None:
     )
 
 
+def test_forced_openapi_accepts_submitted_secret_without_changed_flag() -> None:
+    """A submitted client secret counts even without the hidden changed flag."""
+    assert (
+        _validate_omada_form(
+            "https://ctrl.test:8043",
+            "",
+            "client-id",
+            "0123456789ab",
+            "",
+            "false",
+            "openapi",
+            "submitted-secret",
+            "false",
+            "/admin/omada-settings/",
+            client_secret_exists=False,
+        )
+        is None
+    )
+
+
 def test_auto_mode_accepts_openapi_only_credentials() -> None:
     """Auto mode can save OpenAPI-only credentials for probe selection."""
     assert (
