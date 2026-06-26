@@ -156,6 +156,38 @@ class TestMigrateYamlToDb:
         assert omada.openapi_mode == "legacy"
 
     @pytest.mark.asyncio
+    async def test_openapi_only_config_skips_default_migration(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Existing OpenAPI-only DB config is not reset by default migration values."""
+        existing = OmadaConfig(
+            id=1,
+            controller_url="https://existing.omada:8043",
+            client_id="existing-client",
+            encrypted_client_secret="existing-openapi-cipher",
+            openapi_mode="openapi",
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        env = _clean_env()
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
+            result = await migrate_yaml_to_db(
+                settings,
+                db_session,
+                key_path="unused-openapi-only.key",
+            )
+
+        assert result.omada_migrated is False
+        omada = db_session.get(OmadaConfig, 1)
+        assert omada is not None
+        assert omada.client_id == "existing-client"
+        assert omada.encrypted_client_secret == "existing-openapi-cipher"
+        assert omada.openapi_mode == "openapi"
+
+    @pytest.mark.asyncio
     async def test_idempotent_session_skip(self, db_session: Session, key_path: str) -> None:
         """Session migration is skipped when DB has non-default values."""
         portal = PortalConfig(id=1, session_idle_minutes=60)

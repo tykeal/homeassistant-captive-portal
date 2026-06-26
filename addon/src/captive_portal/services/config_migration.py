@@ -154,7 +154,9 @@ def _migrate_omada_settings(
     stmt: Any = select(OmadaConfig).where(OmadaConfig.id == 1)
     omada_config: Optional[OmadaConfig] = session.exec(stmt).first()
 
-    can_write_base = omada_config is None or not omada_config.omada_configured
+    can_write_base = omada_config is None or not (
+        omada_config.omada_configured or omada_config.openapi_configured
+    )
     if omada_config is None:
         omada_config = OmadaConfig(id=1)
 
