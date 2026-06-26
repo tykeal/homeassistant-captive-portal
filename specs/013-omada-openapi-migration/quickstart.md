@@ -48,9 +48,12 @@ Invalid values are rejected. Supported values are exactly `auto`, `openapi`, and
 
 OpenAPI authorization does not rely on an undocumented per-call duration
 parameter. Configure the Omada hotspot portal profile with a maximum duration
-that exceeds the longest expected add-on-managed grant. The add-on remains the
-source of truth for guest access duration and calls the selected backend's
-revoke/unauth operation when a grant expires or an admin revokes it.
+that exceeds the longest expected add-on-managed grant. The add-on
+remains the source of truth for guest access duration and calls the
+selected backend's revoke/unauth operation when a grant expires or an
+admin revokes it. This applies to both backends: when legacy is
+selected, the expiry-time revoke is issued in addition to the existing
+controller-side duration and is treated idempotently.
 
 ## Expected Logs
 

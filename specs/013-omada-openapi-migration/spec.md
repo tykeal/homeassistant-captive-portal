@@ -38,10 +38,11 @@ existing externally observable behavior while the selected backend is OpenAPI.
    **Then** the guest receives the same success outcome, redirect behavior,
    grant state, and network access capability provided by the existing Omada
    integration.
-3. **Given** an active OpenAPI-backed grant reaches its add-on-managed expiry
-   time, **When** the grant-expiry timer runs, **Then** the system
-   deauthorizes the guest device through the selected controller backend and
-   marks the grant expired according to existing grant behavior.
+3. **Given** an active OpenAPI-backed grant reaches its
+   add-on-managed expiry time, **When** the add-on-managed
+   grant-expiry worker runs, **Then** the system deauthorizes the
+   guest device through the selected controller backend and marks the
+   grant expired according to existing grant behavior.
 4. **Given** an admin revokes an active OpenAPI-backed grant before its expiry,
    **When** the revoke action is accepted, **Then** the system deauthorizes the
    guest device through the selected controller backend and presents the same
@@ -233,9 +234,13 @@ and failure behavior for each supported mode.
 - **FR-024**: When the OpenAPI backend is selected, best-effort guest
   status MUST query guest authorization state through the documented Omada
   OpenAPI hotspot client status capability.
-- **FR-025**: When the legacy backend is selected, guest authorization,
-  revocation, grant expiry, and status MUST retain the current legacy API
-  behavior.
+- **FR-025**: When the legacy backend is selected, guest
+  authorization, revocation, grant expiry, and status MUST retain the
+  current legacy API behavior. Note that the add-on-managed
+  grant-expiry worker (FR-032) additionally issues an idempotent
+  deauthorization/revoke to the selected backend at expiry; for legacy
+  this supplements, and does not alter, the existing per-call
+  authorize/revoke API semantics.
 - **FR-026**: The system MUST preserve existing guest-facing outcomes for valid
   code redemption, invalid code handling, successful authorization, controller
   authorization failure, and post-authorization redirect behavior.
@@ -255,9 +260,12 @@ and failure behavior for each supported mode.
 - **FR-031**: Operators MUST be able to rely on a controller hotspot portal
   profile configured with a sufficiently generous maximum duration while the
   add-on enforces actual grant duration itself.
-- **FR-032**: The add-on MUST use its existing grant-expiry timer as the source
-  of truth for ending network access and MUST call the selected backend's
-  deauthorization/revoke capability when a grant expires.
+- **FR-032**: The add-on MUST use its add-on-managed grant-expiry
+  processing as the source of truth for ending network access and
+  MUST call the selected backend's deauthorization/revoke capability
+  when a grant expires. This expiry processing runs as a timer-driven
+  background worker rather than only recomputing grant status lazily
+  on read.
 - **FR-033**: Early/admin revocation MUST use the selected backend's
   deauthorization/revoke capability rather than waiting for controller-side
   duration expiry.
@@ -341,8 +349,10 @@ and failure behavior for each supported mode.
 - The controller's hotspot portal profile can be configured with a maximum
   duration long enough that add-on-managed expiry occurs before the
   controller-side profile limit for normal guest grants.
-- The existing add-on grant-expiry timer is reliable enough to be the source of
-  truth for ending access duration across both backends.
+- The add-on-managed grant-expiry processing introduced by this
+  feature (a timer-driven background worker) is reliable enough to be
+  the source of truth for ending access duration across both
+  backends.
 - Existing guest authorization, admin revocation, status, audit logging, and
   error handling semantics are the baseline behavior to preserve unless this
   specification explicitly states otherwise.
