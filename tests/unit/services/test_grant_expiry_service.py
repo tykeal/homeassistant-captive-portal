@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -103,3 +104,27 @@ async def test_process_once_keeps_grant_active_when_revoke_fails(
         stored = session.get(AccessGrant, grant_id)
         assert stored is not None
         assert stored.status == GrantStatus.ACTIVE
+
+
+@pytest.mark.asyncio
+async def test_worker_logs_unexpected_errors_and_continues(
+    db_engine: Engine,
+) -> None:
+    """Unexpected process errors do not terminate the expiry worker."""
+    service = GrantExpiryService(engine=db_engine, omada_config=None, interval_seconds=0.01)
+    calls = 0
+
+    async def process_once() -> int:
+        """Raise once, then stop the worker on the next iteration."""
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("database unavailable")
+        await service.stop()
+        return 0
+
+    service.process_once = process_once  # type: ignore[method-assign]
+
+    await asyncio.wait_for(service.start(), timeout=1)
+
+    assert calls == 2
