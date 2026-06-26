@@ -63,16 +63,19 @@ async def build_omada_config(
 
     controller_url = config.controller_url.strip()
     username = config.username.strip()
-    password = _decrypt_optional(config.encrypted_password, "Omada password", logger)
-    client_secret = _decrypt_optional(
-        config.encrypted_client_secret,
-        "Omada OpenAPI client secret",
-        logger,
+    mode = config.openapi_mode.strip().lower()
+    password = _decrypt_for_backend(
+        ciphertext=config.encrypted_password,
+        enabled=mode != "openapi",
+        label="Omada password",
+        logger=logger,
     )
-    if config.encrypted_password and password is None:
-        return None
-    if config.encrypted_client_secret and client_secret is None:
-        return None
+    client_secret = _decrypt_for_backend(
+        ciphertext=config.encrypted_client_secret,
+        enabled=mode != "legacy",
+        label="Omada OpenAPI client secret",
+        logger=logger,
+    )
     site_name = config.site_name.strip()
     controller_id = config.controller_id.strip()
     verify_ssl = config.verify_ssl
@@ -160,3 +163,28 @@ def _decrypt_optional(
     except Exception as exc:
         logger.error("Failed to decrypt %s: %s", label, exc)
         return None
+
+
+def _decrypt_for_backend(
+    *,
+    ciphertext: str,
+    enabled: bool,
+    label: str,
+    logger: logging.Logger,
+) -> str:
+    """Decrypt a credential only when its backend can be selected.
+
+    Args:
+        ciphertext: Fernet ciphertext or an empty string.
+        enabled: Whether the corresponding backend participates in
+            selection for the configured mode.
+        label: Secret-safe label for diagnostics.
+        logger: Logger for diagnostics.
+
+    Returns:
+        Decrypted plaintext, or ``""`` when absent, inactive, or invalid.
+    """
+    if not ciphertext or not enabled:
+        return ""
+    plaintext = _decrypt_optional(ciphertext, label, logger)
+    return plaintext or ""
