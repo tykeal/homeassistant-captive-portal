@@ -277,6 +277,51 @@ def _client_secret_changed_for_audit(client_secret: str, client_secret_changed: 
     return bool(client_secret)
 
 
+def _omada_runtime_error_message(runtime_config: Any) -> str | None:
+    """Return settings error text when runtime config rebuild failed.
+
+    Args:
+        runtime_config: Runtime Omada config returned by the builder.
+
+    Returns:
+        URL-encoded error message when config is unusable, otherwise ``None``.
+    """
+    if runtime_config is None:
+        return "Settings+saved+but+configuration+error"
+    return None
+
+
+async def _rebuild_runtime_after_save(config: OmadaConfig, app_state: Any) -> str | None:
+    """Rebuild runtime Omada config and test connectivity after save.
+
+    Args:
+        config: Persisted Omada configuration.
+        app_state: FastAPI application state.
+
+    Returns:
+        URL-encoded error message when rebuild or connectivity failed.
+    """
+    try:
+        from captive_portal.config.omada_config import build_omada_config
+
+        new_omada_cfg = await build_omada_config(config, logger)
+        _set_runtime_omada_config(app_state, new_omada_cfg)
+        error_msg = _omada_runtime_error_message(new_omada_cfg)
+        if error_msg is not None:
+            return error_msg
+        if await _test_omada_connection(app_state) == "error":
+            return (
+                "Settings+saved+but+connection+test+failed+—+check+controller+URL+and+credentials"
+            )
+    except Exception as exc:
+        logger.error(
+            "Omada config build error after settings update: %s",
+            exc,
+        )
+        return "Settings+saved+but+configuration+error"
+    return None
+
+
 @router.post("/", response_class=HTMLResponse)
 async def update_omada_settings(
     request: Request,
@@ -395,25 +440,7 @@ async def update_omada_settings(
     # Rebuild app.state.omada_config and test connection
     error_msg = None
     if config.omada_configured or config.openapi_configured:
-        try:
-            from captive_portal.config.omada_config import build_omada_config
-
-            new_omada_cfg = await build_omada_config(config, logger)
-            _set_runtime_omada_config(request.app.state, new_omada_cfg)
-
-            # Test actual connectivity with saved credentials
-            conn_status = await _test_omada_connection(request.app.state)
-            if conn_status == "error":
-                error_msg = (
-                    "Settings+saved+but+connection+test+failed"
-                    "+—+check+controller+URL+and+credentials"
-                )
-        except Exception as exc:
-            logger.error(
-                "Omada config build error after settings update: %s",
-                exc,
-            )
-            error_msg = "Settings+saved+but+configuration+error"
+        error_msg = await _rebuild_runtime_after_save(config, request.app.state)
     else:
         _set_runtime_omada_config(request.app.state, None)
 

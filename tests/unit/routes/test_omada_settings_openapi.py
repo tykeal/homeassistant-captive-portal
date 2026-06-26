@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 from captive_portal.api.routes.omada_settings_ui import (
     _client_secret_changed_for_audit,
+    _omada_runtime_error_message,
     _set_runtime_omada_config,
     _validate_omada_form,
 )
@@ -146,3 +147,9 @@ def test_audit_secret_changed_tracks_submitted_secret() -> None:
     """Audit metadata reflects submitted secret updates, not only hidden flags."""
     assert _client_secret_changed_for_audit("submitted-secret", "false") is True
     assert _client_secret_changed_for_audit("", "true") is False
+
+
+def test_runtime_config_none_reports_configuration_error() -> None:
+    """A failed runtime rebuild is surfaced as a settings error."""
+    assert _omada_runtime_error_message(None) == "Settings+saved+but+configuration+error"
+    assert _omada_runtime_error_message(object()) is None
