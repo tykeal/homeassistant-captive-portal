@@ -315,11 +315,15 @@ stays fixed for the app run.
 - [ ] T031 [US2] Update `addon/src/captive_portal/api/routes/guest_portal.py`,
   `addon/src/captive_portal/api/routes/grants.py`, and
   `addon/src/captive_portal/api/routes/grants_ui.py` type hints/imports to
-  depend on `OmadaControllerAdapter` instead of concrete `OmadaAdapter`; remove
-  direct `site_id` mutation from guest route code by using the Protocol-safe
-  per-request site override from T029; preserve guest success/error redirects,
-  admin API partial-failure semantics, and admin UI revoke behavior (GREEN 🟢 —
-  T025 supports flow parity)
+  depend on `OmadaControllerAdapter` instead of concrete `OmadaAdapter`;
+  move the `async with adapter.client` session lifecycle out of route
+  handlers and into the adapter methods per
+  `contracts/controller-adapter.md` (the Protocol exposes no `.client`)
+  so routes call `adapter.authorize`/`adapter.revoke` directly; remove
+  direct `site_id` mutation from guest route code by using the
+  Protocol-safe per-request site override from T029; preserve guest
+  success/error redirects, admin API partial-failure semantics, and
+  admin UI revoke behavior (GREEN 🟢 — T025 supports flow parity)
 
 - [ ] T032 [US1] Create or extend
   `addon/src/captive_portal/services/grant_expiry_service.py` to run a bounded
