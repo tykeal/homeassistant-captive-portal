@@ -220,13 +220,13 @@ def _validate_omada_form(
         if parts.scheme not in ("http", "https") or not parts.netloc:
             return "Controller+URL+must+be+a+valid+HTTP+or+HTTPS+URL"
 
-    if controller_url and not username:
+    if controller_url and openapi_mode != "openapi" and not username:
         return "Username+is+required+when+controller+URL+is+set"
 
     if controller_id and not _CONTROLLER_ID_PATTERN.match(controller_id):
         return "Controller+ID+must+be+a+hex+string+(12-64+characters)"
 
-    if controller_url and password_changed == "true" and not password:
+    if controller_url and openapi_mode != "openapi" and password_changed == "true" and not password:
         return "Password+is+required+when+setting+up+a+new+connection"
 
     if openapi_mode not in {"auto", "openapi", "legacy"}:
@@ -349,7 +349,7 @@ async def update_omada_settings(
 
     # Rebuild app.state.omada_config and test connection
     error_msg = None
-    if config.omada_configured:
+    if config.omada_configured or config.openapi_configured:
         try:
             from captive_portal.config.omada_config import build_omada_config
 

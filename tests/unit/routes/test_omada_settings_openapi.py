@@ -42,3 +42,21 @@ def test_openapi_mode_validation_rejects_invalid_value() -> None:
         )
         == "Backend+mode+must+be+auto,+openapi,+or+legacy"
     )
+
+
+def test_forced_openapi_accepts_openapi_only_credentials() -> None:
+    """Forced OpenAPI mode does not require legacy username/password."""
+    assert (
+        _validate_omada_form(
+            "https://ctrl.test:8043",
+            "",
+            "0123456789ab",
+            "",
+            "false",
+            "openapi",
+            "client-secret",
+            "true",
+            "/admin/omada-settings/",
+        )
+        is None
+    )
