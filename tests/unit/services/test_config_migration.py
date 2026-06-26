@@ -156,6 +156,41 @@ class TestMigrateYamlToDb:
         assert omada.openapi_mode == "auto"
 
     @pytest.mark.asyncio
+    async def test_existing_legacy_config_does_not_accept_openapi_env(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Existing UI-managed legacy config is not mutated by OpenAPI env values."""
+        existing = OmadaConfig(
+            id=1,
+            controller_url="https://existing.omada:8043",
+            username="existing_user",
+            encrypted_password="existing_encrypted",
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        env = _clean_env()
+        env.update(
+            {
+                "CP_OMADA_CLIENT_ID": "yaml-client",
+                "CP_OMADA_OPENAPI_MODE": "openapi",
+            }
+        )
+        with patch.dict(os.environ, env, clear=True):
+            result = await migrate_yaml_to_db(
+                AppSettings(),
+                db_session,
+                key_path="unused-existing-legacy.key",
+            )
+
+        assert result.omada_migrated is False
+        omada = db_session.get(OmadaConfig, 1)
+        assert omada is not None
+        assert omada.client_id == ""
+        assert omada.openapi_mode == "auto"
+
+    @pytest.mark.asyncio
     async def test_openapi_only_config_skips_default_migration(
         self,
         db_session: Session,

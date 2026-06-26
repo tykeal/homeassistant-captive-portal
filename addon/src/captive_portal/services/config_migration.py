@@ -228,7 +228,7 @@ def _migrate_omada_settings(
         _apply_legacy_omada_fields(omada_config, legacy, key_path)
         changed = True
 
-    can_write_openapi = can_write_base or _openapi_fields_default(omada_config)
+    can_write_openapi = can_write_base and _openapi_fields_default(omada_config)
     if can_write_openapi and _openapi_values_present(legacy):
         changed = _apply_openapi_fields(omada_config, legacy, key_path) or changed
 
