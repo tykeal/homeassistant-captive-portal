@@ -238,6 +238,19 @@ def _validate_omada_form(
     return None
 
 
+def _set_runtime_omada_config(state: Any, runtime_config: Any) -> None:
+    """Update runtime Omada config everywhere it is cached.
+
+    Args:
+        state: FastAPI application state.
+        runtime_config: Selected Omada runtime config or ``None``.
+    """
+    state.omada_config = runtime_config
+    expiry_service = getattr(state, "grant_expiry_service", None)
+    if expiry_service is not None:
+        expiry_service.omada_config = runtime_config
+
+
 @router.post("/", response_class=HTMLResponse)
 async def update_omada_settings(
     request: Request,
@@ -354,7 +367,7 @@ async def update_omada_settings(
             from captive_portal.config.omada_config import build_omada_config
 
             new_omada_cfg = await build_omada_config(config, logger)
-            request.app.state.omada_config = new_omada_cfg
+            _set_runtime_omada_config(request.app.state, new_omada_cfg)
 
             # Test actual connectivity with saved credentials
             conn_status = await _test_omada_connection(request.app.state)
@@ -370,7 +383,7 @@ async def update_omada_settings(
             )
             error_msg = "Settings+saved+but+configuration+error"
     else:
-        request.app.state.omada_config = None
+        _set_runtime_omada_config(request.app.state, None)
 
     # Log audit event
     audit_service = AuditService(session)

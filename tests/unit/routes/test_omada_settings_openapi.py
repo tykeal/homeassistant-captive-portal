@@ -4,7 +4,12 @@
 
 from __future__ import annotations
 
-from captive_portal.api.routes.omada_settings_ui import _validate_omada_form
+from types import SimpleNamespace
+
+from captive_portal.api.routes.omada_settings_ui import (
+    _set_runtime_omada_config,
+    _validate_omada_form,
+)
 
 
 def test_openapi_mode_validation_accepts_supported_values() -> None:
@@ -60,3 +65,15 @@ def test_forced_openapi_accepts_openapi_only_credentials() -> None:
         )
         is None
     )
+
+
+def test_runtime_config_update_refreshes_expiry_worker() -> None:
+    """Saving settings updates both request adapters and expiry worker config."""
+    runtime_config = object()
+    worker = SimpleNamespace(omada_config=None)
+    state = SimpleNamespace(grant_expiry_service=worker)
+
+    _set_runtime_omada_config(state, runtime_config)
+
+    assert state.omada_config is runtime_config
+    assert worker.omada_config is runtime_config
