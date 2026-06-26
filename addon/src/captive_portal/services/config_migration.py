@@ -22,7 +22,7 @@ from sqlmodel import Session, select
 from captive_portal.config.settings import AppSettings
 from captive_portal.models.omada_config import OmadaConfig
 from captive_portal.models.portal_config import PortalConfig
-from captive_portal.security.credential_encryption import encrypt_credential
+from captive_portal.security.credential_encryption import decrypt_credential, encrypt_credential
 
 logger = logging.getLogger("captive_portal.services.config_migration")
 
@@ -98,7 +98,11 @@ def _apply_openapi_fields(
         changed = True
 
     client_secret = str(legacy.get("omada_client_secret", "")).strip()
-    if client_secret:
+    if client_secret and not _secret_matches_existing(
+        omada_config.encrypted_client_secret,
+        client_secret,
+        key_path,
+    ):
         omada_config.encrypted_client_secret = encrypt_credential(
             client_secret,
             key_path=key_path,
@@ -110,6 +114,49 @@ def _apply_openapi_fields(
         omada_config.openapi_mode = mode
         changed = True
 
+    return changed
+
+
+def _secret_matches_existing(ciphertext: str, plaintext: str, key_path: str) -> bool:
+    """Return whether existing ciphertext decrypts to plaintext.
+
+    Args:
+        ciphertext: Existing encrypted secret.
+        plaintext: Candidate plaintext secret from migration input.
+        key_path: Fernet key path.
+
+    Returns:
+        True when ciphertext decrypts to the same plaintext.
+    """
+    if not ciphertext:
+        return False
+    try:
+        return decrypt_credential(ciphertext, key_path=key_path) == plaintext
+    except Exception:
+        return False
+
+
+def _apply_shared_omada_fields(omada_config: OmadaConfig, legacy: dict[str, Any]) -> bool:
+    """Apply controller fields shared by legacy and OpenAPI backends.
+
+    Args:
+        omada_config: Mutable Omada configuration model.
+        legacy: Migration value dictionary.
+
+    Returns:
+        True when any shared field changed.
+    """
+    changed = False
+    shared_values: dict[str, Any] = {
+        "controller_url": str(legacy["omada_controller_url"]).strip(),
+        "site_name": str(legacy["omada_site_name"]).strip() or "Default",
+        "controller_id": str(legacy["omada_controller_id"]).strip(),
+        "verify_ssl": bool(legacy["omada_verify_ssl"]),
+    }
+    for field_name, value in shared_values.items():
+        if getattr(omada_config, field_name) != value:
+            setattr(omada_config, field_name, value)
+            changed = True
     return changed
 
 
@@ -125,15 +172,12 @@ def _apply_legacy_omada_fields(
         legacy: Migration value dictionary.
         key_path: Fernet key path for legacy password encryption.
     """
-    omada_config.controller_url = str(legacy["omada_controller_url"]).strip()
+    _apply_shared_omada_fields(omada_config, legacy)
     omada_config.username = str(legacy["omada_username"]).strip()
     omada_config.encrypted_password = encrypt_credential(
         str(legacy["omada_password"]),
         key_path=key_path,
     )
-    omada_config.site_name = str(legacy["omada_site_name"]).strip() or "Default"
-    omada_config.controller_id = str(legacy["omada_controller_id"]).strip()
-    omada_config.verify_ssl = bool(legacy["omada_verify_ssl"])
 
 
 def _migrate_omada_settings(
@@ -161,6 +205,9 @@ def _migrate_omada_settings(
         omada_config = OmadaConfig(id=1)
 
     changed = False
+    if can_write_base and (_omada_configured(legacy) or _openapi_values_present(legacy)):
+        changed = _apply_shared_omada_fields(omada_config, legacy) or changed
+
     if can_write_base and _omada_configured(legacy):
         _apply_legacy_omada_fields(omada_config, legacy, key_path)
         changed = True
