@@ -263,6 +263,20 @@ def _set_runtime_omada_config(state: Any, runtime_config: Any) -> None:
         expiry_service.omada_config = runtime_config
 
 
+def _client_secret_changed_for_audit(client_secret: str, client_secret_changed: str) -> bool:
+    """Return whether audit metadata should record a secret update.
+
+    Args:
+        client_secret: Submitted OpenAPI client secret.
+        client_secret_changed: Hidden form field indicating a changed secret.
+
+    Returns:
+        True only when a non-empty secret was submitted.
+    """
+    del client_secret_changed
+    return bool(client_secret)
+
+
 @router.post("/", response_class=HTMLResponse)
 async def update_omada_settings(
     request: Request,
@@ -415,7 +429,10 @@ async def update_omada_settings(
             "username": username,
             "password_changed": password_changed == "true",
             "client_id_set": bool(client_id),
-            "client_secret_changed": client_secret_changed == "true",
+            "client_secret_changed": _client_secret_changed_for_audit(
+                client_secret,
+                client_secret_changed,
+            ),
             "openapi_mode": openapi_mode,
             "site_name": site_name,
             "controller_id": controller_id or "auto-discover",
