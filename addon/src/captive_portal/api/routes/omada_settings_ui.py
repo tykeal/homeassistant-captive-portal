@@ -188,6 +188,7 @@ async def get_omada_settings(
 def _validate_omada_form(
     controller_url: str,
     username: str,
+    client_id: str,
     controller_id: str,
     password: str,
     password_changed: str,
@@ -204,6 +205,7 @@ def _validate_omada_form(
     Args:
         controller_url: Stripped controller URL.
         username: Stripped username.
+        client_id: Stripped OpenAPI client ID.
         controller_id: Stripped controller ID.
         password: Raw password value.
         password_changed: ``"true"`` or ``"false"``.
@@ -220,17 +222,24 @@ def _validate_omada_form(
         if parts.scheme not in ("http", "https") or not parts.netloc:
             return "Controller+URL+must+be+a+valid+HTTP+or+HTTPS+URL"
 
-    if controller_url and openapi_mode != "openapi" and not username:
+    if openapi_mode not in {"auto", "openapi", "legacy"}:
+        return "Backend+mode+must+be+auto,+openapi,+or+legacy"
+
+    openapi_secret_available = bool(client_id) and (
+        client_secret_changed != "true" or bool(client_secret)
+    )
+    legacy_required = openapi_mode == "legacy" or (
+        openapi_mode == "auto" and not openapi_secret_available
+    )
+
+    if controller_url and legacy_required and not username:
         return "Username+is+required+when+controller+URL+is+set"
 
     if controller_id and not _CONTROLLER_ID_PATTERN.match(controller_id):
         return "Controller+ID+must+be+a+hex+string+(12-64+characters)"
 
-    if controller_url and openapi_mode != "openapi" and password_changed == "true" and not password:
+    if controller_url and legacy_required and password_changed == "true" and not password:
         return "Password+is+required+when+setting+up+a+new+connection"
-
-    if openapi_mode not in {"auto", "openapi", "legacy"}:
-        return "Backend+mode+must+be+auto,+openapi,+or+legacy"
 
     if openapi_mode == "openapi" and client_secret_changed == "true" and not client_secret:
         return "Client+Secret+is+required+for+OpenAPI+mode"
@@ -324,6 +333,7 @@ async def update_omada_settings(
     error = _validate_omada_form(
         controller_url,
         username,
+        client_id,
         controller_id,
         password,
         password_changed,

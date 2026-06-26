@@ -19,6 +19,7 @@ def test_openapi_mode_validation_accepts_supported_values() -> None:
             _validate_omada_form(
                 "https://ctrl.test:8043",
                 "operator",
+                "client-id",
                 "0123456789ab",
                 "legacy-pass",
                 "true",
@@ -37,6 +38,7 @@ def test_openapi_mode_validation_rejects_invalid_value() -> None:
         _validate_omada_form(
             "https://ctrl.test:8043",
             "operator",
+            "client-id",
             "0123456789ab",
             "legacy-pass",
             "true",
@@ -55,10 +57,30 @@ def test_forced_openapi_accepts_openapi_only_credentials() -> None:
         _validate_omada_form(
             "https://ctrl.test:8043",
             "",
+            "client-id",
             "0123456789ab",
             "",
             "false",
             "openapi",
+            "client-secret",
+            "true",
+            "/admin/omada-settings/",
+        )
+        is None
+    )
+
+
+def test_auto_mode_accepts_openapi_only_credentials() -> None:
+    """Auto mode can save OpenAPI-only credentials for probe selection."""
+    assert (
+        _validate_omada_form(
+            "https://ctrl.test:8043",
+            "",
+            "client-id",
+            "0123456789ab",
+            "",
+            "false",
+            "auto",
             "client-secret",
             "true",
             "/admin/omada-settings/",
