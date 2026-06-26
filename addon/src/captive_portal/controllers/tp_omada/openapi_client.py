@@ -186,6 +186,25 @@ class OpenApiClient:
                 raise OmadaAuthenticationError("OpenAPI token cache was not populated")
             return self.token_state.access_token
 
+    async def refresh_after_auth_failure(self) -> None:
+        """Refresh token state after OpenAPI rejects a cached token.
+
+        A controller can invalidate a token before its advertised expiry
+        or between the freshness check and an authenticated request.  On
+        those 401/403 responses, refresh once and let the original
+        operation retry without switching backends.
+        """
+        async with self.token_state.lock:
+            self.token_state.access_token = None
+            self.token_state.expires_at_monotonic = 0.0
+            if self.token_state.refresh_token:
+                try:
+                    await self._post_token("refresh_token")
+                    return
+                except OmadaAuthenticationError:
+                    self.token_state.refresh_token = None
+            await self._post_token("client_credentials")
+
     async def auth_headers(self) -> dict[str, str]:
         """Return OpenAPI authentication headers.
 
@@ -249,6 +268,7 @@ class OpenApiClient:
         """
         backoff_seconds = [1.0, 2.0, 4.0, 8.0]
         last_error: Exception | None = None
+        auth_retried = False
         for attempt in range(4):
             try:
                 return await self._request_once(method, path, params=params, json_body=json_body)
@@ -256,6 +276,10 @@ class OpenApiClient:
                 raise
             except OmadaClientError as exc:
                 last_error = exc
+                if exc.status_code in (401, 403) and not auth_retried:
+                    auth_retried = True
+                    await self.refresh_after_auth_failure()
+                    continue
                 if exc.status_code not in (429, 500, 502, 503, 504) or attempt == 3:
                     raise
                 await asyncio.sleep(backoff_seconds[attempt])

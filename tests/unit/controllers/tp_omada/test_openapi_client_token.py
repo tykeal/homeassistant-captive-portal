@@ -4,10 +4,12 @@
 
 from __future__ import annotations
 
+import time
+
 import httpx
 import pytest
 
-from captive_portal.controllers.tp_omada.openapi_client import OpenApiClient
+from captive_portal.controllers.tp_omada.openapi_client import OpenApiClient, OpenApiTokenState
 
 
 @pytest.mark.asyncio
@@ -108,3 +110,55 @@ async def test_token_errors_redact_secret_and_token() -> None:
     message = str(excinfo.value)
     assert "client-secret" not in message
     assert "access-token" not in message
+
+
+@pytest.mark.asyncio
+async def test_unauthorized_request_refreshes_token_once() -> None:
+    """A stale token rejected by OpenAPI is refreshed and retried once."""
+    seen_authorization: list[str] = []
+    grant_types: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Reject the stale token, refresh it, then accept the retry."""
+        if request.url.path == "/openapi/authorize/token":
+            grant_types.append(request.url.params["grant_type"])
+            return httpx.Response(
+                200,
+                json={
+                    "errorCode": 0,
+                    "result": {
+                        "accessToken": "fresh-token",
+                        "refreshToken": "fresh-refresh",
+                        "expiresIn": 7200,
+                    },
+                },
+            )
+
+        seen_authorization.append(request.headers["Authorization"])
+        if len(seen_authorization) == 1:
+            return httpx.Response(401, json={"errorCode": 401, "msg": "expired"})
+        return httpx.Response(200, json={"errorCode": 0, "result": {"ok": True}})
+
+    token_state = OpenApiTokenState(
+        access_token="stale-token",
+        refresh_token="refresh-token",
+        expires_at_monotonic=time.monotonic() + 7200,
+    )
+    client = OpenApiClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="0123456789ab",
+        client_id="client-id",
+        client_secret="client-secret",
+        transport=httpx.MockTransport(handler),
+        token_state=token_state,
+    )
+
+    assert await client.get("/openapi/v1/0123456789ab/sites") == {
+        "errorCode": 0,
+        "result": {"ok": True},
+    }
+    assert seen_authorization == [
+        "AccessToken=stale-token",
+        "AccessToken=fresh-token",
+    ]
+    assert grant_types == ["refresh_token"]
