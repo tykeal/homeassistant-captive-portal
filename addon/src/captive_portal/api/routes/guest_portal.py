@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
-from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
+from captive_portal.controllers.tp_omada.adapter_protocol import OmadaControllerAdapter
 from captive_portal.controllers.tp_omada.base_client import (
     OmadaClientError,
     OmadaRetryExhaustedError,
@@ -257,7 +257,7 @@ def _sanitize_error_message(message: str | None) -> str:
 
 
 async def _authorize_with_controller(
-    adapter: OmadaAdapter | None,
+    adapter: OmadaControllerAdapter | None,
     grant: AccessGrant,
     mac_address: str,
     gateway_mac: str | None = None,
@@ -277,7 +277,7 @@ async def _authorize_with_controller(
     (graceful degradation).
 
     Args:
-        adapter: OmadaAdapter instance or None if not configured.
+        adapter: Omada controller adapter or None if not configured.
         grant: The access grant in PENDING status.
         mac_address: Device MAC address.
         gateway_mac: Gateway MAC for Gateway auth mode.
@@ -297,16 +297,15 @@ async def _authorize_with_controller(
 
     error_detail: Optional[str] = None
     try:
-        async with adapter.client:
-            result = await adapter.authorize(
-                mac=mac_address,
-                expires_at=grant.end_utc,
-                gateway_mac=gateway_mac,
-                ap_mac=ap_mac,
-                ssid_name=ssid_name,
-                radio_id=radio_id,
-                vid=vid,
-            )
+        result = await adapter.authorize(
+            mac=mac_address,
+            expires_at=grant.end_utc,
+            gateway_mac=gateway_mac,
+            ap_mac=ap_mac,
+            ssid_name=ssid_name,
+            radio_id=radio_id,
+            vid=vid,
+        )
         grant.status = GrantStatus.ACTIVE
         grant.controller_grant_id = result.get("grant_id")
     except (OmadaClientError, OmadaRetryExhaustedError) as exc:
@@ -609,7 +608,7 @@ async def _process_authorization(  # noqa: C901
     session: Session,
     audit_service: AuditService,
     portal_config: PortalConfig,
-    omada_adapter: OmadaAdapter | None,
+    omada_adapter: OmadaControllerAdapter | None,
 ) -> RedirectResponse:
     """Execute the full guest authorization flow.
 
@@ -1061,8 +1060,11 @@ async def _process_authorization(  # noqa: C901
     grant.omada_radio_id = _truncate(radio_id, 2)
 
     # Override adapter site_id if Omada controller sent a site identifier
-    if omada_adapter is not None:
-        omada_adapter.site_id = _apply_site_override(site, omada_adapter.site_id, _SITE_ID_PATTERN)
+    if omada_adapter is not None and hasattr(omada_adapter, "site_id"):
+        legacy_adapter: Any = omada_adapter
+        legacy_adapter.site_id = _apply_site_override(
+            site, legacy_adapter.site_id, _SITE_ID_PATTERN
+        )
 
     if debug:
         _logger.debug(
@@ -1169,7 +1171,7 @@ async def handle_authorization(
     session: Session = Depends(get_session),
     audit_service: AuditService = Depends(get_audit_service),
     portal_config: PortalConfig = Depends(get_portal_config_dep),
-    omada_adapter: OmadaAdapter | None = Depends(get_omada_adapter),
+    omada_adapter: OmadaControllerAdapter | None = Depends(get_omada_adapter),
 ) -> RedirectResponse:
     """Process guest authorization code via POST submission.
 

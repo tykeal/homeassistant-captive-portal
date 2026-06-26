@@ -109,6 +109,21 @@ async def _test_omada_connection(app_state: Any) -> str | None:
     if omada_cfg is None:
         return None
 
+    from captive_portal.controllers.tp_omada.adapter_factory import OmadaRuntimeConfig
+
+    if isinstance(omada_cfg, OmadaRuntimeConfig):
+        if omada_cfg.selected_backend == "openapi":
+            return "connected"
+        legacy_cfg: dict[str, Any] = {
+            "base_url": omada_cfg.base_url,
+            "controller_id": omada_cfg.controller_id,
+            "username": omada_cfg.username,
+            "password": omada_cfg.password,
+            "verify_ssl": omada_cfg.verify_ssl,
+        }
+    else:
+        legacy_cfg = omada_cfg
+
     from captive_portal.controllers.tp_omada.base_client import (
         OmadaClient,
         OmadaClientError,
@@ -116,11 +131,11 @@ async def _test_omada_connection(app_state: Any) -> str | None:
 
     try:
         async with OmadaClient(
-            base_url=omada_cfg["base_url"],
-            controller_id=omada_cfg["controller_id"],
-            username=omada_cfg["username"],
-            password=omada_cfg["password"],
-            verify_ssl=omada_cfg.get("verify_ssl", True),
+            base_url=legacy_cfg["base_url"],
+            controller_id=legacy_cfg["controller_id"],
+            username=legacy_cfg["username"],
+            password=legacy_cfg["password"],
+            verify_ssl=legacy_cfg.get("verify_ssl", True),
             timeout=10.0,
         ):
             pass  # login succeeded inside __aenter__
@@ -176,6 +191,9 @@ def _validate_omada_form(
     controller_id: str,
     password: str,
     password_changed: str,
+    openapi_mode: str,
+    client_secret: str,
+    client_secret_changed: str,
     base_url: str,
 ) -> str | None:
     """Validate Omada settings form inputs.
@@ -189,6 +207,9 @@ def _validate_omada_form(
         controller_id: Stripped controller ID.
         password: Raw password value.
         password_changed: ``"true"`` or ``"false"``.
+        openapi_mode: Backend mode.
+        client_secret: Raw OpenAPI client secret.
+        client_secret_changed: Whether the OpenAPI secret field changed.
         base_url: Redirect base URL (unused in validation logic).
 
     Returns:
@@ -208,6 +229,12 @@ def _validate_omada_form(
     if controller_url and password_changed == "true" and not password:
         return "Password+is+required+when+setting+up+a+new+connection"
 
+    if openapi_mode not in {"auto", "openapi", "legacy"}:
+        return "Backend+mode+must+be+auto,+openapi,+or+legacy"
+
+    if openapi_mode == "openapi" and client_secret_changed == "true" and not client_secret:
+        return "Client+Secret+is+required+for+OpenAPI+mode"
+
     return None
 
 
@@ -222,6 +249,10 @@ async def update_omada_settings(
     username: Annotated[str, Form()] = "",
     password: Annotated[str, Form()] = "",
     password_changed: Annotated[str, Form()] = "false",
+    client_id: Annotated[str, Form()] = "",
+    client_secret: Annotated[str, Form()] = "",
+    client_secret_changed: Annotated[str, Form()] = "false",
+    openapi_mode: Annotated[str, Form()] = "auto",
     site_name: Annotated[str, Form()] = "Default",
     controller_id: Annotated[str, Form()] = "",
     verify_ssl: Annotated[Optional[str], Form()] = None,
@@ -238,6 +269,10 @@ async def update_omada_settings(
         username: Omada hotspot operator username.
         password: Omada password (only when changed).
         password_changed: Whether the password field was modified.
+        client_id: OpenAPI client ID.
+        client_secret: OpenAPI client secret (only when changed).
+        client_secret_changed: Whether the OpenAPI secret field was modified.
+        openapi_mode: Backend selection mode.
         site_name: Omada site name.
         controller_id: Omada controller ID (hex).
         verify_ssl: SSL verification checkbox.
@@ -267,12 +302,22 @@ async def update_omada_settings(
     # Strip inputs
     controller_url = controller_url.strip()
     username = username.strip()
+    client_id = client_id.strip()
+    openapi_mode = openapi_mode.strip().lower() or "auto"
     site_name = site_name.strip() or "Default"
     controller_id = controller_id.strip()
 
     # Validate form inputs
     error = _validate_omada_form(
-        controller_url, username, controller_id, password, password_changed, redirect_base
+        controller_url,
+        username,
+        controller_id,
+        password,
+        password_changed,
+        openapi_mode,
+        client_secret,
+        client_secret_changed,
+        redirect_base,
     )
     if error:
         return RedirectResponse(
@@ -289,11 +334,15 @@ async def update_omada_settings(
     config.site_name = site_name
     config.controller_id = controller_id
     config.verify_ssl = verify_ssl == "true"
+    config.client_id = client_id
+    config.openapi_mode = openapi_mode
 
     # Handle password
     if password_changed == "true" and password:
         config.encrypted_password = encrypt_credential(password)
     # If password_changed is false, preserve existing encrypted_password
+    if client_secret_changed == "true" and client_secret:
+        config.encrypted_client_secret = encrypt_credential(client_secret)
 
     session.add(config)
     session.commit()
@@ -334,6 +383,9 @@ async def update_omada_settings(
             "controller_url": controller_url,
             "username": username,
             "password_changed": password_changed == "true",
+            "client_id_set": bool(client_id),
+            "client_secret_changed": client_secret_changed == "true",
+            "openapi_mode": openapi_mode,
             "site_name": site_name,
             "controller_id": controller_id or "auto-discover",
             "verify_ssl": config.verify_ssl,

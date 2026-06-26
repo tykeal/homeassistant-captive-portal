@@ -46,7 +46,7 @@ async def test_omada_authorize_request_structure() -> None:
     expires = datetime(2026, 6, 15, 12, 15, 0, tzinfo=timezone.utc)
 
     with patch(
-        "captive_portal.controllers.tp_omada.adapter.datetime",
+        "captive_portal.controllers.tp_omada.legacy_adapter.datetime",
     ) as mock_dt:
         mock_dt.now.return_value = fixed_now
         mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)

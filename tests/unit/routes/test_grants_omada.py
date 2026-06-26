@@ -50,7 +50,7 @@ class TestGrantRevocationControllerWiring:
 
         result = await _revoke_with_controller(adapter=mock_adapter, grant=grant)
 
-        mock_client.__aenter__.assert_called_once()
+        mock_client.__aenter__.assert_not_called()
         mock_adapter.revoke.assert_awaited_once_with(
             mac="AA:BB:CC:DD:EE:FF",
             gateway_mac="00:11:22:33:44:55",

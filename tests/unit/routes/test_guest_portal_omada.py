@@ -53,7 +53,7 @@ class TestGuestAuthorizationControllerWiring:
             adapter=mock_adapter, grant=grant, mac_address="AA:BB:CC:DD:EE:FF"
         )
 
-        mock_client.__aenter__.assert_called_once()
+        mock_client.__aenter__.assert_not_called()
         mock_adapter.authorize.assert_awaited_once()
         assert result.status == GrantStatus.ACTIVE
         assert result.controller_grant_id == "ctrl-grant-1"
@@ -82,7 +82,7 @@ class TestGuestAuthorizationControllerWiring:
 
     @pytest.mark.asyncio
     async def test_per_operation_context_manager_used(self) -> None:
-        """async with adapter.client: should be used for each operation."""
+        """Protocol adapter methods own client lifecycle for each operation."""
         mock_client = AsyncMock(spec=OmadaClient)
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=None)
@@ -111,6 +111,6 @@ class TestGuestAuthorizationControllerWiring:
             adapter=mock_adapter, grant=grant, mac_address="AA:BB:CC:DD:EE:FF"
         )
 
-        # Verify async context manager was used
-        mock_client.__aenter__.assert_called_once()
-        mock_client.__aexit__.assert_called_once()
+        # Verify route helper does not manage backend-specific client lifecycle
+        mock_client.__aenter__.assert_not_called()
+        mock_client.__aexit__.assert_not_called()
