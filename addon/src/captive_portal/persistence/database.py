@@ -80,6 +80,7 @@ def init_db(engine: Engine, drop_existing: bool = False) -> None:
     _migrate_voucher_max_devices(engine)
     _migrate_voucher_status_changed_utc(engine)
     _migrate_portal_config_session_fields(engine)
+    _migrate_omada_openapi_fields(engine)
 
 
 def _migrate_voucher_activated_utc(engine: Engine) -> None:
@@ -367,3 +368,39 @@ def _migrate_portal_config_session_fields(engine: Engine) -> None:
                     "Migrated portal_config table: added %s column.",
                     col,
                 )
+
+
+def _migrate_omada_openapi_fields(engine: Engine) -> None:
+    """Add OpenAPI credential and mode columns to omada_config.
+
+    Existing singleton rows receive empty credential values and
+    ``openapi_mode='auto'`` so legacy-only deployments continue to
+    work without operator action.
+
+    Args:
+        engine: SQLAlchemy engine to inspect and migrate.
+    """
+    logger = logging.getLogger("captive_portal.persistence")
+    insp = inspect(engine)
+    if "omada_config" not in insp.get_table_names():
+        return
+    columns = {c["name"] for c in insp.get_columns("omada_config")}
+    new_columns: dict[str, str] = {
+        "client_id": "VARCHAR(255) DEFAULT ''",
+        "encrypted_client_secret": "VARCHAR(1024) DEFAULT ''",
+        "openapi_mode": "VARCHAR(16) DEFAULT 'auto'",
+    }
+
+    with engine.begin() as conn:
+        for col, col_type in new_columns.items():
+            if col not in columns:
+                conn.execute(text(f"ALTER TABLE omada_config ADD COLUMN {col} {col_type}"))
+                logger.info("Migrated omada_config table: added %s column.", col)
+        conn.execute(
+            text(
+                "UPDATE omada_config "
+                "SET client_id = COALESCE(client_id, ''), "
+                "encrypted_client_secret = COALESCE(encrypted_client_secret, ''), "
+                "openapi_mode = COALESCE(NULLIF(openapi_mode, ''), 'auto')"
+            )
+        )

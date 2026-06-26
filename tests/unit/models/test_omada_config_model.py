@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from sqlmodel import Session
+import pytest
 
 from captive_portal.models.omada_config import OmadaConfig
 
@@ -47,6 +48,13 @@ class TestOmadaConfigDefaults:
         config = OmadaConfig()
         assert config.verify_ssl is True
 
+    def test_default_openapi_fields(self) -> None:
+        """OpenAPI credentials default to unset and auto mode."""
+        config = OmadaConfig()
+        assert config.client_id == ""
+        assert config.encrypted_client_secret == ""
+        assert config.openapi_mode == "auto"
+
 
 class TestOmadaConfigured:
     """Tests for omada_configured computed property."""
@@ -88,6 +96,28 @@ class TestOmadaConfigured:
             encrypted_password="encrypted_value",
         )
         assert config.omada_configured is True
+
+    def test_openapi_configured_when_all_openapi_fields_set(self) -> None:
+        """OpenAPI credentials are complete when URL, client_id, and secret are set."""
+        config = OmadaConfig(
+            controller_url="https://omada.example.com",
+            client_id="client",
+            encrypted_client_secret="cipher",
+        )
+        assert config.openapi_configured is True
+        assert config.openapi_credentials_present is True
+
+    def test_partial_openapi_credentials_detect_missing_secret(self) -> None:
+        """Partial OpenAPI configuration reports missing fields safely."""
+        config = OmadaConfig(controller_url="https://omada.example.com", client_id="client")
+        assert config.openapi_configured is False
+        assert config.has_partial_openapi_credentials is True
+        assert config.missing_openapi_fields == ("client_secret",)
+
+    def test_invalid_openapi_mode_rejected(self) -> None:
+        """Only supported OpenAPI backend modes are accepted."""
+        with pytest.raises(ValueError, match="auto, openapi, legacy"):
+            OmadaConfig(openapi_mode="unsupported")
 
     def test_not_configured_with_whitespace_only(self) -> None:
         """Returns False when fields contain only whitespace."""

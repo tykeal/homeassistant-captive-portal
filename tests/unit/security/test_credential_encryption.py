@@ -131,3 +131,10 @@ class TestRoundTrip:
         ct = encrypt_credential(original, key_path=key_path)
         recovered = decrypt_credential(ct, key_path=key_path)
         assert recovered == original
+
+    def test_client_secret_uses_same_round_trip(self, key_path: str) -> None:
+        """OpenAPI client secrets use the same Fernet helper guarantees."""
+        original = "openapi-client-secret"
+        ciphertext = encrypt_credential(original, key_path=key_path)
+        assert original not in ciphertext
+        assert decrypt_credential(ciphertext, key_path=key_path) == original

@@ -60,6 +60,118 @@ def _omada_configured(legacy: dict[str, Any]) -> bool:
     )
 
 
+def _openapi_values_present(legacy: dict[str, Any]) -> bool:
+    """Check whether migration input contains OpenAPI settings.
+
+    Args:
+        legacy: Dict returned by ``AppSettings._load_for_migration()``.
+
+    Returns:
+        True when OpenAPI client fields or a non-default mode are present.
+    """
+    return bool(
+        str(legacy.get("omada_client_id", "")).strip()
+        or str(legacy.get("omada_client_secret", "")).strip()
+        or str(legacy.get("omada_openapi_mode", "auto")).strip().lower() != "auto"
+    )
+
+
+def _apply_openapi_fields(
+    omada_config: OmadaConfig,
+    legacy: dict[str, Any],
+    key_path: str,
+) -> bool:
+    """Apply OpenAPI migration values to an Omada config.
+
+    Args:
+        omada_config: Mutable Omada configuration model.
+        legacy: Migration value dictionary.
+        key_path: Fernet key path for client secret encryption.
+
+    Returns:
+        True when any OpenAPI field changed.
+    """
+    changed = False
+    client_id = str(legacy.get("omada_client_id", "")).strip()
+    if client_id and omada_config.client_id != client_id:
+        omada_config.client_id = client_id
+        changed = True
+
+    client_secret = str(legacy.get("omada_client_secret", "")).strip()
+    if client_secret:
+        omada_config.encrypted_client_secret = encrypt_credential(
+            client_secret,
+            key_path=key_path,
+        )
+        changed = True
+
+    mode = str(legacy.get("omada_openapi_mode", "auto")).strip().lower() or "auto"
+    if omada_config.openapi_mode != mode:
+        omada_config.openapi_mode = mode
+        changed = True
+
+    return changed
+
+
+def _apply_legacy_omada_fields(
+    omada_config: OmadaConfig,
+    legacy: dict[str, Any],
+    key_path: str,
+) -> None:
+    """Apply legacy Omada settings from migration input.
+
+    Args:
+        omada_config: Mutable Omada configuration model.
+        legacy: Migration value dictionary.
+        key_path: Fernet key path for legacy password encryption.
+    """
+    omada_config.controller_url = str(legacy["omada_controller_url"]).strip()
+    omada_config.username = str(legacy["omada_username"]).strip()
+    omada_config.encrypted_password = encrypt_credential(
+        str(legacy["omada_password"]),
+        key_path=key_path,
+    )
+    omada_config.site_name = str(legacy["omada_site_name"]).strip() or "Default"
+    omada_config.controller_id = str(legacy["omada_controller_id"]).strip()
+    omada_config.verify_ssl = bool(legacy["omada_verify_ssl"])
+
+
+def _migrate_omada_settings(
+    legacy: dict[str, Any],
+    session: Session,
+    key_path: str,
+) -> bool:
+    """Migrate Omada settings from legacy sources into the database.
+
+    Args:
+        legacy: Migration value dictionary.
+        session: Active database session.
+        key_path: Fernet key path for credential encryption.
+
+    Returns:
+        True when Omada settings were changed.
+    """
+    stmt: Any = select(OmadaConfig).where(OmadaConfig.id == 1)
+    omada_config: Optional[OmadaConfig] = session.exec(stmt).first()
+
+    can_write_base = omada_config is None or not omada_config.omada_configured
+    if omada_config is None:
+        omada_config = OmadaConfig(id=1)
+
+    changed = False
+    if can_write_base and _omada_configured(legacy):
+        _apply_legacy_omada_fields(omada_config, legacy, key_path)
+        changed = True
+
+    if can_write_base or _openapi_values_present(legacy):
+        changed = _apply_openapi_fields(omada_config, legacy, key_path) or changed
+
+    if changed:
+        session.add(omada_config)
+        session.commit()
+    return changed
+
+
 async def migrate_yaml_to_db(
     settings: AppSettings,
     session: Session,
@@ -84,33 +196,9 @@ async def migrate_yaml_to_db(
     legacy = AppSettings._load_for_migration()
 
     # --- Omada migration ---
-    stmt: Any = select(OmadaConfig).where(OmadaConfig.id == 1)
-    omada_config: Optional[OmadaConfig] = session.exec(stmt).first()
-
-    if omada_config is None or not omada_config.omada_configured:
-        # Only migrate if YAML has Omada settings configured
-        if _omada_configured(legacy):
-            if omada_config is None:
-                omada_config = OmadaConfig(id=1)
-
-            omada_config.controller_url = str(legacy["omada_controller_url"]).strip()
-            omada_config.username = str(legacy["omada_username"]).strip()
-            omada_config.encrypted_password = encrypt_credential(
-                str(legacy["omada_password"]), key_path=key_path
-            )
-            omada_config.site_name = str(legacy["omada_site_name"]).strip() or "Default"
-            omada_config.controller_id = str(legacy["omada_controller_id"]).strip()
-            omada_config.verify_ssl = bool(legacy["omada_verify_ssl"])
-
-            session.add(omada_config)
-            session.commit()
-
-            result.omada_migrated = True
-            logger.info(
-                "Migrated Omada settings from YAML: url=%s, user=%s",
-                omada_config.controller_url,
-                omada_config.username,
-            )
+    result.omada_migrated = _migrate_omada_settings(legacy, session, key_path)
+    if result.omada_migrated:
+        logger.info("Migrated Omada settings from YAML/env sources.")
     else:
         logger.info("Omada settings already in DB — skipping migration.")
 
