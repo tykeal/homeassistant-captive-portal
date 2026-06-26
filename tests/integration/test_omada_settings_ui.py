@@ -12,8 +12,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
+from captive_portal.controllers.tp_omada.adapter_factory import OmadaRuntimeConfig
 from captive_portal.models.admin_user import AdminUser, AdminRole
 from captive_portal.models.omada_config import OmadaConfig
+
+_TEST_RUNTIME = OmadaRuntimeConfig(
+    selected_backend="openapi",
+    selection_reason="test runtime",
+    base_url="https://omada.test:8043",
+    controller_id="0123456789ab",
+    site_name="Default",
+    verify_ssl=True,
+)
 
 
 @pytest.fixture
@@ -161,7 +171,7 @@ class TestOmadaSettingsPost:
             patch(
                 "captive_portal.config.omada_config.build_omada_config",
                 new_callable=AsyncMock,
-                return_value=None,
+                return_value=_TEST_RUNTIME,
             ),
             patch(
                 "captive_portal.api.routes.omada_settings_ui.encrypt_credential",
@@ -216,7 +226,7 @@ class TestOmadaSettingsPost:
         with patch(
             "captive_portal.config.omada_config.build_omada_config",
             new_callable=AsyncMock,
-            return_value=None,
+            return_value=_TEST_RUNTIME,
         ):
             response = authenticated_client.post(
                 "/admin/omada-settings/",
