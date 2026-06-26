@@ -74,3 +74,13 @@ The `/data/` directory is a persistent volume managed by the HA Supervisor
 CP_LOG_LEVEL=debug CP_DB_PATH=./dev.db CP_SESSION_IDLE_TIMEOUT=60 \
   uv run uvicorn captive_portal.app:create_app --factory --host 0.0.0.0 --port 8080 --reload
 ```
+
+## Omada OpenAPI migration settings
+
+| Addon option | Environment variable | Default | Notes |
+|--------------|----------------------|---------|-------|
+| `omada_client_id` | `CP_OMADA_CLIENT_ID` | empty | Optional OpenAPI app Client ID used by migration into the DB/UI settings |
+| `omada_client_secret` | `CP_OMADA_CLIENT_SECRET` | empty | Optional OpenAPI app Client Secret; never logged and encrypted at rest |
+| `omada_openapi_mode` | `CP_OMADA_OPENAPI_MODE` | `auto` | `auto`, `openapi`, or `legacy` |
+
+These values follow the same precedence as other migration-only settings: add-on option, then environment variable, then default. Existing legacy-only deployments require no action and continue to select legacy. Backend changes made in the admin process are reloaded there immediately; restart the add-on for the separate guest listener to adopt the new selected backend.

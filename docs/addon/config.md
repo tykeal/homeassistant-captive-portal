@@ -484,3 +484,17 @@ See [Troubleshooting Guide](../troubleshooting.md) for detailed diagnostics.
 - [TP-Omada Setup](../tp_omada_setup.md)
 - [HA Integration Guide](../ha_integration_guide.md)
 - [Admin UI Walkthrough](../admin_ui_walkthrough.md)
+
+## Omada OpenAPI options
+
+Omada controller settings are primarily managed in the admin UI under **Omada**. During migration, the add-on also accepts:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `omada_client_id` | string | empty | Omada OpenAPI application Client ID |
+| `omada_client_secret` | password | empty | Omada OpenAPI application Client Secret, encrypted when stored in the database |
+| `omada_openapi_mode` | list | `auto` | Backend selection mode: `auto`, `openapi`, or `legacy` |
+
+`auto` selects OpenAPI only when credentials are complete and the startup token probe succeeds; otherwise it selects legacy when legacy credentials are configured. `openapi` never falls back to legacy. `legacy` skips the OpenAPI probe. The selected backend is fixed until restart or settings reload.
+
+OpenAPI uses the existing controller URL, site name, controller ID, and SSL verification setting. Configure the Omada hotspot portal profile with a duration longer than the longest expected grant because the add-on, not an OpenAPI duration body, enforces expiry and calls unauth on the selected backend.

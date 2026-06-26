@@ -578,3 +578,17 @@ Csrf-Token: {token_from_login_response}
 - Authorize/revoke/status operations
 - Retry queue with exponential backoff
 - SSL certificate verification
+
+## Optional: Omada OpenAPI app setup
+
+Controllers with Omada OpenAPI support can use the documented OpenAPI backend instead of the legacy hotspot operator API. In the Omada UI, go to **Settings → Platform Integration → Open API → New App**, create an app, and copy the Client ID and Client Secret into the Captive Portal Omada settings page.
+
+Set Backend Mode to:
+
+- `auto` to probe OpenAPI at startup and fall back to legacy when legacy credentials are available.
+- `openapi` to require OpenAPI credentials and a successful token probe.
+- `legacy` to force the existing hotspot/external portal API.
+
+Startup logs identify the selected backend, for example `Omada backend selected: openapi (OpenAPI token probe succeeded)`, without exposing passwords, client secrets, access tokens, or refresh tokens. SSL verification uses the same setting for both backends.
+
+OpenAPI auth does not send undocumented per-call duration fields. Set the Omada hotspot portal profile duration longer than the longest grant you issue; the add-on expiry worker remains the source of truth and calls OpenAPI `unauth` (or legacy revoke) when a grant expires or an admin revokes it.
