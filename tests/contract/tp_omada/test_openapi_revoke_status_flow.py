@@ -67,6 +67,45 @@ async def test_openapi_revoke_posts_unauth_without_body() -> None:
 
 @pytest.mark.contract
 @pytest.mark.asyncio
+async def test_openapi_revoke_treats_not_found_as_success() -> None:
+    """OpenAPI revoke is idempotent when a client is already unauthenticated."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Return token/site success and unauth not-found."""
+        if request.url.path == "/openapi/authorize/token":
+            return httpx.Response(
+                200,
+                json={"errorCode": 0, "result": {"accessToken": "token", "expiresIn": 7200}},
+            )
+        if request.url.path.endswith("/sites"):
+            return httpx.Response(
+                200,
+                json={
+                    "errorCode": 0,
+                    "result": {"data": [{"siteId": "site-1", "name": "Default"}]},
+                },
+            )
+        return httpx.Response(404, json={"errorCode": 404, "msg": "not found"})
+
+    adapter = OmadaOpenApiAdapter(
+        client=OpenApiClient(
+            base_url="https://ctrl.test:8043",
+            controller_id="0123456789ab",
+            client_id="client-id",
+            client_secret="client-secret",
+            transport=httpx.MockTransport(handler),
+        ),
+        site_name="Default",
+    )
+
+    assert await adapter.revoke(mac="AA:BB:CC:DD:EE:FF") == {
+        "success": True,
+        "mac": "AA:BB:CC:DD:EE:FF",
+    }
+
+
+@pytest.mark.contract
+@pytest.mark.asyncio
 async def test_openapi_status_and_update_semantics() -> None:
     """Status maps authed records and update does not send duration fields."""
     requests: list[httpx.Request] = []

@@ -195,9 +195,14 @@ class OmadaOpenApiAdapter:
         del grant_id, gateway_mac, ap_mac, vid, ssid_name, radio_id
         path_mac = format_openapi_mac(mac)
         site_id = await self.get_site_id()
-        await self.client.post(
-            self._hotspot_client_path(site_id, path_mac, "unauth"),
-        )
+        try:
+            await self.client.post(
+                self._hotspot_client_path(site_id, path_mac, "unauth"),
+            )
+        except OmadaClientError as exc:
+            if exc.status_code == 404:
+                return {"success": True, "mac": path_mac.replace("-", ":")}
+            raise
         return {"success": True, "mac": path_mac.replace("-", ":")}
 
     async def update(
