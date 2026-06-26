@@ -70,6 +70,26 @@ def test_forced_openapi_accepts_openapi_only_credentials() -> None:
     )
 
 
+def test_forced_openapi_requires_new_or_stored_secret() -> None:
+    """Forced OpenAPI mode rejects client IDs without any client secret."""
+    assert (
+        _validate_omada_form(
+            "https://ctrl.test:8043",
+            "",
+            "client-id",
+            "0123456789ab",
+            "",
+            "false",
+            "openapi",
+            "",
+            "false",
+            "/admin/omada-settings/",
+            client_secret_exists=False,
+        )
+        == "Client+Secret+is+required+for+OpenAPI+mode"
+    )
+
+
 def test_auto_mode_accepts_openapi_only_credentials() -> None:
     """Auto mode can save OpenAPI-only credentials for probe selection."""
     assert (

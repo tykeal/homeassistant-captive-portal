@@ -196,6 +196,7 @@ def _validate_omada_form(
     client_secret: str,
     client_secret_changed: str,
     base_url: str,
+    client_secret_exists: bool = False,
 ) -> str | None:
     """Validate Omada settings form inputs.
 
@@ -213,6 +214,7 @@ def _validate_omada_form(
         client_secret: Raw OpenAPI client secret.
         client_secret_changed: Whether the OpenAPI secret field changed.
         base_url: Redirect base URL (unused in validation logic).
+        client_secret_exists: Whether an encrypted OpenAPI secret is already stored.
 
     Returns:
         Error message or None.
@@ -225,8 +227,8 @@ def _validate_omada_form(
     if openapi_mode not in {"auto", "openapi", "legacy"}:
         return "Backend+mode+must+be+auto,+openapi,+or+legacy"
 
-    openapi_secret_available = bool(client_id) and (
-        client_secret_changed != "true" or bool(client_secret)
+    openapi_secret_available = bool(client_id) and bool(
+        client_secret if client_secret_changed == "true" else client_secret_exists
     )
     legacy_required = openapi_mode == "legacy" or (
         openapi_mode == "auto" and not openapi_secret_available
@@ -241,7 +243,10 @@ def _validate_omada_form(
     if controller_url and legacy_required and password_changed == "true" and not password:
         return "Password+is+required+when+setting+up+a+new+connection"
 
-    if openapi_mode == "openapi" and client_secret_changed == "true" and not client_secret:
+    if openapi_mode == "openapi" and not client_id:
+        return "Client+ID+is+required+for+OpenAPI+mode"
+
+    if openapi_mode == "openapi" and not openapi_secret_available:
         return "Client+Secret+is+required+for+OpenAPI+mode"
 
     return None
@@ -330,6 +335,8 @@ async def update_omada_settings(
     controller_id = controller_id.strip()
 
     # Validate form inputs
+    existing_stmt: Any = select(OmadaConfig).where(OmadaConfig.id == 1)
+    existing_config: Optional[OmadaConfig] = session.exec(existing_stmt).first()
     error = _validate_omada_form(
         controller_url,
         username,
@@ -341,6 +348,9 @@ async def update_omada_settings(
         client_secret,
         client_secret_changed,
         redirect_base,
+        client_secret_exists=bool(
+            existing_config and existing_config.encrypted_client_secret.strip()
+        ),
     )
     if error:
         return RedirectResponse(
@@ -349,7 +359,7 @@ async def update_omada_settings(
         )
 
     # Load or create config
-    config = _get_or_create_omada_config(session)
+    config = existing_config or _get_or_create_omada_config(session)
 
     # Update fields
     config.controller_url = controller_url
