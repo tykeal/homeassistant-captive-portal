@@ -78,8 +78,8 @@ __all__ = [
 logger = logging.getLogger("captive_portal")
 
 router = APIRouter(prefix="/admin/vouchers", tags=["admin-ui-vouchers"])
-router.include_router(bulk_router)
-router.include_router(purge_router)
+router.include_router(bulk_router, tags=["admin-ui-vouchers"])
+router.include_router(purge_router, tags=["admin-ui-vouchers"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 templates.env.globals["app_version"] = __version__
