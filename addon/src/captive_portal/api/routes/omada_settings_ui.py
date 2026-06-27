@@ -323,7 +323,7 @@ async def _rebuild_runtime_after_save(config: OmadaConfig, app_state: Any) -> st
             return error_msg
         if await _test_omada_connection(app_state) == "error":
             return (
-                "Settings+saved+but+connection+test+failed+—+check+controller+URL+and+credentials"
+                "Settings+saved+but+connection+test+failed+-+check+controller+URL+and+credentials"
             )
     except Exception as exc:
         logger.error(

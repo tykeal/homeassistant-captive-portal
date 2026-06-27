@@ -36,18 +36,6 @@ def format_openapi_mac(mac: str) -> str:
     return "-".join(octets[index : index + 2] for index in range(0, 12, 2))
 
 
-def _format_colon_mac(mac: str) -> str:
-    """Normalize a MAC address for application-facing responses.
-
-    Args:
-        mac: MAC address in accepted input format.
-
-    Returns:
-        Uppercase colon-separated MAC address.
-    """
-    return format_openapi_mac(mac).replace("-", ":")
-
-
 @dataclass
 class OpenApiSiteCache:
     """Shared site discovery cache for an OpenAPI backend run.
