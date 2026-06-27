@@ -367,6 +367,7 @@ class AppSettings(BaseModel):
 
     log_level: str = "info"
     db_path: str = "/data/captive_portal.db"
+    # aislop-ignore-next-line ai-slop/hardcoded-url -- stable HA Supervisor endpoint
     ha_base_url: str = "http://supervisor/core/api"
     ha_token: str = ""
     debug_guest_portal: bool = False

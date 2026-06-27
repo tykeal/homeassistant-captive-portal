@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var passwordField = document.getElementById('password');
     var passwordChanged = document.getElementById('password_changed');
     var clientSecretField = document.getElementById('client_secret');
+    // aislop-ignore-next-line ai-slop/hardcoded-id -- DOM field id, not provider id
     var clientSecretChanged = document.getElementById('client_secret_changed');
 
     // Track password field changes

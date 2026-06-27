@@ -456,12 +456,15 @@ async def update_omada_settings(
         admin_id=current_user.id,
         action="omada_config.update",
         target_type="omada_config",
+        # aislop-ignore-next-line ai-slop/hardcoded-id -- singleton config audit target
         target_id="1",
         metadata={
             "controller_url": controller_url,
             "username": username,
             "password_changed": password_changed == "true",
+            # aislop-ignore-next-line ai-slop/hardcoded-id -- audit metadata key
             "client_id_set": bool(client_id),
+            # aislop-ignore-next-line ai-slop/hardcoded-id -- audit metadata key
             "client_secret_changed": _client_secret_changed_for_audit(
                 client_secret,
                 client_secret_changed,
