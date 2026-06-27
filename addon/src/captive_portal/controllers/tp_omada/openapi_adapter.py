@@ -36,6 +36,20 @@ def format_openapi_mac(mac: str) -> str:
     return "-".join(octets[index : index + 2] for index in range(0, 12, 2))
 
 
+def _result_mapping(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return the response result mapping when present."""
+    result = payload.get("result", {})
+    return result if isinstance(result, dict) else {}
+
+
+def _result_data_items(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return result data entries that are object mappings."""
+    data = result.get("data", [])
+    if not isinstance(data, list):
+        return []
+    return [item for item in data if isinstance(item, dict)]
+
+
 @dataclass
 class OpenApiSiteCache:
     """Shared site discovery cache for an OpenAPI backend run.
@@ -98,8 +112,8 @@ class OmadaOpenApiAdapter:
                 f"/openapi/v1/{self.client.controller_id}/sites",
                 params={"page": page, "pageSize": 100},
             )
-            result = payload.get("result", {})
-            for item in result.get("data", []):
+            result = _result_mapping(payload)
+            for item in _result_data_items(result):
                 if item.get("name") == self.site_cache.site_name:
                     site_id = item.get("siteId") or item.get("id")
                     if isinstance(site_id, str) and site_id:
@@ -248,8 +262,8 @@ class OmadaOpenApiAdapter:
                 f"/openapi/v1/{self.client.controller_id}/sites/{site_id}/hotspot/authed-records",
                 params={"page": page, "pageSize": 100},
             )
-            result = payload.get("result", {})
-            for record in result.get("data", []):
+            result = _result_mapping(payload)
+            for record in _result_data_items(result):
                 record_mac = str(record.get("mac", ""))
                 try:
                     if format_openapi_mac(record_mac) == path_mac:

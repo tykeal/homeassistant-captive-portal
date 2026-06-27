@@ -22,24 +22,22 @@ from captive_portal.controllers.tp_omada.openapi_adapter import OmadaOpenApiAdap
 from captive_portal.controllers.tp_omada.openapi_client import OpenApiClient
 
 
-def get_omada_adapter(request: Request) -> OmadaControllerAdapter | None:
-    """Construct a per-request Omada adapter from app state config.
+def build_omada_adapter(
+    omada_config: OmadaRuntimeConfig | dict[str, Any] | None,
+) -> OmadaControllerAdapter | None:
+    """Construct an Omada adapter from runtime configuration.
 
-    Reads ``omada_config`` from ``request.app.state``.  When the config
-    dict is present, a fresh ``OmadaClient`` and ``OmadaAdapter`` are
+    When a config is present, a fresh client and matching adapter are
     constructed and returned.  When absent or ``None``, returns ``None``
-    so callers can degrade gracefully (no controller configured).
+    so callers can degrade gracefully.
 
     Args:
-        request: The incoming FastAPI request.
+        omada_config: Selected runtime config or legacy config mapping.
 
     Returns:
         A freshly constructed adapter, or ``None`` when the
         Omada controller is not configured.
     """
-    omada_config: OmadaRuntimeConfig | dict[str, Any] | None = getattr(
-        request.app.state, "omada_config", None
-    )
     if omada_config is None:
         return None
     if isinstance(omada_config, OmadaRuntimeConfig):
@@ -74,3 +72,23 @@ def get_omada_adapter(request: Request) -> OmadaControllerAdapter | None:
         verify_ssl=omada_config["verify_ssl"],
     )
     return OmadaLegacyAdapter(client=compatibility_client, site_id=omada_config["site_id"])
+
+
+def get_omada_adapter(request: Request) -> OmadaControllerAdapter | None:
+    """Construct a per-request Omada adapter from app state config.
+
+    Reads ``omada_config`` from ``request.app.state`` and delegates to the
+    shared adapter builder.  When absent or ``None``, returns ``None`` so
+    callers can degrade gracefully.
+
+    Args:
+        request: The incoming FastAPI request.
+
+    Returns:
+        A freshly constructed adapter, or ``None`` when the
+        Omada controller is not configured.
+    """
+    omada_config: OmadaRuntimeConfig | dict[str, Any] | None = getattr(
+        request.app.state, "omada_config", None
+    )
+    return build_omada_adapter(omada_config)

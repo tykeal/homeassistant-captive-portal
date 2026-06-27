@@ -116,3 +116,43 @@ async def test_openapi_status_and_update_semantics() -> None:
     assert status["remaining_seconds"] == 0
     assert updated["status"] == "active"
     assert all(b"duration" not in request.content for request in requests)
+
+
+@pytest.mark.contract
+@pytest.mark.asyncio
+async def test_openapi_status_treats_malformed_records_as_absent() -> None:
+    """Malformed authed-record data returns an unauthorized status."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Return token, site success, and malformed authed records."""
+        if request.url.path == "/openapi/authorize/token":
+            return httpx.Response(
+                200,
+                json={"errorCode": 0, "result": {"accessToken": "token", "expiresIn": 7200}},
+            )
+        if request.url.path.endswith("/sites"):
+            return httpx.Response(
+                200,
+                json={
+                    "errorCode": 0,
+                    "result": {"data": [{"siteId": "site-1", "name": "Default"}]},
+                },
+            )
+        return httpx.Response(200, json={"errorCode": 0, "result": {"data": None}})
+
+    adapter = OmadaOpenApiAdapter(
+        client=OpenApiClient(
+            base_url="https://ctrl.test:8043",
+            controller_id="0123456789ab",
+            client_id="client-id",
+            client_secret="client-secret",
+            transport=httpx.MockTransport(handler),
+        ),
+        site_name="Default",
+    )
+
+    assert await adapter.get_status("AA:BB:CC:DD:EE:FF") == {
+        "authorized": False,
+        "mac": "AA:BB:CC:DD:EE:FF",
+        "remaining_seconds": 0,
+    }

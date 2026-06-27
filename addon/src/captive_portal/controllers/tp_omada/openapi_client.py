@@ -360,5 +360,26 @@ class OpenApiClient:
             raise OmadaClientError("OpenAPI response was not valid JSON") from exc
         if data.get("errorCode", 0) != 0:
             code = data.get("errorCode")
-            raise OmadaClientError(f"OpenAPI errorCode {code}", status_code=int(code or 400))
+            raise OmadaClientError(
+                f"OpenAPI errorCode {code}",
+                status_code=_status_code_from_error_code(code),
+            )
         return data
+
+
+def _status_code_from_error_code(code: object) -> int:
+    """Map an Omada errorCode to a safe HTTP-like status code."""
+    if isinstance(code, bool):
+        return 400
+    if isinstance(code, int):
+        status_code = code
+    elif isinstance(code, str):
+        try:
+            status_code = int(code)
+        except ValueError:
+            return 400
+    else:
+        return 400
+    if 400 <= status_code <= 599:
+        return status_code
+    return 400

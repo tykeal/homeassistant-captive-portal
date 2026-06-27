@@ -8,8 +8,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.engine import Engine
@@ -21,7 +20,7 @@ from captive_portal.controllers.tp_omada.base_client import (
     OmadaClientError,
     OmadaRetryExhaustedError,
 )
-from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
+from captive_portal.controllers.tp_omada.dependencies import build_omada_adapter
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 
 
@@ -146,9 +145,7 @@ class GrantExpiryService:
         """
         if self.omada_config is None:
             return None
-        fake_request = cast(Any, SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace())))
-        fake_request.app.state.omada_config = self.omada_config
-        return get_omada_adapter(fake_request)
+        return build_omada_adapter(self.omada_config)
 
     async def _revoke_due_grant(
         self,

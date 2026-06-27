@@ -10,7 +10,10 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from captive_portal.controllers.tp_omada.base_client import OmadaRetryExhaustedError
+from captive_portal.controllers.tp_omada.base_client import (
+    OmadaClientError,
+    OmadaRetryExhaustedError,
+)
 from captive_portal.controllers.tp_omada.openapi_client import OpenApiClient, OpenApiTokenState
 
 
@@ -194,6 +197,32 @@ async def test_transient_http_errors_raise_retry_exhausted() -> None:
     ):
         with pytest.raises(OmadaRetryExhaustedError):
             await client.get("/openapi/v1/0123456789ab/sites")
+
+
+@pytest.mark.asyncio
+async def test_non_http_error_code_maps_to_bad_request() -> None:
+    """Non-HTTP OpenAPI error codes map to a safe client error status."""
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        """Return a non-HTTP OpenAPI error code."""
+        return httpx.Response(200, json={"errorCode": -1, "msg": "failed"})
+
+    token_state = OpenApiTokenState(
+        access_token="token",
+        expires_at_monotonic=time.monotonic() + 7200,
+    )
+    client = OpenApiClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="0123456789ab",
+        client_id="client-id",
+        client_secret="client-secret",
+        transport=httpx.MockTransport(handler),
+        token_state=token_state,
+    )
+
+    with pytest.raises(OmadaClientError) as excinfo:
+        await client.get("/openapi/v1/0123456789ab/sites")
+    assert excinfo.value.status_code == 400
 
 
 @pytest.mark.asyncio
