@@ -146,6 +146,175 @@ class TestPortalSettingsExtended:
         assert config is not None
         assert config.guest_external_url == "https://guest.example.com"
 
+    def test_api_saves_ipv6_guest_external_url(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """PUT saves guest external URLs with IPv6 literal hosts."""
+        response = authenticated_client.put(
+            "/api/admin/portal-config",
+            json={"guest_external_url": "https://[::1]:8443"},
+        )
+
+        assert response.status_code == 200
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.guest_external_url == "https://[::1]:8443"
+
+    def test_rejects_invalid_guest_external_url(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """POST rejects unsafe guest external URLs without saving them."""
+        db_session.merge(PortalConfig(id=1, guest_external_url="https://safe.example.com"))
+        db_session.commit()
+        csrf_token = self._get_csrf_token(authenticated_client)
+
+        response = authenticated_client.post(
+            "/admin/portal-settings/",
+            data={
+                "csrf_token": csrf_token,
+                "rate_limit_attempts": "5",
+                "rate_limit_window_seconds": "60",
+                "success_redirect_url": "/guest/welcome",
+                "session_idle_minutes": "30",
+                "session_max_hours": "8",
+                "guest_external_url": ("https://guest.example.com\r\nSet-Cookie: session=evil"),
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert "error" in response.headers.get("location", "")
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.guest_external_url == "https://safe.example.com"
+
+    def test_api_rejects_invalid_guest_external_url(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """PUT rejects unsafe guest external URLs without saving them."""
+        db_session.merge(PortalConfig(id=1, guest_external_url="https://safe.example.com"))
+        db_session.commit()
+
+        response = authenticated_client.put(
+            "/api/admin/portal-config",
+            json={"guest_external_url": "https://guest.example.com/?next=evil"},
+        )
+
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert "guest_external_url" in detail
+        assert "Guest external URL must be" in detail
+        assert "+" not in detail
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.guest_external_url == "https://safe.example.com"
+
+    def test_api_rejects_encoded_hostname_delimiter(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """PUT rejects hostnames that IDNA-decode to delimiters."""
+        db_session.merge(PortalConfig(id=1, guest_external_url="https://safe.example.com"))
+        db_session.commit()
+
+        response = authenticated_client.put(
+            "/api/admin/portal-config",
+            json={"guest_external_url": ("https://guest.example.com%EF%BC%BCevil.example")},
+        )
+
+        assert response.status_code == 422
+        assert "guest_external_url" in response.text
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.guest_external_url == "https://safe.example.com"
+
+    def test_api_rejects_empty_query_delimiter(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """PUT rejects guest URLs with an empty query delimiter."""
+        db_session.merge(PortalConfig(id=1, guest_external_url="https://safe.example.com"))
+        db_session.commit()
+
+        response = authenticated_client.put(
+            "/api/admin/portal-config",
+            json={"guest_external_url": "https://guest.example.com?"},
+        )
+
+        assert response.status_code == 422
+        assert "guest_external_url" in response.text
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.guest_external_url == "https://safe.example.com"
+
+    def test_api_rejects_guest_url_path(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """PUT rejects guest URLs with paths before redirect suffixes."""
+        db_session.merge(PortalConfig(id=1, guest_external_url="https://safe.example.com"))
+        db_session.commit()
+
+        response = authenticated_client.put(
+            "/api/admin/portal-config",
+            json={"guest_external_url": "https://guest.example.com/base"},
+        )
+
+        assert response.status_code == 422
+        assert "guest_external_url" in response.text
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.guest_external_url == "https://safe.example.com"
+
+    def test_api_rejects_encoded_authority_delimiter(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """PUT rejects URLs with encoded authority delimiters."""
+        db_session.merge(PortalConfig(id=1, guest_external_url="https://safe.example.com"))
+        db_session.commit()
+
+        response = authenticated_client.put(
+            "/api/admin/portal-config",
+            json={"guest_external_url": "https://guest.example.com%3A999999"},
+        )
+
+        assert response.status_code == 422
+        assert "guest_external_url" in response.text
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.guest_external_url == "https://safe.example.com"
+
+    def test_api_rejects_userinfo_authority_delimiter(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """PUT rejects URLs with userinfo authority delimiters."""
+        db_session.merge(PortalConfig(id=1, guest_external_url="https://safe.example.com"))
+        db_session.commit()
+
+        response = authenticated_client.put(
+            "/api/admin/portal-config",
+            json={"guest_external_url": "https://guest.example.com@evil.example"},
+        )
+
+        assert response.status_code == 422
+        assert "guest_external_url" in response.text
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.guest_external_url == "https://safe.example.com"
+
     def test_rejects_invalid_session_idle(self, authenticated_client: TestClient) -> None:
         """POST rejects out-of-range session idle timeout."""
         csrf_token = self._get_csrf_token(authenticated_client)

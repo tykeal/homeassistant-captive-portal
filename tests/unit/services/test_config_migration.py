@@ -308,6 +308,46 @@ class TestMigrateYamlToDb:
         assert loaded.session_idle_minutes == 60
 
     @pytest.mark.asyncio
+    async def test_existing_invalid_guest_url_is_cleared(
+        self, db_session: Session, key_path: str
+    ) -> None:
+        """Migration clears unsafe guest URLs already stored in the DB."""
+        portal = PortalConfig(
+            id=1,
+            guest_external_url="https://guest.example.com@evil.example",
+        )
+        db_session.add(portal)
+        db_session.commit()
+
+        with patch.dict(os.environ, _clean_env(), clear=True):
+            result = await migrate_yaml_to_db(AppSettings(), db_session, key_path=key_path)
+
+        assert result.guest_url_migrated is False
+        loaded = db_session.get(PortalConfig, 1)
+        assert loaded is not None
+        assert loaded.guest_external_url == ""
+
+    @pytest.mark.asyncio
+    async def test_existing_guest_url_is_normalized(
+        self, db_session: Session, key_path: str
+    ) -> None:
+        """Migration normalizes valid guest URLs already stored in the DB."""
+        portal = PortalConfig(
+            id=1,
+            guest_external_url="  https://guest.example.com  ",
+        )
+        db_session.add(portal)
+        db_session.commit()
+
+        with patch.dict(os.environ, _clean_env(), clear=True):
+            result = await migrate_yaml_to_db(AppSettings(), db_session, key_path=key_path)
+
+        assert result.guest_url_migrated is False
+        loaded = db_session.get(PortalConfig, 1)
+        assert loaded is not None
+        assert loaded.guest_external_url == "https://guest.example.com"
+
+    @pytest.mark.asyncio
     async def test_partial_migration_omada_only(self, db_session: Session, key_path: str) -> None:
         """Only Omada settings migrate when session settings are default."""
         env = _clean_env()

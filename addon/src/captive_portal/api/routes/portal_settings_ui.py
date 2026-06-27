@@ -4,6 +4,7 @@
 
 from pathlib import Path
 from typing import Annotated, Any, Optional, cast
+from urllib.parse import quote_plus
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
@@ -18,6 +19,7 @@ from captive_portal.persistence.database import get_session
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
 from captive_portal.security.session_middleware import require_admin
 from captive_portal.services.audit_service import AuditService
+from captive_portal.services.redirect_validator import GuestExternalUrlValidator
 
 router = APIRouter(prefix="/admin/portal-settings", tags=["admin-ui-portal-settings"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
@@ -186,6 +188,13 @@ async def update_portal_settings(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
+    guest_url_validation = GuestExternalUrlValidator.validate(guest_external_url)
+    if not guest_url_validation.valid:
+        return RedirectResponse(
+            url=f"{root}/admin/portal-settings?error={quote_plus(guest_url_validation.error_message or '')}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
     stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
     config: Optional[PortalConfig] = session.exec(stmt).first()
 
@@ -200,7 +209,7 @@ async def update_portal_settings(
     config.redirect_to_original_url = redirect_to_original_url == "true"
     config.session_idle_minutes = session_idle_minutes
     config.session_max_hours = session_max_hours
-    config.guest_external_url = guest_external_url.strip()
+    config.guest_external_url = guest_url_validation.normalized_url
 
     session.add(config)
     session.commit()
