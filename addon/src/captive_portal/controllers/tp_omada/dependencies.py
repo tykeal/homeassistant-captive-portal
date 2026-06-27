@@ -1,11 +1,11 @@
 # SPDX-FileCopyrightText: 2026 Andrew Grimberg
 # SPDX-License-Identifier: Apache-2.0
-"""FastAPI dependency for per-request Omada adapter construction.
+"""FastAPI dependency for Omada adapter construction.
 
-Each request gets a fresh ``OmadaClient`` + ``OmadaAdapter`` built from
-the ``omada_config`` dict stored on ``app.state`` during lifespan startup.
-This avoids shared async session state races caused by ``__aenter__``
-mutating a shared client instance.
+Each request gets a fresh adapter for the backend selected during
+lifespan startup.  Runtime configuration usually arrives as an
+``OmadaRuntimeConfig`` on ``app.state``; legacy dict configs remain
+supported for compatibility.
 """
 
 from __future__ import annotations

@@ -164,6 +164,10 @@ async def _select_auto(
                 "OpenAPI credentials are incomplete and no legacy fallback is configured"
             )
         logger.warning("OpenAPI credentials incomplete; falling back to legacy backend")
+        return _select_legacy(
+            selection_input,
+            "OpenAPI credentials incomplete; legacy fallback selected",
+        )
     return _select_legacy(selection_input, "OpenAPI credentials not configured")
 
 

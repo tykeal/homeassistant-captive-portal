@@ -103,6 +103,17 @@ async def test_auto_partial_openapi_without_legacy_reports_no_backend() -> None:
 
 
 @pytest.mark.asyncio
+async def test_auto_partial_openapi_with_legacy_reports_fallback_reason() -> None:
+    """Partial OpenAPI credentials with legacy return a precise reason."""
+    runtime = await select_omada_backend(
+        _input(client_secret=""),
+        logging.getLogger(__name__),
+    )
+    assert runtime.selected_backend == "legacy"
+    assert runtime.selection_reason == "OpenAPI credentials incomplete; legacy fallback selected"
+
+
+@pytest.mark.asyncio
 async def test_forced_openapi_does_not_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     """Forced OpenAPI raises on failed probe instead of selecting legacy."""
 
