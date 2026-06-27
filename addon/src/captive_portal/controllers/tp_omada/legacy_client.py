@@ -74,7 +74,6 @@ class OmadaLegacyClient:
 
         self._client: Optional[httpx.AsyncClient] = None
         self._csrf_token: Optional[str] = None
-        self._session_cookie: Optional[str] = None
 
     async def __aenter__(self) -> "OmadaLegacyClient":
         """Async context manager entry."""
@@ -120,10 +119,8 @@ class OmadaLegacyClient:
 
             # Extract session cookie (TPEAP_SESSIONID or TPOMADA_SESSIONID)
             cookies = response.cookies
-            self._session_cookie = cookies.get("TPOMADA_SESSIONID") or cookies.get(
-                "TPEAP_SESSIONID"
-            )
-            if not self._session_cookie:
+            session_cookie = cookies.get("TPOMADA_SESSIONID") or cookies.get("TPEAP_SESSIONID")
+            if not session_cookie:
                 raise OmadaAuthenticationError("Session cookie not found in response")
 
         except httpx.HTTPStatusError as e:
