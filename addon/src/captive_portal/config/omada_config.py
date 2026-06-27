@@ -11,8 +11,13 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
 
+from captive_portal.controllers.tp_omada.adapter_factory import (
+    OmadaBackendSelectionError,
+    OmadaRuntimeConfig,
+    OmadaSelectionInput,
+    select_omada_backend,
+)
 from captive_portal.models.omada_config import OmadaConfig
 from captive_portal.security.credential_encryption import decrypt_credential
 
@@ -40,8 +45,8 @@ def _validate_controller_id(controller_id: str) -> str:
 async def build_omada_config(
     config: OmadaConfig,
     logger: logging.Logger,
-) -> dict[str, Any] | None:
-    """Build Omada configuration dict, auto-discovering controller ID if needed.
+) -> OmadaRuntimeConfig | None:
+    """Build Omada runtime configuration, discovering controller ID if needed.
 
     The encrypted password is decrypted to produce the plaintext
     needed by the Omada client.
@@ -51,18 +56,26 @@ async def build_omada_config(
         logger: Logger instance for diagnostics.
 
     Returns:
-        Omada config dict or ``None`` if not configured.
+        Omada runtime config or ``None`` if not configured.
     """
-    if not config.omada_configured:
+    if not config.omada_configured and not config.openapi_configured:
         return None
 
     controller_url = config.controller_url.strip()
     username = config.username.strip()
-    try:
-        password = decrypt_credential(config.encrypted_password)
-    except Exception as exc:
-        logger.error("Failed to decrypt Omada password: %s", exc)
-        return None
+    mode = config.openapi_mode.strip().lower()
+    password = _decrypt_for_backend(
+        ciphertext=config.encrypted_password,
+        enabled=mode != "openapi",
+        label="Omada password",
+        logger=logger,
+    )
+    client_secret = _decrypt_for_backend(
+        ciphertext=config.encrypted_client_secret,
+        enabled=mode != "legacy",
+        label="Omada OpenAPI client secret",
+        logger=logger,
+    )
     site_name = config.site_name.strip()
     controller_id = config.controller_id.strip()
     verify_ssl = config.verify_ssl
@@ -104,11 +117,74 @@ async def build_omada_config(
         )
         return None
 
-    return {
-        "base_url": base_url,
-        "controller_id": controller_id,
-        "username": username,
-        "password": password,
-        "verify_ssl": verify_ssl,
-        "site_id": site_name,
-    }
+    selection_input = OmadaSelectionInput(
+        base_url=base_url,
+        controller_id=controller_id,
+        site_name=site_name,
+        verify_ssl=verify_ssl,
+        openapi_mode=config.openapi_mode,
+        username=username,
+        password=password or "",
+        client_id=config.client_id.strip(),
+        client_secret=client_secret or "",
+    )
+    try:
+        runtime = await select_omada_backend(selection_input, logger)
+    except OmadaBackendSelectionError as exc:
+        logger.error("Omada backend selection failed: %s", exc)
+        return None
+    logger.info(
+        "Omada backend selected: %s (%s)",
+        runtime.selected_backend,
+        runtime.selection_reason,
+    )
+    return runtime
+
+
+def _decrypt_optional(
+    ciphertext: str,
+    label: str,
+    logger: logging.Logger,
+) -> str | None:
+    """Decrypt an optional credential ciphertext.
+
+    Args:
+        ciphertext: Fernet ciphertext, or an empty string.
+        label: Secret-safe label for diagnostics.
+        logger: Logger for diagnostics.
+
+    Returns:
+        Decrypted plaintext, ``""`` for empty ciphertext, or ``None`` on error.
+    """
+    if not ciphertext:
+        return ""
+    try:
+        return decrypt_credential(ciphertext)
+    except Exception as exc:
+        logger.error("Failed to decrypt %s: %s", label, exc)
+        return None
+
+
+def _decrypt_for_backend(
+    *,
+    ciphertext: str,
+    enabled: bool,
+    label: str,
+    logger: logging.Logger,
+) -> str:
+    """Decrypt a credential only when its backend can be selected.
+
+    Args:
+        ciphertext: Fernet ciphertext or an empty string.
+        enabled: Whether the corresponding backend participates in
+            selection for the configured mode.
+        label: Secret-safe label for diagnostics.
+        logger: Logger for diagnostics.
+
+    Returns:
+        Decrypted plaintext, or ``""`` when absent, inactive, or invalid.
+    """
+    if not ciphertext or not enabled:
+        return ""
+    plaintext = _decrypt_optional(ciphertext, label, logger)
+    return plaintext or ""

@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlmodel import Session, select
 
-from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
+from captive_portal.controllers.tp_omada.adapter_protocol import OmadaControllerAdapter
 from captive_portal.controllers.tp_omada.base_client import (
     OmadaClientError,
     OmadaRetryExhaustedError,
@@ -46,7 +46,7 @@ class RevocationResult:
 
 
 async def _revoke_with_controller(
-    adapter: OmadaAdapter | None,
+    adapter: OmadaControllerAdapter | None,
     grant: AccessGrant,
 ) -> RevocationResult:
     """Attempt to revoke a grant on the Omada controller.
@@ -60,7 +60,7 @@ async def _revoke_with_controller(
     the admin notification.
 
     Args:
-        adapter: OmadaAdapter instance or None.
+        adapter: Omada controller adapter or None.
         grant: The revoked grant.
 
     Returns:
@@ -70,15 +70,14 @@ async def _revoke_with_controller(
         return RevocationResult()
 
     try:
-        async with adapter.client:
-            await adapter.revoke(
-                mac=grant.mac,
-                gateway_mac=grant.omada_gateway_mac,
-                ap_mac=grant.omada_ap_mac,
-                vid=grant.omada_vid,
-                ssid_name=grant.omada_ssid_name,
-                radio_id=grant.omada_radio_id,
-            )
+        await adapter.revoke(
+            mac=grant.mac,
+            gateway_mac=grant.omada_gateway_mac,
+            ap_mac=grant.omada_ap_mac,
+            vid=grant.omada_vid,
+            ssid_name=grant.omada_ssid_name,
+            radio_id=grant.omada_radio_id,
+        )
         return RevocationResult()
     except (OmadaClientError, OmadaRetryExhaustedError) as exc:
         _logger.error(
@@ -307,7 +306,7 @@ async def revoke_grant(
     session: Session = Depends(get_session),
     admin_id: UUID = Depends(require_admin),
     csrf: CSRFProtection = Depends(get_csrf_protection),
-    omada_adapter: OmadaAdapter | None = Depends(get_omada_adapter),
+    omada_adapter: OmadaControllerAdapter | None = Depends(get_omada_adapter),
 ) -> RevokeGrantResponse:
     """Revoke access grant (admin only).
 

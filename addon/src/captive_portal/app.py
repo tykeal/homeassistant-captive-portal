@@ -21,6 +21,7 @@ from captive_portal.config.settings import AppSettings
 from captive_portal.integrations.ha_client import HAClient
 from captive_portal.integrations.ha_poller import HAPoller
 from captive_portal.integrations.rental_control_service import RentalControlService
+from captive_portal.controllers.tp_omada.adapter_factory import OmadaRuntimeConfig
 from captive_portal.persistence.database import (
     create_db_engine,
     dispose_engine,
@@ -65,7 +66,7 @@ async def _run_config_migration(settings: AppSettings, engine: Any) -> None:
         migration_session.close()
 
 
-async def _load_omada_config(engine: Any) -> dict[str, Any] | None:
+async def _load_omada_config(engine: Any) -> OmadaRuntimeConfig | None:
     """Load Omada config from the database.
 
     Args:
@@ -84,7 +85,7 @@ async def _load_omada_config(engine: Any) -> dict[str, Any] | None:
 
             _stmt: Any = _select(OmadaConfig).where(OmadaConfig.id == 1)
             db_omada: OmadaConfig | None = omada_session.exec(_stmt).first()
-            if db_omada and db_omada.omada_configured:
+            if db_omada and (db_omada.omada_configured or db_omada.openapi_configured):
                 return await build_omada_config(db_omada, logger)
             return None
         finally:
@@ -151,6 +152,18 @@ def _make_lifespan(
         else:
             logger.info("Omada controller not configured — controller calls will be skipped")
 
+        from captive_portal.services.grant_expiry_service import GrantExpiryService
+
+        grant_expiry_service = GrantExpiryService(
+            engine=engine,
+            omada_config=app.state.omada_config,
+            logger=logger,
+        )
+        grant_expiry_task = asyncio.create_task(grant_expiry_service.start())
+        app.state.grant_expiry_service = grant_expiry_service
+        app.state.grant_expiry_task = grant_expiry_task
+        logger.info("Grant expiry worker started.")
+
         # Start background poller for Rental Control event sync
         poller_session = Session(engine)
         event_repo = RentalControlEventRepository(poller_session)
@@ -171,6 +184,13 @@ def _make_lifespan(
         yield
 
         # --- Shutdown ---
+        await app.state.grant_expiry_service.stop()
+        app.state.grant_expiry_task.cancel()
+        try:
+            await app.state.grant_expiry_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("Grant expiry worker stopped.")
         await app.state.ha_poller.stop()
         app.state.ha_poller_task.cancel()
         try:

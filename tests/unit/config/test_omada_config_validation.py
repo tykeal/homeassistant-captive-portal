@@ -8,9 +8,13 @@ attempts and accepts legitimate hex controller IDs.
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 
-from captive_portal.config.omada_config import _validate_controller_id
+from captive_portal.config import omada_config
+from captive_portal.config.omada_config import _validate_controller_id, build_omada_config
+from captive_portal.models.omada_config import OmadaConfig
 
 
 class TestValidateControllerId:
@@ -85,3 +89,34 @@ class TestValidateControllerId:
         """Reject whitespace-only string."""
         with pytest.raises(ValueError, match="Invalid controller ID"):
             _validate_controller_id("   ")
+
+
+@pytest.mark.asyncio
+async def test_forced_legacy_ignores_broken_openapi_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Forced legacy selection must not decrypt inactive OpenAPI secrets."""
+
+    def decrypt(ciphertext: str) -> str:
+        """Return the legacy password and fail inactive OpenAPI secrets."""
+        if ciphertext == "legacy-cipher":
+            return "legacy-pass"
+        raise ValueError("broken secret")
+
+    monkeypatch.setattr(omada_config, "decrypt_credential", decrypt)
+
+    runtime = await build_omada_config(
+        OmadaConfig(
+            controller_url="https://ctrl.test:8043",
+            username="operator",
+            encrypted_password="legacy-cipher",
+            client_id="client-id",
+            encrypted_client_secret="broken-openapi-cipher",
+            openapi_mode="legacy",
+            controller_id="0123456789ab",
+        ),
+        logging.getLogger(__name__),
+    )
+
+    assert runtime is not None
+    assert runtime.selected_backend == "legacy"

@@ -31,3 +31,6 @@ schema:
   ha_base_url: "url?"
   ha_token: "str?"
   debug_guest_portal: "bool?"
+  omada_client_id: "str?"
+  omada_client_secret: "password?"
+  omada_openapi_mode: "list(auto|openapi|legacy)?"

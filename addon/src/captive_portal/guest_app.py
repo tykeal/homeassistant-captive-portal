@@ -259,7 +259,7 @@ def _make_guest_lifespan(
 
             _stmt: _Any = _select(_OmadaConfig).where(_OmadaConfig.id == 1)
             _db_omada: _OmadaConfig | None = _omada_sess.exec(_stmt).first()
-            if _db_omada and _db_omada.omada_configured:
+            if _db_omada and (_db_omada.omada_configured or _db_omada.openapi_configured):
                 app.state.omada_config = await build_omada_config(_db_omada, logger)
             else:
                 app.state.omada_config = None

@@ -52,7 +52,8 @@ class TestOmadaAdapterRetry:
         client._csrf_token = "test-token"
 
         with patch(
-            "captive_portal.controllers.tp_omada.base_client.asyncio.sleep", new_callable=AsyncMock
+            "captive_portal.controllers.tp_omada.legacy_client.asyncio.sleep",
+            new_callable=AsyncMock,
         ):
             result = await client.post_with_retry(
                 "/extportal/auth", {"clientMac": "AA:BB:CC:DD:EE:FF"}
@@ -77,7 +78,8 @@ class TestOmadaAdapterRetry:
         client._csrf_token = "test-token"
 
         with patch(
-            "captive_portal.controllers.tp_omada.base_client.asyncio.sleep", new_callable=AsyncMock
+            "captive_portal.controllers.tp_omada.legacy_client.asyncio.sleep",
+            new_callable=AsyncMock,
         ):
             with pytest.raises(OmadaRetryExhaustedError):
                 await client.post_with_retry("/extportal/auth", {"clientMac": "AA:BB:CC:DD:EE:FF"})
@@ -143,7 +145,8 @@ class TestOmadaAdapterRetry:
         client._csrf_token = "test-token"
 
         with patch(
-            "captive_portal.controllers.tp_omada.base_client.asyncio.sleep", new_callable=AsyncMock
+            "captive_portal.controllers.tp_omada.legacy_client.asyncio.sleep",
+            new_callable=AsyncMock,
         ):
             result = await client.post_with_retry("/extportal/auth", {"clientMac": "test"})
 
@@ -181,7 +184,8 @@ class TestOmadaAdapterRetry:
         client._csrf_token = "test-token"
 
         with patch(
-            "captive_portal.controllers.tp_omada.base_client.asyncio.sleep", new_callable=AsyncMock
+            "captive_portal.controllers.tp_omada.legacy_client.asyncio.sleep",
+            new_callable=AsyncMock,
         ):
             result = await client.post_with_retry("/extportal/revoke", {"clientMac": "test"})
 
@@ -210,7 +214,8 @@ class TestOmadaAdapterRetry:
             sleep_delays.append(delay)
 
         with patch(
-            "captive_portal.controllers.tp_omada.base_client.asyncio.sleep", side_effect=mock_sleep
+            "captive_portal.controllers.tp_omada.legacy_client.asyncio.sleep",
+            side_effect=mock_sleep,
         ):
             with pytest.raises(OmadaRetryExhaustedError):
                 await client.post_with_retry(

@@ -40,6 +40,9 @@ class TestMigrationDefaults:
         assert legacy["omada_site_name"] == "Default"
         assert legacy["omada_controller_id"] == ""
         assert legacy["omada_verify_ssl"] is True
+        assert legacy["omada_client_id"] == ""
+        assert legacy["omada_client_secret"] == ""
+        assert legacy["omada_openapi_mode"] == "auto"
 
 
 class TestMigrationFromEnvVars:
@@ -53,6 +56,9 @@ class TestMigrationFromEnvVars:
         env["CP_OMADA_PASSWORD"] = "s3cret"
         env["CP_OMADA_SITE_NAME"] = "MySite"
         env["CP_OMADA_VERIFY_SSL"] = "false"
+        env["CP_OMADA_CLIENT_ID"] = " client-id "
+        env["CP_OMADA_CLIENT_SECRET"] = " client-secret "
+        env["CP_OMADA_OPENAPI_MODE"] = "openapi"
         with patch.dict(os.environ, env, clear=True):
             legacy = AppSettings._load_for_migration(options_path="/nonexistent/options.json")
         assert legacy["omada_controller_url"] == "https://192.168.1.10:8043"
@@ -60,6 +66,17 @@ class TestMigrationFromEnvVars:
         assert legacy["omada_password"] == "s3cret"
         assert legacy["omada_site_name"] == "MySite"
         assert legacy["omada_verify_ssl"] is False
+        assert legacy["omada_client_id"] == "client-id"
+        assert legacy["omada_client_secret"] == "client-secret"
+        assert legacy["omada_openapi_mode"] == "openapi"
+
+    def test_invalid_openapi_mode_falls_back_to_default(self) -> None:
+        """Invalid OpenAPI modes do not enter migration settings."""
+        env = _clean_env()
+        env["CP_OMADA_OPENAPI_MODE"] = "invalid"
+        with patch.dict(os.environ, env, clear=True):
+            legacy = AppSettings._load_for_migration(options_path="/nonexistent/options.json")
+        assert legacy["omada_openapi_mode"] == "auto"
 
     def test_session_env_vars_read(self) -> None:
         """CP_SESSION_* env vars should be read by migration helper."""
@@ -85,7 +102,12 @@ class TestMigrationFromAddonOptions:
 
     def test_addon_option_overrides_env(self, tmp_path: Path) -> None:
         """Addon option takes precedence over env var."""
-        opts = {"omada_controller_url": "https://addon.local:8043"}
+        opts = {
+            "omada_controller_url": "https://addon.local:8043",
+            "omada_client_id": "addon-client",
+            "omada_client_secret": "addon-secret",
+            "omada_openapi_mode": "legacy",
+        }
         opts_file = tmp_path / "options.json"
         opts_file.write_text(json.dumps(opts))
 
@@ -94,6 +116,9 @@ class TestMigrationFromAddonOptions:
         with patch.dict(os.environ, env, clear=True):
             legacy = AppSettings._load_for_migration(options_path=str(opts_file))
         assert legacy["omada_controller_url"] == "https://addon.local:8043"
+        assert legacy["omada_client_id"] == "addon-client"
+        assert legacy["omada_client_secret"] == "addon-secret"
+        assert legacy["omada_openapi_mode"] == "legacy"
 
 
 class TestMigrationFieldsNotOnSettings:

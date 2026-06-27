@@ -14,7 +14,7 @@ from sqlmodel import Session
 from captive_portal.config.settings import AppSettings
 from captive_portal.models.omada_config import OmadaConfig
 from captive_portal.models.portal_config import PortalConfig
-from captive_portal.security.credential_encryption import decrypt_credential
+from captive_portal.security.credential_encryption import decrypt_credential, encrypt_credential
 from captive_portal.services.config_migration import MigrationResult, migrate_yaml_to_db
 
 
@@ -51,6 +51,9 @@ class TestMigrateYamlToDb:
                 "CP_OMADA_SITE_NAME": "TestSite",
                 "CP_OMADA_CONTROLLER_ID": "aabbccdd1122",
                 "CP_OMADA_VERIFY_SSL": "false",
+                "CP_OMADA_CLIENT_ID": "openapi-client",
+                "CP_OMADA_CLIENT_SECRET": "openapi-secret",
+                "CP_OMADA_OPENAPI_MODE": "openapi",
                 "CP_SESSION_IDLE_TIMEOUT": "45",
                 "CP_SESSION_MAX_DURATION": "12",
                 "CP_GUEST_EXTERNAL_URL": "https://guest.example.com",
@@ -72,6 +75,11 @@ class TestMigrateYamlToDb:
         assert decrypt_credential(omada.encrypted_password, key_path=key_path) == "secret123"
         assert omada.site_name == "TestSite"
         assert omada.verify_ssl is False
+        assert omada.client_id == "openapi-client"
+        assert (
+            decrypt_credential(omada.encrypted_client_secret, key_path=key_path) == "openapi-secret"
+        )
+        assert omada.openapi_mode == "openapi"
 
         # Verify portal config
         portal = db_session.get(PortalConfig, 1)
@@ -111,6 +119,173 @@ class TestMigrateYamlToDb:
         assert omada is not None
         assert omada.controller_url == "https://existing.omada:8043"
         assert omada.username == "existing_user"
+
+    @pytest.mark.asyncio
+    async def test_existing_openapi_settings_are_not_overwritten(
+        self,
+        db_session: Session,
+        key_path: str,
+    ) -> None:
+        """Existing OpenAPI settings are treated as UI-managed after migration."""
+        existing = OmadaConfig(
+            id=1,
+            controller_url="https://existing.omada:8043",
+            username="existing_user",
+            encrypted_password="existing_encrypted",
+            client_id="old-client",
+            encrypted_client_secret="existing-openapi-cipher",
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        env = _clean_env()
+        env.update(
+            {
+                "CP_OMADA_CLIENT_ID": "new-client",
+                "CP_OMADA_OPENAPI_MODE": "legacy",
+            }
+        )
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
+            await migrate_yaml_to_db(settings, db_session, key_path=key_path)
+
+        omada = db_session.get(OmadaConfig, 1)
+        assert omada is not None
+        assert omada.client_id == "old-client"
+        assert omada.encrypted_client_secret == "existing-openapi-cipher"
+        assert omada.openapi_mode == "auto"
+
+    @pytest.mark.asyncio
+    async def test_existing_legacy_config_does_not_accept_openapi_env(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Existing UI-managed legacy config is not mutated by OpenAPI env values."""
+        existing = OmadaConfig(
+            id=1,
+            controller_url="https://existing.omada:8043",
+            username="existing_user",
+            encrypted_password="existing_encrypted",
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        env = _clean_env()
+        env.update(
+            {
+                "CP_OMADA_CLIENT_ID": "yaml-client",
+                "CP_OMADA_OPENAPI_MODE": "openapi",
+            }
+        )
+        with patch.dict(os.environ, env, clear=True):
+            result = await migrate_yaml_to_db(
+                AppSettings(),
+                db_session,
+                key_path="unused-existing-legacy.key",
+            )
+
+        assert result.omada_migrated is False
+        omada = db_session.get(OmadaConfig, 1)
+        assert omada is not None
+        assert omada.client_id == ""
+        assert omada.openapi_mode == "auto"
+
+    @pytest.mark.asyncio
+    async def test_openapi_only_config_skips_default_migration(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Existing OpenAPI-only DB config is not reset by default migration values."""
+        existing = OmadaConfig(
+            id=1,
+            controller_url="https://existing.omada:8043",
+            client_id="existing-client",
+            encrypted_client_secret="existing-openapi-cipher",
+            openapi_mode="openapi",
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        env = _clean_env()
+        with patch.dict(os.environ, env, clear=True):
+            settings = AppSettings()
+            result = await migrate_yaml_to_db(
+                settings,
+                db_session,
+                key_path="unused-openapi-only.key",
+            )
+
+        assert result.omada_migrated is False
+        omada = db_session.get(OmadaConfig, 1)
+        assert omada is not None
+        assert omada.client_id == "existing-client"
+        assert omada.encrypted_client_secret == "existing-openapi-cipher"
+        assert omada.openapi_mode == "openapi"
+
+    @pytest.mark.asyncio
+    async def test_openapi_only_migration_persists_shared_fields(
+        self,
+        db_session: Session,
+        key_path: str,
+    ) -> None:
+        """OpenAPI-only migration stores the shared controller fields."""
+        env = _clean_env()
+        env.update(
+            {
+                "CP_OMADA_CONTROLLER_URL": "https://omada.test:8043",
+                "CP_OMADA_SITE_NAME": "OpenApiSite",
+                "CP_OMADA_CONTROLLER_ID": "aabbccdd1122",
+                "CP_OMADA_VERIFY_SSL": "false",
+                "CP_OMADA_CLIENT_ID": "openapi-client",
+                "CP_OMADA_CLIENT_SECRET": "openapi-secret",
+                "CP_OMADA_OPENAPI_MODE": "openapi",
+            }
+        )
+        with patch.dict(os.environ, env, clear=True):
+            result = await migrate_yaml_to_db(AppSettings(), db_session, key_path=key_path)
+
+        assert result.omada_migrated is True
+        omada = db_session.get(OmadaConfig, 1)
+        assert omada is not None
+        assert omada.controller_url == "https://omada.test:8043"
+        assert omada.site_name == "OpenApiSite"
+        assert omada.controller_id == "aabbccdd1122"
+        assert omada.verify_ssl is False
+        assert omada.openapi_configured is True
+
+    @pytest.mark.asyncio
+    async def test_openapi_secret_migration_is_idempotent(
+        self,
+        db_session: Session,
+        key_path: str,
+    ) -> None:
+        """Unchanged OpenAPI secret plaintext is not re-encrypted each run."""
+        existing_ciphertext = encrypt_credential("openapi-secret", key_path=key_path)
+        existing = OmadaConfig(
+            id=1,
+            controller_url="https://existing.omada:8043",
+            client_id="openapi-client",
+            encrypted_client_secret=existing_ciphertext,
+            openapi_mode="openapi",
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        env = _clean_env()
+        env.update(
+            {
+                "CP_OMADA_CLIENT_ID": "openapi-client",
+                "CP_OMADA_CLIENT_SECRET": "openapi-secret",
+                "CP_OMADA_OPENAPI_MODE": "openapi",
+            }
+        )
+        with patch.dict(os.environ, env, clear=True):
+            result = await migrate_yaml_to_db(AppSettings(), db_session, key_path=key_path)
+
+        assert result.omada_migrated is False
+        omada = db_session.get(OmadaConfig, 1)
+        assert omada is not None
+        assert omada.encrypted_client_secret == existing_ciphertext
 
     @pytest.mark.asyncio
     async def test_idempotent_session_skip(self, db_session: Session, key_path: str) -> None:

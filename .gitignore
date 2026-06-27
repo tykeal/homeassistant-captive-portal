@@ -3,12 +3,27 @@
 # SPDX-License-Identifier: Apache-2.0
 
 __pycache__
+__pycache__/
+*.pyc
 pythonenv*
 .python-version
 .coverage
 coverage.xml
 venv
 .venv
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+*.log
+.env*
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
 
 # Generated files that can be recreated
 addon/coverage.xml

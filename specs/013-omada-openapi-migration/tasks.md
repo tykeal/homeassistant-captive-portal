@@ -48,7 +48,7 @@ user stories and settled plan increments.
 
 **Purpose**: Start the implementation from the merged spec/plan/tasks baseline.
 
-- [ ] T001 Create implementation branch `013-omada-openapi-migration` from
+- [X] T001 Create implementation branch `013-omada-openapi-migration` from
   `main`, confirm `specs/013-omada-openapi-migration/` contains the merged
   spec, plan, research, data model, quickstart, contracts, and this tasks file
 
@@ -66,21 +66,21 @@ complete.
 
 > **Write these tests FIRST; confirm they FAIL before implementing production code**
 
-- [ ] T002 [P] [US1] Write failing Protocol conformance tests in
+- [X] T002 [P] [US1] Write failing Protocol conformance tests in
   `tests/unit/controllers/tp_omada/test_adapter_protocol.py` verifying that
   `OmadaControllerAdapter` exposes async `authorize`, `revoke`, `update`, and
   `get_status` signatures from `contracts/controller-adapter.md`, accepts
   legacy gateway/EAP parameters, and is satisfied by fake legacy and OpenAPI
   adapters (RED 🔴)
 
-- [ ] T003 [P] [US3] Write failing model tests in
+- [X] T003 [P] [US3] Write failing model tests in
   `tests/unit/models/test_omada_config_model.py` for `OmadaConfig.client_id`,
   `OmadaConfig.encrypted_client_secret`, `OmadaConfig.openapi_mode` defaulting
   to `"auto"`, legacy/openapi credential completeness predicates, partial
   OpenAPI credential detection, and rejection of invalid `openapi_mode` values
   (RED 🔴)
 
-- [ ] T004 [P] [US3] Write failing migration tests in
+- [X] T004 [P] [US3] Write failing migration tests in
   `tests/unit/persistence/test_migrate_omada_openapi_fields.py` and
   `tests/unit/services/test_config_migration.py` verifying `init_db()` adds
   `client_id`, `encrypted_client_secret`, and `openapi_mode` to existing
@@ -90,12 +90,12 @@ complete.
   ciphertext when the secret is unchanged, and requires no operator action for
   legacy-only upgrades (RED 🔴)
 
-- [ ] T005 [P] [US3] Write failing credential tests in
+- [X] T005 [P] [US3] Write failing credential tests in
   `tests/unit/security/test_credential_encryption.py` verifying
   `client_secret` encryption/decryption uses the existing Fernet helpers,
   rejects empty plaintext/ciphertext, and never logs plaintext secrets (RED 🔴)
 
-- [ ] T006 [P] [US3] Write failing three-tier migration settings tests in
+- [X] T006 [P] [US3] Write failing three-tier migration settings tests in
   `tests/unit/config/test_settings_omada_openapi_fields.py` verifying
   `_load_for_migration()` resolves `omada_client_id`, `omada_client_secret`,
   and `omada_openapi_mode` by addon option → `CP_OMADA_*` environment variable
@@ -104,37 +104,37 @@ complete.
 
 ### Implementation for Foundational (GREEN) 🟢
 
-- [ ] T007 [US1] Create
+- [X] T007 [US1] Create
   `addon/src/captive_portal/controllers/tp_omada/adapter_protocol.py` with the
   `OmadaControllerAdapter` Protocol from `contracts/controller-adapter.md`, full
   type annotations, docstrings, and SPDX header (GREEN 🟢 — T002 passes)
 
-- [ ] T008 [US3] Extend
+- [X] T008 [US3] Extend
   `addon/src/captive_portal/models/omada_config.py` with `client_id`,
   `encrypted_client_secret`, `openapi_mode`, legacy/openapi completeness
   properties, partial OpenAPI credential helpers, and assignment validation for
   supported modes `auto`, `openapi`, and `legacy` (GREEN 🟢 — T003 passes)
 
-- [ ] T009 [US3] Add `_migrate_omada_openapi_fields()` to
+- [X] T009 [US3] Add `_migrate_omada_openapi_fields()` to
   `addon/src/captive_portal/persistence/database.py` and call it from
   `init_db()` so existing databases gain `client_id`,
   `encrypted_client_secret`, and `openapi_mode` without losing legacy settings
   (GREEN 🟢 — T004 passes)
 
-- [ ] T010 [US3] Extend OpenAPI credential handling in
+- [X] T010 [US3] Extend OpenAPI credential handling in
   `addon/src/captive_portal/services/config_migration.py` to encrypt
   `omada_client_secret`, preserve existing `encrypted_client_secret` when the
   DB already has a value, and keep legacy-only upgrades on the legacy backend
   (GREEN 🟢 — T004 and T005 pass)
 
-- [ ] T011 [US3] Extend migration-only maps, defaults, validators, coercion, and
+- [X] T011 [US3] Extend migration-only maps, defaults, validators, coercion, and
   secret-safe logging in `addon/src/captive_portal/config/settings.py` for
   `omada_client_id`, `omada_client_secret`, and `omada_openapi_mode`; extend
   `addon/config.yaml` schema with optional `omada_client_id`,
   `omada_client_secret`, and `omada_openapi_mode` entries (GREEN 🟢 — T006
   passes)
 
-- [ ] T012 [US3] Verify s6 service scripts
+- [X] T012 [US3] Verify s6 service scripts
   `addon/rootfs/etc/s6-overlay/s6-rc.d/captive-portal/run` and
   `addon/rootfs/etc/s6-overlay/s6-rc.d/captive-portal-guest/run` continue to
   treat Omada settings as DB/UI-managed and do not export
@@ -163,34 +163,34 @@ mapping without a live controller.
 
 > **Write these tests FIRST; confirm they FAIL before implementing production code**
 
-- [ ] T013 [P] [US1] Write failing token tests in
+- [X] T013 [P] [US1] Write failing token tests in
   `tests/unit/controllers/tp_omada/test_openapi_client_token.py` for
   `client_credentials` token acquisition, `refresh_token` renewal with a
   300-second margin, `Authorization: AccessToken=<token>` header generation,
   SSL verification propagation, bounded timeouts, and secret/token redaction in
   exceptions and logs (RED 🔴)
 
-- [ ] T014 [P] [US1] Write failing controller ID and site cache tests in
+- [X] T014 [P] [US1] Write failing controller ID and site cache tests in
   `tests/unit/controllers/tp_omada/test_openapi_site_cache.py` for `/api/info`
   discovery when `controller_id` is empty, paginated
   `GET /openapi/v1/{omadacId}/sites`, matching `name == site_name`, accepting
   `siteId` or `id`, caching the selected site ID for the add-on run, and using
   `asyncio.Lock` for single-flight discovery (RED 🔴)
 
-- [ ] T015 [P] [US1] Write failing MAC formatting tests in
+- [X] T015 [P] [US1] Write failing MAC formatting tests in
   `tests/unit/controllers/tp_omada/test_openapi_mac_formatting.py` for
   colon-separated, lowercase, uppercase, and dash-separated valid MACs mapping
   to `AA-BB-CC-DD-EE-FF`, and invalid MACs raising `OmadaClientError` before an
   HTTP call (RED 🔴)
 
-- [ ] T016 [P] [US1] Write failing authorize contract tests in
+- [X] T016 [P] [US1] Write failing authorize contract tests in
   `tests/contract/tp_omada/test_openapi_authorize_flow.py` verifying
   `POST /openapi/v1/{omadacId}/sites/{siteId}/hotspot/clients/{mac}/auth` sends
   no required duration body, returns `{"grant_id": mac, "status": "active"}`,
   ignores legacy gateway/EAP parameters, retries 429/5xx, and maps
   `errorCode != 0` to an Omada-compatible error without secrets (RED 🔴)
 
-- [ ] T017 [P] [US1] Write failing unauth/status contract tests in
+- [X] T017 [P] [US1] Write failing unauth/status contract tests in
   `tests/contract/tp_omada/test_openapi_revoke_status_flow.py` verifying
   `POST .../unauth` for admin revoke, early revoke, and expiry
   deauthorization; idempotent already-unauthorized responses; paginated
@@ -200,21 +200,21 @@ mapping without a live controller.
 
 ### Implementation for User Story 1 (GREEN) 🟢
 
-- [ ] T018 [US1] Create
+- [X] T018 [US1] Create
   `addon/src/captive_portal/controllers/tp_omada/openapi_client.py` implementing
   OpenAPI token acquisition, proactive refresh, `AccessToken=` headers,
   controller ID discovery, shared token state guarded by `asyncio.Lock`, retry
   behavior compatible with `OmadaClientError`/`OmadaRetryExhaustedError`, and
   secret-safe logging (GREEN 🟢 — T013 passes)
 
-- [ ] T019 [US1] Create
+- [X] T019 [US1] Create
   `addon/src/captive_portal/controllers/tp_omada/openapi_adapter.py` implementing
   `OmadaControllerAdapter` with site discovery/cache, MAC normalization, timer-
   only `authorize`, `unauth`-based `revoke`, `update` without undocumented
   duration fields, and authed-records `get_status` mapping (GREEN 🟢 — T014,
   T015, T016, T017 pass)
 
-- [ ] T020 [US1] Update `tests/contract/tp_omada/test_authorize_flow.py`,
+- [X] T020 [US1] Update `tests/contract/tp_omada/test_authorize_flow.py`,
   `tests/contract/tp_omada/test_revoke_flow.py`, and
   `tests/contract/tp_omada/test_adapter_error_retry.py` only as needed to keep
   existing legacy contract coverage green while adding OpenAPI contract coverage
@@ -239,14 +239,14 @@ stays fixed for the app run.
 
 > **Write these tests FIRST; confirm they FAIL before implementing production code**
 
-- [ ] T021 [P] [US2] Write failing legacy extraction tests in
+- [X] T021 [P] [US2] Write failing legacy extraction tests in
   `tests/unit/controllers/tp_omada/test_legacy_adapter_extraction.py` verifying
   current `OmadaAdapter`/`OmadaClient` behavior is preserved by
   `OmadaLegacyAdapter` and `OmadaLegacyClient`, including legacy auth payloads,
   Gateway/EAP parameters, retry behavior, status mapping, and compatibility
   imports from `adapter.py` and `base_client.py` (RED 🔴)
 
-- [ ] T022 [P] [US2] Write failing factory selection tests in
+- [X] T022 [P] [US2] Write failing factory selection tests in
   `tests/unit/controllers/tp_omada/test_adapter_factory_selection.py` covering
   the plan table for `auto` mode: complete OpenAPI credentials + successful
   token probe selects OpenAPI; absent/partial OpenAPI credentials with complete
@@ -254,27 +254,27 @@ stays fixed for the app run.
   complete legacy selects legacy and logs an actionable warning; no usable
   backend raises a clear configuration error (RED 🔴)
 
-- [ ] T023 [P] [US2] Write failing dependency tests in
+- [X] T023 [P] [US2] Write failing dependency tests in
   `tests/unit/controllers/tp_omada/test_omada_dependencies.py` verifying
   `get_omada_adapter()` reads selected runtime backend from `request.app.state`,
   returns a fresh `OmadaLegacyAdapter` or `OmadaOpenApiAdapter` per request,
   shares only explicit OpenAPI token/site cache state, and returns `None` when
   no backend is configured (RED 🔴)
 
-- [ ] T024 [P] [US2] Write failing admin/guest lifespan tests in
+- [X] T024 [P] [US2] Write failing admin/guest lifespan tests in
   `tests/unit/test_app_lifespan_omada.py` and
   `tests/unit/test_guest_app_lifespan_omada.py` verifying startup calls the
   selection factory once, stores immutable backend selection/runtime config on
   `app.state`, logs selected backend and secret-safe reason, and avoids
   constructing shared legacy client instances (RED 🔴)
 
-- [ ] T025 [P] [US2] Write failing integration tests in
+- [X] T025 [P] [US2] Write failing integration tests in
   `tests/integration/test_omada_legacy_fallback.py` verifying an upgraded
   legacy-only configuration selects legacy automatically, guest authorization,
   admin revocation, status, and existing contract tests preserve pre-migration
   behavior, and OpenAPI credential absence requires no operator action (RED 🔴)
 
-- [ ] T026 [P] [US1] Write failing grant-expiry timer tests in
+- [X] T026 [P] [US1] Write failing grant-expiry timer tests in
   `tests/unit/services/test_grant_expiry_service.py` and lifespan wiring tests
   in `tests/unit/test_app_lifespan_omada.py` verifying ACTIVE grants whose
   `end_utc` has passed are processed by a scheduled expiry worker, call the
@@ -285,19 +285,19 @@ stays fixed for the app run.
 
 ### Implementation for User Story 2 (GREEN) 🟢
 
-- [ ] T027 [US2] Extract current legacy behavior into
+- [X] T027 [US2] Extract current legacy behavior into
   `addon/src/captive_portal/controllers/tp_omada/legacy_client.py` and
   `addon/src/captive_portal/controllers/tp_omada/legacy_adapter.py`; leave
   `adapter.py` and `base_client.py` as compatibility imports or wrappers so
   existing imports and tests continue to pass (GREEN 🟢 — T021 passes)
 
-- [ ] T028 [US2] Create
+- [X] T028 [US2] Create
   `addon/src/captive_portal/controllers/tp_omada/adapter_factory.py` with the
   startup capability probe and backend selection rules from `plan.md`, using an
   OpenAPI token probe for capability detection and secret-safe warnings/errors
   for fallback or no-usable-backend outcomes (GREEN 🟢 — T022 passes)
 
-- [ ] T029 [US2] Update
+- [X] T029 [US2] Update
   `addon/src/captive_portal/controllers/tp_omada/dependencies.py` to return the
   selected `OmadaControllerAdapter` implementation from `app.state` runtime
   config, creating fresh request-scoped legacy clients and guarded OpenAPI
@@ -306,13 +306,13 @@ stays fixed for the app run.
   route handlers mutating backend-specific adapter attributes (GREEN 🟢 — T023
   passes)
 
-- [ ] T030 [US2] Update `addon/src/captive_portal/app.py` and
+- [X] T030 [US2] Update `addon/src/captive_portal/app.py` and
   `addon/src/captive_portal/guest_app.py` to load `OmadaConfig`, call the
   adapter factory at startup, store selected backend runtime config on
   `app.state`, and log `Omada backend selected: openapi|legacy` with no
   secrets or tokens (GREEN 🟢 — T024 passes)
 
-- [ ] T031 [US2] Update `addon/src/captive_portal/api/routes/guest_portal.py`,
+- [X] T031 [US2] Update `addon/src/captive_portal/api/routes/guest_portal.py`,
   `addon/src/captive_portal/api/routes/grants.py`, and
   `addon/src/captive_portal/api/routes/grants_ui.py` type hints/imports to
   depend on `OmadaControllerAdapter` instead of concrete `OmadaAdapter`;
@@ -325,7 +325,7 @@ stays fixed for the app run.
   success/error redirects, admin API partial-failure semantics, and
   admin UI revoke behavior (GREEN 🟢 — T025 supports flow parity)
 
-- [ ] T032 [US1] Create or extend
+- [X] T032 [US1] Create or extend
   `addon/src/captive_portal/services/grant_expiry_service.py` to run a bounded
   periodic expiry worker that selects due ACTIVE grants, calls the selected
   adapter's `revoke`/OpenAPI `unauth`, marks grants `EXPIRED`, records
@@ -353,21 +353,21 @@ startup/configuration failure for every supported mode.
 
 > **Write these tests FIRST; confirm they FAIL before implementing production code**
 
-- [ ] T033 [P] [US3] Write failing forced-mode factory tests in
+- [X] T033 [P] [US3] Write failing forced-mode factory tests in
   `tests/unit/controllers/tp_omada/test_adapter_factory_modes.py` verifying
   `openapi_mode='legacy'` skips OpenAPI probe even with credentials,
   `openapi_mode='openapi'` requires complete OpenAPI credentials and a
   successful probe, forced OpenAPI never falls back to legacy, and invalid mode
   values produce actionable supported-value messages (RED 🔴)
 
-- [ ] T034 [P] [US3] Write failing Omada settings route tests in
+- [X] T034 [P] [US3] Write failing Omada settings route tests in
   `tests/unit/routes/test_omada_settings_openapi.py` verifying
   `update_omada_settings()` accepts `client_id`, `client_secret`,
   `client_secret_changed`, and `openapi_mode`; encrypts the client secret;
   preserves existing ciphertext when unchanged; validates supported modes; and
   excludes secrets from audit metadata, redirects, and log messages (RED 🔴)
 
-- [ ] T035 [P] [US3] Write failing Omada settings UI integration tests in
+- [X] T035 [P] [US3] Write failing Omada settings UI integration tests in
   `tests/integration/test_omada_settings_ui.py` for rendering the OpenAPI
   Client ID, Client Secret, and Backend Mode controls in
   `addon/src/captive_portal/web/templates/admin/omada_settings.html`, showing
@@ -375,7 +375,7 @@ startup/configuration failure for every supported mode.
   restart for the separate guest listener, and submitting values through
   `admin-omada-settings.js` without exposing secret values (RED 🔴)
 
-- [ ] T036 [P] [US3] Write failing end-to-end backend selection tests in
+- [X] T036 [P] [US3] Write failing end-to-end backend selection tests in
   `tests/integration/test_omada_openapi_backend_selection.py` and
   `tests/integration/test_omada_forced_modes.py` covering automatic OpenAPI
   selection, automatic fallback warning, forced legacy selection, forced OpenAPI
@@ -383,7 +383,7 @@ startup/configuration failure for every supported mode.
   fixed after mid-session token refresh failure, and the documented behavior for
   guest-listener backend refresh after admin settings changes (RED 🔴)
 
-- [ ] T037 [P] [US3] Extend failing secret-safety tests in
+- [X] T037 [P] [US3] Extend failing secret-safety tests in
   `tests/integration/test_omada_password_masking.py` verifying legacy passwords,
   OpenAPI client secrets, access tokens, and refresh tokens appear in zero
   startup logs, probe logs, validation messages, audit records, and admin UI
@@ -391,13 +391,13 @@ startup/configuration failure for every supported mode.
 
 ### Implementation for User Story 3 (GREEN) 🟢
 
-- [ ] T038 [US3] Extend
+- [X] T038 [US3] Extend
   `addon/src/captive_portal/controllers/tp_omada/adapter_factory.py` for forced
   `legacy` and forced `openapi` behavior, invalid-mode validation, clear
   no-fallback errors, partial-credential warnings, and fixed-backend semantics
   after token/site/operation failures (GREEN 🟢 — T033 passes)
 
-- [ ] T039 [US3] Update
+- [X] T039 [US3] Update
   `addon/src/captive_portal/api/routes/omada_settings_ui.py` to load, validate,
   save, and audit `client_id`, encrypted `client_secret`, and `openapi_mode`;
   rebuild selected backend runtime config on save for the admin process; clearly
@@ -405,7 +405,7 @@ startup/configuration failure for every supported mode.
   backend changes; and report connection/probe failures with actionable,
   secret-safe messages (GREEN 🟢 — T034 passes)
 
-- [ ] T040 [US3] Update
+- [X] T040 [US3] Update
   `addon/src/captive_portal/web/templates/admin/omada_settings.html` and
   `addon/src/captive_portal/web/themes/default/admin-omada-settings.js` with
   OpenAPI credential fields, a backend mode selector (`auto`, `openapi`,
@@ -413,13 +413,13 @@ startup/configuration failure for every supported mode.
   backend settings change, and masked secret-change handling matching the
   existing password pattern (GREEN 🟢 — T035 passes)
 
-- [ ] T041 [US3] Update `addon/src/captive_portal/config/omada_config.py` so
+- [X] T041 [US3] Update `addon/src/captive_portal/config/omada_config.py` so
   `build_omada_config()` decrypts both legacy password and OpenAPI client
   secret as needed, builds backend-aware runtime selection input, validates mode
   and controller ID consistently, and never requires legacy username/password in
   forced OpenAPI mode (GREEN 🟢 — T036 passes)
 
-- [ ] T042 [US3] Add OpenAPI mode and credential behavior to admin and audit
+- [X] T042 [US3] Add OpenAPI mode and credential behavior to admin and audit
   integration coverage in `tests/integration/test_omada_config_lifecycle.py`,
   `tests/integration/test_omada_graceful_degradation.py`, and
   `tests/integration/test_omada_password_masking.py` so existing configuration
@@ -435,7 +435,7 @@ all three user stories are independently testable.
 **Purpose**: Documentation, compliance, quality gates, and task-list maintenance
 conventions.
 
-- [ ] T043 [P] Update operator documentation in `addon/README.md`,
+- [X] T043 [P] Update operator documentation in `addon/README.md`,
   `docs/addon/config.md`, `docs/addon/configuration.md`, and
   `docs/tp_omada_setup.md` to explain OpenAPI app setup, `client_id`,
   `client_secret`, `openapi_mode`, automatic legacy fallback, forced modes,
@@ -443,16 +443,16 @@ conventions.
   separate guest listener, and timer-only duration guidance for the Omada
   hotspot portal profile
 
-- [ ] T044 [P] Update `specs/013-omada-openapi-migration/quickstart.md` if
+- [X] T044 [P] Update `specs/013-omada-openapi-migration/quickstart.md` if
   implementation details changed during TDD, preserving the settled timer-only
   duration policy and developer verification commands using `uv`
 
-- [ ] T045 [P] Verify REUSE compliance for all new files under
+- [X] T045 [P] Verify REUSE compliance for all new files under
   `addon/src/captive_portal/controllers/tp_omada/`, `tests/unit/`,
   `tests/contract/tp_omada/`, and `tests/integration/`; ensure SPDX headers are
   present and run `uv run reuse lint`
 
-- [ ] T046 [P] Run targeted tests for the OpenAPI migration:
+- [X] T046 [P] Run targeted tests for the OpenAPI migration:
 
   ```bash
   uv run pytest \
@@ -476,18 +476,18 @@ conventions.
     -v
   ```
 
-- [ ] T047 [P] Run code quality gates: `uv run ruff check addon/src/ tests/`,
+- [X] T047 [P] Run code quality gates: `uv run ruff check addon/src/ tests/`,
   `uv run mypy addon/src/captive_portal`,
   `uv run interrogate addon/src/captive_portal/`, and
   `uv run pre-commit run --all-files`; fix all issues including docstring
   coverage, C901 complexity regressions, YAML lint, shell/script lint, and docs
   compliance
 
-- [ ] T048 Run full regression suite `uv run pytest tests/ -v` and confirm no
+- [X] T048 Run full regression suite `uv run pytest tests/ -v` and confirm no
   legacy behavior regressions, no skipped Omada contract tests, and CI-equivalent
   success before opening the implementation PR
 
-- [ ] T049 Run quickstart and performance validation from
+- [X] T049 Run quickstart and performance validation from
   `specs/013-omada-openapi-migration/quickstart.md`, including backend-mode
   scenarios, duration guidance, and SC-006/SC-007 timing checks; run existing
   performance tests such as `uv run pytest tests/performance/test_redeem_latency.py -v`
@@ -495,7 +495,7 @@ conventions.
   checks in the implementation PR body rather than marking automated tests
   complete
 
-- [ ] T050 In the implementation PR only, mark completed checkboxes in this
+- [X] T050 In the implementation PR only, mark completed checkboxes in this
   `specs/013-omada-openapi-migration/tasks.md` file as a separate documentation
   commit after the functional code commits; do not combine code changes with
   task-completion checkbox updates

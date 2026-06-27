@@ -20,7 +20,7 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, col, select
 
 from captive_portal._version import __version__
-from captive_portal.controllers.tp_omada.adapter import OmadaAdapter
+from captive_portal.controllers.tp_omada.adapter_protocol import OmadaControllerAdapter
 from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.persistence.database import get_session
@@ -220,7 +220,7 @@ async def revoke_grant(
     session: Annotated[Session, Depends(get_session)],
     admin_id: Annotated[UUID, Depends(require_admin)],
     csrf: Annotated[CSRFProtection, Depends(get_csrf_protection)],
-    omada_adapter: Annotated[OmadaAdapter | None, Depends(get_omada_adapter)],
+    omada_adapter: Annotated[OmadaControllerAdapter | None, Depends(get_omada_adapter)],
 ) -> RedirectResponse:
     """Revoke a grant (idempotent for already-revoked grants).
 

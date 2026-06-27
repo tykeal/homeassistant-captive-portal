@@ -202,6 +202,9 @@ _MIGRATION_ADDON_MAP: dict[str, str] = {
     "omada_site_name": "omada_site_name",
     "omada_controller_id": "omada_controller_id",
     "omada_verify_ssl": "omada_verify_ssl",
+    "omada_client_id": "omada_client_id",
+    "omada_client_secret": "omada_client_secret",
+    "omada_openapi_mode": "omada_openapi_mode",
 }
 
 _MIGRATION_ENV_MAP: dict[str, str] = {
@@ -214,6 +217,9 @@ _MIGRATION_ENV_MAP: dict[str, str] = {
     "CP_OMADA_SITE_NAME": "omada_site_name",
     "CP_OMADA_CONTROLLER_ID": "omada_controller_id",
     "CP_OMADA_VERIFY_SSL": "omada_verify_ssl",
+    "CP_OMADA_CLIENT_ID": "omada_client_id",
+    "CP_OMADA_CLIENT_SECRET": "omada_client_secret",
+    "CP_OMADA_OPENAPI_MODE": "omada_openapi_mode",
 }
 
 _MIGRATION_DEFAULTS: dict[str, Any] = {
@@ -226,6 +232,9 @@ _MIGRATION_DEFAULTS: dict[str, Any] = {
     "omada_site_name": "Default",
     "omada_controller_id": "",
     "omada_verify_ssl": True,
+    "omada_client_id": "",
+    "omada_client_secret": "",
+    "omada_openapi_mode": "auto",
 }
 
 
@@ -306,6 +315,11 @@ _MIGRATION_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "omada_controller_id": _validate_non_empty_str,
     "omada_site_name": _validate_non_empty_str,
     "omada_verify_ssl": _validate_bool_like,
+    "omada_client_id": _validate_non_empty_str,
+    "omada_client_secret": _validate_non_empty_str,
+    "omada_openapi_mode": lambda v: (
+        isinstance(v, str) and v.strip().lower() in ("auto", "openapi", "legacy")
+    ),
 }
 
 # Omada optional string fields: empty string means "unset", not invalid
@@ -315,6 +329,8 @@ _OMADA_OPTIONAL_STR_FIELDS: frozenset[str] = frozenset(
         "omada_password",
         "omada_controller_id",
         "omada_site_name",
+        "omada_client_id",
+        "omada_client_secret",
     }
 )
 
@@ -339,8 +355,12 @@ def _coerce_migration_field(field: str, value: Any) -> Any:
         "omada_password",
         "omada_site_name",
         "omada_controller_id",
+        "omada_client_id",
+        "omada_client_secret",
     ):
         return str(value).strip()
+    if field == "omada_openapi_mode":
+        return str(value).strip().lower()
     if field == "omada_verify_ssl":
         if isinstance(value, bool):
             return value
