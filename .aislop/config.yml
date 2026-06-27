@@ -5,7 +5,7 @@
 
 version: 1
 
-# aislop 0.10.x supports precise false-positive handling via inline
+# aislop supports precise false-positive handling via inline
 # `aislop-ignore-*` directives in source. Keep project-local config here.
 
 ci:
