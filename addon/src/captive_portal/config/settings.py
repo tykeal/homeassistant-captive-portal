@@ -25,6 +25,19 @@ from typing import Any, Callable
 
 from pydantic import BaseModel
 
+from captive_portal.config.settings_migration import (
+    MIGRATION_ADDON_MAP,
+    MIGRATION_DEFAULTS,
+    MIGRATION_ENV_MAP,
+    MIGRATION_VALIDATORS,
+    OMADA_OPTIONAL_STR_FIELDS,
+    coerce_migration_field,
+)
+from captive_portal.config.settings_validators import (
+    validate_bool_like,
+    validate_non_empty_str,
+)
+
 logger = logging.getLogger("captive_portal.config")
 
 _VALID_LOG_LEVELS = frozenset({"trace", "debug", "info", "notice", "warning", "error", "fatal"})
@@ -82,40 +95,12 @@ def _validate_ha_url(value: Any) -> bool:
     return parts.scheme in ("http", "https") and bool(parts.netloc)
 
 
-def _validate_bool_like(value: Any) -> bool:
-    """Check if *value* is a valid boolean or bool-like string.
-
-    Args:
-        value: Candidate value.
-
-    Returns:
-        True if the value can be coerced to a boolean.
-    """
-    if isinstance(value, bool):
-        return True
-    if isinstance(value, str):
-        return value.lower() in ("true", "false", "1", "0")
-    return False
-
-
-def _validate_non_empty_str(value: Any) -> bool:
-    """Check if *value* is a non-empty stripped string.
-
-    Args:
-        value: Candidate value.
-
-    Returns:
-        True if the value is a non-empty string after stripping.
-    """
-    return isinstance(value, str) and len(value.strip()) > 0
-
-
 _FIELD_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "log_level": lambda v: isinstance(v, str) and v.lower() in _VALID_LOG_LEVELS,
     "db_path": lambda v: isinstance(v, str) and len(v) > 0,
     "ha_base_url": _validate_ha_url,
-    "ha_token": _validate_non_empty_str,
-    "debug_guest_portal": _validate_bool_like,
+    "ha_token": validate_non_empty_str,
+    "debug_guest_portal": validate_bool_like,
 }
 
 
@@ -135,6 +120,52 @@ def _validate_field(field: str, value: Any) -> bool:
     return validator(value)
 
 
+def _coerce_bool_field(value: Any) -> bool:
+    """Coerce a bool-like setting value to ``bool``.
+
+    Args:
+        value: Validated bool-like input.
+
+    Returns:
+        Boolean value.
+    """
+    if isinstance(value, bool):
+        return value
+    return str(value).lower() in ("true", "1")
+
+
+def _coerce_lower_string(value: Any) -> str:
+    """Coerce a setting value to a lower-case string.
+
+    Args:
+        value: Validated input.
+
+    Returns:
+        Lower-case string value.
+    """
+    return str(value).lower()
+
+
+def _coerce_stripped_string(value: Any) -> str:
+    """Coerce a setting value to a stripped string.
+
+    Args:
+        value: Validated input.
+
+    Returns:
+        Stripped string value.
+    """
+    return str(value).strip()
+
+
+_FIELD_COERCERS: dict[str, Callable[[Any], Any]] = {
+    "log_level": _coerce_lower_string,
+    "ha_base_url": _coerce_stripped_string,
+    "ha_token": _coerce_stripped_string,
+    "debug_guest_portal": _coerce_bool_field,
+}
+
+
 def _coerce_field(field: str, value: Any) -> Any:
     """Coerce a raw value to the correct Python type for a field.
 
@@ -145,18 +176,8 @@ def _coerce_field(field: str, value: Any) -> Any:
     Returns:
         Coerced value suitable for the AppSettings constructor.
     """
-    if field == "log_level":
-        return str(value).lower()
-    if field == "ha_base_url":
-        return str(value).strip()
-    if field == "ha_token":
-        return str(value).strip()
-    if field == "debug_guest_portal":
-        if isinstance(value, bool):
-            return value
-        s = str(value).lower()
-        return s in ("true", "1")
-    return value
+    coercer = _FIELD_COERCERS.get(field)
+    return value if coercer is None else coercer(value)
 
 
 def _try_addon_option(field_name: str, addon_key: str, raw: Any) -> tuple[bool, Any]:
@@ -183,172 +204,6 @@ def _try_addon_option(field_name: str, addon_key: str, raw: Any) -> tuple[bool, 
         raw,
     )
     return False, None
-
-
-_MIGRATION_ADDON_MAP: dict[str, str] = {
-    "session_idle_timeout": "session_idle_minutes",
-    "session_max_duration": "session_max_hours",
-    "guest_external_url": "guest_external_url",
-    "omada_controller_url": "omada_controller_url",
-    "omada_username": "omada_username",
-    "omada_password": "omada_password",
-    "omada_site_name": "omada_site_name",
-    "omada_controller_id": "omada_controller_id",
-    "omada_verify_ssl": "omada_verify_ssl",
-    "omada_client_id": "omada_client_id",
-    "omada_client_secret": "omada_client_secret",
-    "omada_openapi_mode": "omada_openapi_mode",
-}
-
-_MIGRATION_ENV_MAP: dict[str, str] = {
-    "CP_SESSION_IDLE_TIMEOUT": "session_idle_minutes",
-    "CP_SESSION_MAX_DURATION": "session_max_hours",
-    "CP_GUEST_EXTERNAL_URL": "guest_external_url",
-    "CP_OMADA_CONTROLLER_URL": "omada_controller_url",
-    "CP_OMADA_USERNAME": "omada_username",
-    "CP_OMADA_PASSWORD": "omada_password",
-    "CP_OMADA_SITE_NAME": "omada_site_name",
-    "CP_OMADA_CONTROLLER_ID": "omada_controller_id",
-    "CP_OMADA_VERIFY_SSL": "omada_verify_ssl",
-    "CP_OMADA_CLIENT_ID": "omada_client_id",
-    "CP_OMADA_CLIENT_SECRET": "omada_client_secret",
-    "CP_OMADA_OPENAPI_MODE": "omada_openapi_mode",
-}
-
-_MIGRATION_DEFAULTS: dict[str, Any] = {
-    "session_idle_minutes": 30,
-    "session_max_hours": 8,
-    "guest_external_url": "",
-    "omada_controller_url": "",
-    "omada_username": "",
-    "omada_password": "",
-    "omada_site_name": "Default",
-    "omada_controller_id": "",
-    "omada_verify_ssl": True,
-    "omada_client_id": "",
-    "omada_client_secret": "",
-    "omada_openapi_mode": "auto",
-}
-
-
-def _validate_positive_int(value: Any) -> bool:
-    """Check if *value* is a positive integer (or string representation).
-
-    Args:
-        value: Candidate value.
-
-    Returns:
-        True if the value is a positive integer.
-    """
-    if type(value) is int:
-        return value >= 1
-    if isinstance(value, str) and value.isdigit():
-        return int(value) >= 1
-    return False
-
-
-def _validate_guest_url(value: Any) -> bool:
-    """Check if *value* is a valid guest external URL or empty string.
-
-    Args:
-        value: Candidate value.
-
-    Returns:
-        True if the value is a valid guest external URL.
-    """
-    if not isinstance(value, str):
-        return False
-    stripped = value.strip()
-    if stripped == "":
-        return True
-
-    from captive_portal.services.redirect_validator import GuestExternalUrlValidator
-
-    return GuestExternalUrlValidator.validate(stripped).valid
-
-
-def _validate_omada_url(value: Any) -> bool:
-    """Check if *value* is a valid Omada controller URL or empty string.
-
-    Args:
-        value: Candidate value.
-
-    Returns:
-        True if the value is a valid URL (http/https) or empty string.
-    """
-    if not isinstance(value, str):
-        return False
-    stripped = value.strip()
-    if stripped == "":
-        return True
-    from urllib.parse import urlsplit
-
-    parts = urlsplit(stripped)
-    return parts.scheme in ("http", "https") and bool(parts.netloc)
-
-
-_MIGRATION_VALIDATORS: dict[str, Callable[[Any], bool]] = {
-    "session_idle_minutes": _validate_positive_int,
-    "session_max_hours": _validate_positive_int,
-    "guest_external_url": _validate_guest_url,
-    "omada_controller_url": _validate_omada_url,
-    "omada_username": _validate_non_empty_str,
-    "omada_password": _validate_non_empty_str,
-    "omada_controller_id": _validate_non_empty_str,
-    "omada_site_name": _validate_non_empty_str,
-    "omada_verify_ssl": _validate_bool_like,
-    "omada_client_id": _validate_non_empty_str,
-    "omada_client_secret": _validate_non_empty_str,
-    "omada_openapi_mode": lambda v: (
-        isinstance(v, str) and v.strip().lower() in ("auto", "openapi", "legacy")
-    ),
-}
-
-# Omada optional string fields: empty string means "unset", not invalid
-_OMADA_OPTIONAL_STR_FIELDS: frozenset[str] = frozenset(
-    {
-        "omada_username",
-        "omada_password",
-        "omada_controller_id",
-        "omada_site_name",
-        "omada_client_id",
-        "omada_client_secret",
-    }
-)
-
-
-def _coerce_migration_field(field: str, value: Any) -> Any:
-    """Coerce a raw migration value to the correct Python type.
-
-    Args:
-        field: Migration field name.
-        value: Raw value (already validated).
-
-    Returns:
-        Coerced value.
-    """
-    if field in ("session_idle_minutes", "session_max_hours"):
-        return int(value)
-    if field == "guest_external_url":
-        return str(value).strip()
-    if field in (
-        "omada_controller_url",
-        "omada_username",
-        "omada_password",
-        "omada_site_name",
-        "omada_controller_id",
-        "omada_client_id",
-        "omada_client_secret",
-    ):
-        return str(value).strip()
-    if field == "omada_openapi_mode":
-        return str(value).strip().lower()
-    if field == "omada_verify_ssl":
-        if isinstance(value, bool):
-            return value
-        s = str(value).lower()
-        return s in ("true", "1")
-    return value
 
 
 class AppSettings(BaseModel):
@@ -451,33 +306,33 @@ class AppSettings(BaseModel):
         except (FileNotFoundError, json.JSONDecodeError, OSError):
             pass
 
-        rev_addon: dict[str, str] = {v: k for k, v in _MIGRATION_ADDON_MAP.items()}
-        rev_env: dict[str, str] = {v: k for k, v in _MIGRATION_ENV_MAP.items()}
+        rev_addon: dict[str, str] = {v: k for k, v in MIGRATION_ADDON_MAP.items()}
+        rev_env: dict[str, str] = {v: k for k, v in MIGRATION_ENV_MAP.items()}
 
         result: dict[str, Any] = {}
 
-        for field_name, default_val in _MIGRATION_DEFAULTS.items():
-            validator = _MIGRATION_VALIDATORS.get(field_name)
+        for field_name, default_val in MIGRATION_DEFAULTS.items():
+            validator = MIGRATION_VALIDATORS.get(field_name)
 
             addon_key = rev_addon.get(field_name)
             if addon_key and addon_key in addon_options:
                 raw = addon_options[addon_key]
                 # Skip empty optional Omada strings
                 if (
-                    field_name in _OMADA_OPTIONAL_STR_FIELDS
+                    field_name in OMADA_OPTIONAL_STR_FIELDS
                     and isinstance(raw, str)
                     and raw.strip() == ""
                 ):
                     pass
                 elif validator and validator(raw):
-                    result[field_name] = _coerce_migration_field(field_name, raw)
+                    result[field_name] = coerce_migration_field(field_name, raw)
                     continue
 
             env_key = rev_env.get(field_name)
             if env_key:
                 env_val = os.environ.get(env_key)
                 if env_val is not None and validator and validator(env_val):
-                    result[field_name] = _coerce_migration_field(field_name, env_val)
+                    result[field_name] = coerce_migration_field(field_name, env_val)
                     continue
 
             result[field_name] = default_val
