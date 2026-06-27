@@ -131,6 +131,21 @@ async def test_worker_logs_unexpected_errors_and_continues(
 
 
 @pytest.mark.asyncio
+async def test_worker_propagates_cancellation(db_engine: Engine) -> None:
+    """Task cancellation is not logged as a worker iteration failure."""
+    service = GrantExpiryService(engine=db_engine, omada_config=None, interval_seconds=0.01)
+
+    async def process_once() -> int:
+        """Raise cancellation from the worker body."""
+        raise asyncio.CancelledError
+
+    service.process_once = process_once  # type: ignore[method-assign]
+
+    with pytest.raises(asyncio.CancelledError):
+        await service.start()
+
+
+@pytest.mark.asyncio
 async def test_process_once_builds_adapter_once_for_batch(db_engine: Engine) -> None:
     """A batch of due grants reuses one adapter for the iteration."""
     now = datetime.now(timezone.utc)

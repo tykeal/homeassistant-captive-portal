@@ -68,10 +68,14 @@ class GrantExpiryService:
         while not self._stopped.is_set():
             try:
                 await self.process_once()
+            except asyncio.CancelledError:
+                raise
             except Exception:
                 self.logger.exception("Grant expiry worker iteration failed")
             try:
                 await asyncio.wait_for(self._stopped.wait(), timeout=self.interval_seconds)
+            except asyncio.CancelledError:
+                raise
             except TimeoutError:
                 continue
 
