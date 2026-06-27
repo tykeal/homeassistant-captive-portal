@@ -93,6 +93,16 @@ async def test_auto_probe_failure_without_legacy_reports_no_backend(
 
 
 @pytest.mark.asyncio
+async def test_auto_partial_openapi_without_legacy_reports_no_backend() -> None:
+    """Partial OpenAPI credentials without legacy report the real failure."""
+    with pytest.raises(OmadaBackendSelectionError, match="OpenAPI credentials are incomplete"):
+        await select_omada_backend(
+            _input(client_secret="", username="", password=""),
+            logging.getLogger(__name__),
+        )
+
+
+@pytest.mark.asyncio
 async def test_forced_openapi_does_not_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
     """Forced OpenAPI raises on failed probe instead of selecting legacy."""
 

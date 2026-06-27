@@ -156,3 +156,46 @@ async def test_openapi_status_treats_malformed_records_as_absent() -> None:
         "mac": "AA:BB:CC:DD:EE:FF",
         "remaining_seconds": 0,
     }
+
+
+@pytest.mark.contract
+@pytest.mark.asyncio
+async def test_openapi_status_treats_malformed_total_page_as_last_page() -> None:
+    """Malformed authed-record totalPage values stop status pagination."""
+    record_requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Return token, site success, and malformed authed-record paging."""
+        nonlocal record_requests
+        if request.url.path == "/openapi/authorize/token":
+            return httpx.Response(
+                200,
+                json={"errorCode": 0, "result": {"accessToken": "token", "expiresIn": 7200}},
+            )
+        if request.url.path.endswith("/sites"):
+            return httpx.Response(
+                200,
+                json={
+                    "errorCode": 0,
+                    "result": {"data": [{"siteId": "site-1", "name": "Default"}]},
+                },
+            )
+        record_requests += 1
+        return httpx.Response(
+            200,
+            json={"errorCode": 0, "result": {"data": [], "totalPage": ""}},
+        )
+
+    adapter = OmadaOpenApiAdapter(
+        client=OpenApiClient(
+            base_url="https://ctrl.test:8043",
+            controller_id="0123456789ab",
+            client_id="client-id",
+            client_secret="client-secret",
+            transport=httpx.MockTransport(handler),
+        ),
+        site_name="Default",
+    )
+
+    assert (await adapter.get_status("AA:BB:CC:DD:EE:FF"))["authorized"] is False
+    assert record_requests == 1

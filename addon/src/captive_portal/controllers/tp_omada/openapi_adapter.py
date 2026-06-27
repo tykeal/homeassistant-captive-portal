@@ -50,6 +50,15 @@ def _result_data_items(result: dict[str, Any]) -> list[dict[str, Any]]:
     return [item for item in data if isinstance(item, dict)]
 
 
+def _total_pages(result: dict[str, Any], current_page: int) -> int:
+    """Return a safe total page count from a response result."""
+    try:
+        total_pages = int(result.get("totalPage", current_page))
+    except (TypeError, ValueError):
+        return current_page
+    return max(total_pages, current_page)
+
+
 @dataclass
 class OpenApiSiteCache:
     """Shared site discovery cache for an OpenAPI backend run.
@@ -118,7 +127,7 @@ class OmadaOpenApiAdapter:
                     site_id = item.get("siteId") or item.get("id")
                     if isinstance(site_id, str) and site_id:
                         return site_id
-            total_page = int(result.get("totalPage", page))
+            total_page = _total_pages(result, page)
             if page >= total_page:
                 break
             page += 1
@@ -270,7 +279,7 @@ class OmadaOpenApiAdapter:
                         return dict(record)
                 except OmadaClientError:
                     continue
-            total_page = int(result.get("totalPage", page))
+            total_page = _total_pages(result, page)
             if page >= total_page:
                 return None
             page += 1

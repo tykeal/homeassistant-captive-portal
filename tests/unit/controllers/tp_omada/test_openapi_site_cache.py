@@ -74,3 +74,36 @@ async def test_site_discovery_ignores_malformed_data() -> None:
 
     with pytest.raises(OmadaClientError, match="site not found"):
         await adapter.get_site_id()
+
+
+@pytest.mark.asyncio
+async def test_site_discovery_treats_malformed_total_pages_as_last_page() -> None:
+    """Malformed totalPage values stop pagination after the current page."""
+    site_requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Return token and a malformed totalPage value."""
+        nonlocal site_requests
+        if request.url.path == "/openapi/authorize/token":
+            return httpx.Response(
+                200,
+                json={"errorCode": 0, "result": {"accessToken": "token", "expiresIn": 7200}},
+            )
+        site_requests += 1
+        return httpx.Response(
+            200,
+            json={"errorCode": 0, "result": {"data": [], "totalPage": None}},
+        )
+
+    client = OpenApiClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="0123456789ab",
+        client_id="client-id",
+        client_secret="client-secret",
+        transport=httpx.MockTransport(handler),
+    )
+    adapter = OmadaOpenApiAdapter(client=client, site_name="Guest")
+
+    with pytest.raises(OmadaClientError, match="site not found"):
+        await adapter.get_site_id()
+    assert site_requests == 1
