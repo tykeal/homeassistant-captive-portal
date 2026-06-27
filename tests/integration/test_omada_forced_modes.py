@@ -38,9 +38,9 @@ async def test_forced_openapi_missing_credentials_fails() -> None:
 async def test_forced_openapi_probe_failure_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     """Forced OpenAPI does not select legacy when the token probe fails."""
 
-    async def probe_failure(*_args: object) -> bool:
+    async def probe_failure(*_args: object) -> None:
         """Return failed probe result."""
-        return False
+        return None
 
     monkeypatch.setattr(adapter_factory, "_probe_openapi", probe_failure)
     with pytest.raises(OmadaBackendSelectionError):

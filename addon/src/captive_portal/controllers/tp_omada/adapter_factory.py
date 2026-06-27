@@ -133,9 +133,10 @@ async def _select_forced_openapi(
     """Select forced OpenAPI or raise without fallback."""
     if not selection_input.openapi_ready:
         raise OmadaBackendSelectionError("OpenAPI mode requires client_id and client_secret")
-    if not await _probe_openapi(selection_input, logger):
+    token_state = await _probe_openapi(selection_input, logger)
+    if token_state is None:
         raise OmadaBackendSelectionError("OpenAPI token probe failed and fallback is disabled")
-    return _openapi_runtime(selection_input, "OpenAPI token probe succeeded")
+    return _openapi_runtime(selection_input, "OpenAPI token probe succeeded", token_state)
 
 
 async def _select_auto(
@@ -144,8 +145,13 @@ async def _select_auto(
 ) -> OmadaRuntimeConfig:
     """Select automatic backend using OpenAPI probe and legacy fallback."""
     if selection_input.openapi_ready:
-        if await _probe_openapi(selection_input, logger):
-            return _openapi_runtime(selection_input, "OpenAPI token probe succeeded")
+        token_state = await _probe_openapi(selection_input, logger)
+        if token_state is not None:
+            return _openapi_runtime(
+                selection_input,
+                "OpenAPI token probe succeeded",
+                token_state,
+            )
         if not selection_input.legacy_ready:
             raise OmadaBackendSelectionError(
                 "OpenAPI probe failed and no legacy fallback is configured"
@@ -157,7 +163,11 @@ async def _select_auto(
     return _select_legacy(selection_input, "OpenAPI credentials not configured")
 
 
-def _openapi_runtime(selection_input: OmadaSelectionInput, reason: str) -> OmadaRuntimeConfig:
+def _openapi_runtime(
+    selection_input: OmadaSelectionInput,
+    reason: str,
+    token_state: OpenApiTokenState,
+) -> OmadaRuntimeConfig:
     """Build an OpenAPI runtime config."""
     site_cache = OpenApiSiteCache(site_name=selection_input.site_name)
     return OmadaRuntimeConfig(
@@ -169,11 +179,15 @@ def _openapi_runtime(selection_input: OmadaSelectionInput, reason: str) -> Omada
         verify_ssl=selection_input.verify_ssl,
         client_id=selection_input.client_id,
         client_secret=selection_input.client_secret,
+        token_state=token_state,
         site_cache=site_cache,
     )
 
 
-async def _probe_openapi(selection_input: OmadaSelectionInput, logger: logging.Logger) -> bool:
+async def _probe_openapi(
+    selection_input: OmadaSelectionInput,
+    logger: logging.Logger,
+) -> OpenApiTokenState | None:
     """Probe OpenAPI token capability.
 
     Args:
@@ -181,18 +195,20 @@ async def _probe_openapi(selection_input: OmadaSelectionInput, logger: logging.L
         logger: Logger for secret-safe diagnostics.
 
     Returns:
-        True when an access token can be obtained.
+        Populated token state when an access token can be obtained.
     """
+    token_state = OpenApiTokenState()
     client = OpenApiClient(
         base_url=selection_input.base_url,
         controller_id=selection_input.controller_id,
         client_id=selection_input.client_id,
         client_secret=selection_input.client_secret,
         verify_ssl=selection_input.verify_ssl,
+        token_state=token_state,
     )
     try:
         await client.get_access_token()
     except OmadaClientError as exc:
         logger.warning("OpenAPI token probe failed: %s", exc)
-        return False
-    return True
+        return None
+    return token_state
