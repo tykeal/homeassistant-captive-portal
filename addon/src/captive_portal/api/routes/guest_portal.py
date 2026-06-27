@@ -449,7 +449,6 @@ async def show_authorize_form(  # noqa: C901
         HTMLResponse with the form, or RedirectResponse on
         successful authorization.
     """
-    # --- Form submission path (GET with code + csrf_token) ---
     if code and csrf_token:
         if session is None:
             raise HTTPException(
@@ -481,7 +480,6 @@ async def show_authorize_form(  # noqa: C901
             session=session,
         )
 
-    # --- Form display path ---
     omada_params = {
         "clientMac": client_mac or "",
         "clientIp": client_ip or "",
@@ -581,7 +579,6 @@ def _extract_mac_address(
             "Please ensure you're connecting through the captive portal.",
         )
 
-    # Validate and normalize MAC address format
     try:
         return validate_mac_address(mac)
     except ValueError as e:
@@ -671,7 +668,6 @@ async def _process_authorization(  # noqa: C901
             request.method,
         )
 
-    # Validate CSRF token
     await _guest_csrf.validate_token(request)
 
     if debug:
@@ -680,7 +676,6 @@ async def _process_authorization(  # noqa: C901
             request.method,
         )
 
-    # Get trusted proxy networks from configuration
     trusted_networks = portal_config.get_trusted_networks()
     client_ip = get_client_ip(
         request,
@@ -688,7 +683,6 @@ async def _process_authorization(  # noqa: C901
         trusted_networks=trusted_networks,
     )
 
-    # Check rate limit
     if not rate_limiter.is_allowed(client_ip):
         retry_after = rate_limiter.get_retry_after_seconds(client_ip)
 
@@ -712,7 +706,6 @@ async def _process_authorization(  # noqa: C901
             headers={"Retry-After": str(retry_after or 60)},
         )
 
-    # Extract device MAC address
     try:
         mac_address = _extract_mac_address(
             request,
@@ -735,7 +728,6 @@ async def _process_authorization(  # noqa: C901
         )
         raise
 
-    # Validate code format and determine type
     try:
         validation_result = await unified_code_service.validate_code(
             code,
@@ -769,7 +761,6 @@ async def _process_authorization(  # noqa: C901
             validation_result.normalized_code,
         )
 
-    # Process code and create access grant based on type
     grant: AccessGrant
     vlan_service = VlanValidationService()
     vlan_meta: dict[str, Any] = {}
@@ -813,7 +804,6 @@ async def _process_authorization(  # noqa: C901
                 mac=mac_address,
             )
         elif validation_result.code_type == CodeType.BOOKING:
-            # Validate booking code and create grant
             booking_validator = BookingCodeValidator(session)
 
             # Check if any integrations exist
@@ -863,7 +853,6 @@ async def _process_authorization(  # noqa: C901
                     detail="This code is not valid for your network.",
                 )
 
-            # Check time window with grace period
             now = datetime.now(timezone.utc)
             grace_minutes = integration.checkout_grace_minutes
 
@@ -893,7 +882,6 @@ async def _process_authorization(  # noqa: C901
                     f"Your booking ended on {end_utc.strftime('%Y-%m-%d at %H:%M')} UTC."
                 )
 
-            # Check for duplicate active grant for this booking
             grant_repo = AccessGrantRepository(session)
             existing_grants = grant_repo.find_active_by_mac(mac_address)
             for existing in existing_grants:
@@ -905,7 +893,6 @@ async def _process_authorization(  # noqa: C901
                         "You already have an active access grant for this booking."
                     )
 
-            # Create access grant with booking details
             grant_start = floor_to_minute(max(now, start_utc))
             grant_end = ceil_to_minute(effective_end)
 
@@ -1052,8 +1039,6 @@ async def _process_authorization(  # noqa: C901
             detail=str(e),
         ) from e
 
-    # --- Controller authorization ---
-    # Store Omada connection params for future revocation (sanitized)
     grant.omada_gateway_mac = _truncate(gateway_mac, 17)
     grant.omada_ap_mac = _truncate(ap_mac, 17)
     grant.omada_vid = _truncate(vid, 8)
@@ -1108,7 +1093,6 @@ async def _process_authorization(  # noqa: C901
     # Clear rate limit on successful authorization
     rate_limiter.clear(client_ip)
 
-    # Log successful authorization
     success_meta: dict[str, Any] = {
         "client_ip": client_ip,
         "mac": mac_address,
@@ -1128,7 +1112,6 @@ async def _process_authorization(  # noqa: C901
         meta=success_meta,
     )
 
-    # Validate and determine redirect destination
     if continue_url and redirect_validator.is_safe(continue_url):
         redirect_dest = continue_url
     else:

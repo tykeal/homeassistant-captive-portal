@@ -74,7 +74,6 @@ class CleanupService:
 
         deleted_count = await self.event_repo.delete_events_older_than(cutoff_date)
 
-        # Log audit event
         await self.audit_service.log(
             actor="system",
             action="event.cleanup",

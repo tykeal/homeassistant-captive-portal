@@ -153,7 +153,6 @@ async def list_grants(
     # We'll filter after computing current status
     grants = list(cast(list[AccessGrant], session.exec(statement).all()))
 
-    # Update status for each grant based on current time
     current_time = datetime.now(timezone.utc)
     for grant in grants:
         if grant.status not in (GrantStatus.REVOKED, GrantStatus.FAILED):
@@ -218,7 +217,6 @@ async def get_grant(
     if not grant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Grant not found")
 
-    # Update status based on current time
     current_time = datetime.now(timezone.utc)
     if grant.status not in (GrantStatus.REVOKED, GrantStatus.FAILED):
         # Ensure grant timestamps are timezone-aware for comparison

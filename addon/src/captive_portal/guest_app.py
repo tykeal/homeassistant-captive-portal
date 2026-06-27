@@ -229,7 +229,6 @@ def _make_guest_lifespan(
         Yields:
             Control to the application after startup completes.
         """
-        # --- Startup ---
         log_cfg = settings.to_log_config()
         if not logging.getLogger().handlers:
             logging.basicConfig(**log_cfg)
@@ -292,7 +291,6 @@ def _make_guest_lifespan(
 
         yield
 
-        # --- Shutdown ---
         dispose_engine()
         logger.info("Guest listener database connections closed.")
 
@@ -431,7 +429,6 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
             "Something went wrong",
         )
 
-        # Build retry URL preserving original Omada query params
         retry_query = getattr(request.state, "retry_query", "")
         rp = request.scope.get("root_path", "")
         retry_url = f"{rp}/guest/authorize"

@@ -36,13 +36,11 @@ def get_client_ip(
         - Takes leftmost IP from X-Forwarded-For (the original client)
         - Falls back to connection IP if headers are invalid or not trusted
     """
-    # Get the direct connection IP
     direct_ip = request.client.host if request.client else "unknown"
 
     if not trust_proxies or direct_ip == "unknown":
         return direct_ip
 
-    # Validate that the connection is from a trusted proxy
     if trusted_networks:
         try:
             client_addr = ipaddress.ip_address(direct_ip)
@@ -60,14 +58,12 @@ def get_client_ip(
         # Take the leftmost IP (original client) from the proxy chain
         # Format: "client, proxy1, proxy2"
         client_ip = xff.split(",")[0].strip()
-        # Validate it's a valid IP
         try:
             ipaddress.ip_address(client_ip)
             return client_ip
         except ValueError:
             pass  # Invalid IP, fall through to other checks
 
-    # Check for X-Real-IP header (used by some proxies like nginx)
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         try:
@@ -112,7 +108,6 @@ def validate_mac_address(mac: str) -> str:
     if not mac:
         raise ValueError("MAC address cannot be empty")
 
-    # Remove common separators to get raw hex string
     cleaned = mac.replace(":", "").replace("-", "").replace(".", "").upper()
 
     # Validate: must be exactly 12 hex characters

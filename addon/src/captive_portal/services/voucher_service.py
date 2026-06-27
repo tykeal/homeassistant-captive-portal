@@ -235,7 +235,6 @@ class VoucherService:
         if not voucher:
             raise VoucherRedemptionError(f"Voucher code '{code}' not found")
 
-        # Validate status
         if voucher.status == VoucherStatus.REVOKED:
             raise VoucherRedemptionError(f"Voucher '{code}' has been revoked")
 
@@ -264,7 +263,6 @@ class VoucherService:
         if voucher.activated_utc is None and voucher.status == VoucherStatus.UNUSED:
             voucher.activated_utc = current_time
 
-        # Create access grant
         grant_start = floor_to_minute(current_time)
         grant_end = grant_start + timedelta(minutes=voucher.duration_minutes)
         grant_end = ceil_to_minute(grant_end)
@@ -279,7 +277,6 @@ class VoucherService:
             status=GrantStatus.PENDING,  # Will transition to ACTIVE after controller
         )
 
-        # Update voucher state
         voucher.redeemed_count += 1
         voucher.last_redeemed_utc = current_time
         if voucher.status == VoucherStatus.UNUSED:

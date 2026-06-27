@@ -47,7 +47,6 @@ class RedirectValidator:
         # Normalize backslashes to prevent bypass attempts
         url = url.replace("\\", "/")
 
-        # Parse URL
         parsed = urlparse(url)
 
         # Block dangerous protocols

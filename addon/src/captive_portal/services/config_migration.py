@@ -261,14 +261,12 @@ async def migrate_yaml_to_db(
     # Read legacy values from YAML / env vars
     legacy = AppSettings._load_for_migration()
 
-    # --- Omada migration ---
     result.omada_migrated = _migrate_omada_settings(legacy, session, key_path)
     if result.omada_migrated:
         logger.info("Migrated Omada settings from YAML/env sources.")
     else:
         logger.info("Omada settings already in DB — skipping migration.")
 
-    # --- Session and guest URL migration ---
     portal_stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
     portal_config: Optional[PortalConfig] = session.exec(portal_stmt).first()
 

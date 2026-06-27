@@ -36,10 +36,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         Returns:
             Response or 429 if rate limited
         """
-        # Get client IP
         client_ip = request.client.host if request.client else "unknown"
 
-        # Check rate limit
         if not self.rate_limiter.is_allowed(client_ip):
             retry_after = self.rate_limiter.get_retry_after_seconds(client_ip)
 

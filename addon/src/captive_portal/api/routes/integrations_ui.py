@@ -244,7 +244,6 @@ async def save_integration(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    # Parse comma-separated VLANs from form input
     parsed_vlans: list[int] | None = None
     if allowed_vlans and allowed_vlans.strip():
         try:
@@ -266,7 +265,6 @@ async def save_integration(
     audit_service = AuditService(session)
 
     if id:
-        # Update existing
         integration = session.get(HAIntegrationConfig, id)
         if not integration:
             logger.warning("Integration not found for update: %s", id)
@@ -310,7 +308,6 @@ async def save_integration(
                 status_code=status.HTTP_303_SEE_OTHER,
             )
 
-        # Create new
         integration = HAIntegrationConfig(
             integration_id=integration_id,
             identifier_attr=resolved_attr,

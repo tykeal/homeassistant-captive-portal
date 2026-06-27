@@ -164,7 +164,6 @@ class HMACCSRFProtection:
                 detail="CSRF token missing",
             )
 
-        # Validate Origin/Referer before signature check
         if self.config.check_origin:
             self._validate_origin(request)
 
