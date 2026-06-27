@@ -18,6 +18,10 @@ build/
 *.egg-info/
 *.log
 .env*
+
+# aislop
+.aislop/history.jsonl
+
 .DS_Store
 Thumbs.db
 *.tmp
