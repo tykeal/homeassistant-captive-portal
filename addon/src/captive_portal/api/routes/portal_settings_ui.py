@@ -17,7 +17,10 @@ from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.portal_config import PortalConfig
 from captive_portal.persistence.database import get_session
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
-from captive_portal.security.session_middleware import require_admin
+from captive_portal.security.session_middleware import (
+    refresh_runtime_session_config,
+    require_admin,
+)
 from captive_portal.services.audit_service import AuditService
 from captive_portal.services.redirect_validator import GuestExternalUrlValidator
 
@@ -213,6 +216,11 @@ async def update_portal_settings(
 
     session.add(config)
     session.commit()
+    refresh_runtime_session_config(
+        request.app.state,
+        config.session_idle_minutes,
+        config.session_max_hours,
+    )
 
     audit_service = AuditService(session)
     await audit_service.log_admin_action(

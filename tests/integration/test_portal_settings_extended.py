@@ -5,8 +5,10 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from typing import cast
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -118,6 +120,50 @@ class TestPortalSettingsExtended:
         assert config is not None
         assert config.session_idle_minutes == 45
         assert config.session_max_hours == 12
+
+    def test_refreshes_runtime_session_config(self, authenticated_client: TestClient) -> None:
+        """POST applies saved session timeout values to app state."""
+        csrf_token = self._get_csrf_token(authenticated_client)
+        test_app = cast(FastAPI, authenticated_client.app)
+        runtime_config = test_app.state.session_config
+        assert runtime_config.idle_minutes == 30
+        assert runtime_config.max_hours == 8
+
+        response = authenticated_client.post(
+            "/admin/portal-settings/",
+            data={
+                "csrf_token": csrf_token,
+                "rate_limit_attempts": "5",
+                "rate_limit_window_seconds": "60",
+                "success_redirect_url": "/guest/welcome",
+                "session_idle_minutes": "45",
+                "session_max_hours": "12",
+                "guest_external_url": "",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 303
+        assert runtime_config.idle_minutes == 45
+        assert runtime_config.max_hours == 12
+        assert runtime_config.cookie_secure is False
+
+    def test_api_refreshes_runtime_session_config(self, authenticated_client: TestClient) -> None:
+        """PUT applies saved session timeout values to app state."""
+        test_app = cast(FastAPI, authenticated_client.app)
+        runtime_config = test_app.state.session_config
+        assert runtime_config.idle_minutes == 30
+        assert runtime_config.max_hours == 8
+
+        response = authenticated_client.put(
+            "/api/admin/portal-config",
+            json={"session_idle_minutes": 55, "session_max_hours": 14},
+        )
+
+        assert response.status_code == 200
+        assert runtime_config.idle_minutes == 55
+        assert runtime_config.max_hours == 14
+        assert runtime_config.cookie_secure is False
 
     def test_saves_guest_external_url(
         self, authenticated_client: TestClient, db_session: Session

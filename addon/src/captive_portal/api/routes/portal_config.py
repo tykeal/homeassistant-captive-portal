@@ -12,7 +12,10 @@ from sqlmodel import Session, select
 from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.portal_config import PortalConfig
 from captive_portal.persistence.database import get_session
-from captive_portal.security.session_middleware import require_admin
+from captive_portal.security.session_middleware import (
+    refresh_runtime_session_config,
+    require_admin,
+)
 from captive_portal.services.redirect_validator import GuestExternalUrlValidator
 
 # Validation constants from PortalConfig model
@@ -171,6 +174,11 @@ async def update_portal_config(
     session.add(config)
     session.commit()
     session.refresh(config)
+    refresh_runtime_session_config(
+        request.app.state,
+        config.session_idle_minutes,
+        config.session_max_hours,
+    )
 
     return PortalConfigResponse(
         id=config.id,
