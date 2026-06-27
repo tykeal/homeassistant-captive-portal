@@ -74,6 +74,33 @@ class OpenApiClient:
         self.transport = transport
         self.token_state = token_state or OpenApiTokenState()
         self.refresh_margin_seconds = refresh_margin_seconds
+        self._client: httpx.AsyncClient | None = None
+        self._client_depth = 0
+
+    async def __aenter__(self) -> "OpenApiClient":
+        """Open a reusable HTTP client for a logical controller operation."""
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                timeout=self._timeout(),
+                verify=self.verify_ssl,
+                transport=self.transport,
+            )
+        self._client_depth += 1
+        return self
+
+    async def __aexit__(self, *_args: object) -> None:
+        """Close the reusable HTTP client after the outer operation exits."""
+        self._client_depth -= 1
+        if self._client_depth > 0 or self._client is None:
+            return
+        await self._client.aclose()
+        self._client = None
+
+    def _active_client(self) -> httpx.AsyncClient:
+        """Return the currently open reusable HTTP client."""
+        if self._client is None:
+            raise OmadaClientError("OpenAPI client session is not initialized")
+        return self._client
 
     def _timeout(self) -> httpx.Timeout:
         """Return a bounded httpx timeout configuration.
@@ -112,16 +139,11 @@ class OpenApiClient:
             "client_secret": self.client_secret,
         }
         try:
-            async with httpx.AsyncClient(
-                timeout=self._timeout(),
-                verify=self.verify_ssl,
-                transport=self.transport,
-            ) as client:
-                response = await client.post(
-                    self._url("/openapi/authorize/token"),
-                    params=params,
-                    json=payload,
-                )
+            response = await self._active_client().post(
+                self._url("/openapi/authorize/token"),
+                params=params,
+                json=payload,
+            )
         except httpx.RequestError as exc:
             raise OmadaAuthenticationError(
                 f"OpenAPI token request failed: {type(exc).__name__}"
@@ -180,14 +202,17 @@ class OpenApiClient:
         Returns:
             Access token string.
         """
-        async with self.token_state.lock:
-            if self._has_fresh_token() and self.token_state.access_token:
+        async with self:
+            async with self.token_state.lock:
+                if self._has_fresh_token() and self.token_state.access_token:
+                    return self.token_state.access_token
+                grant_type = (
+                    "refresh_token" if self.token_state.refresh_token else "client_credentials"
+                )
+                await self._post_token(grant_type)
+                if not self.token_state.access_token:
+                    raise OmadaAuthenticationError("OpenAPI token cache was not populated")
                 return self.token_state.access_token
-            grant_type = "refresh_token" if self.token_state.refresh_token else "client_credentials"
-            await self._post_token(grant_type)
-            if not self.token_state.access_token:
-                raise OmadaAuthenticationError("OpenAPI token cache was not populated")
-            return self.token_state.access_token
 
     async def refresh_after_auth_failure(self) -> None:
         """Refresh token state after OpenAPI rejects a cached token.
@@ -197,16 +222,17 @@ class OpenApiClient:
         those 401/403 responses, refresh once and let the original
         operation retry without switching backends.
         """
-        async with self.token_state.lock:
-            self.token_state.access_token = None
-            self.token_state.expires_at_monotonic = 0.0
-            if self.token_state.refresh_token:
-                try:
-                    await self._post_token("refresh_token")
-                    return
-                except OmadaAuthenticationError:
-                    self.token_state.refresh_token = None
-            await self._post_token("client_credentials")
+        async with self:
+            async with self.token_state.lock:
+                self.token_state.access_token = None
+                self.token_state.expires_at_monotonic = 0.0
+                if self.token_state.refresh_token:
+                    try:
+                        await self._post_token("refresh_token")
+                        return
+                    except OmadaAuthenticationError:
+                        self.token_state.refresh_token = None
+                await self._post_token("client_credentials")
 
     async def auth_headers(self) -> dict[str, str]:
         """Return OpenAPI authentication headers.
@@ -269,35 +295,40 @@ class OpenApiClient:
         Returns:
             Parsed Omada response payload.
         """
-        backoff_seconds = [1.0, 2.0, 4.0, 8.0]
-        last_error: Exception | None = None
-        auth_retried = False
-        for attempt in range(4):
-            try:
-                return await self._request_once(method, path, params=params, json_body=json_body)
-            except OmadaRetryExhaustedError:
-                raise
-            except OmadaClientError as exc:
-                last_error = exc
-                if exc.status_code in (401, 403) and not auth_retried:
-                    auth_retried = True
-                    await self.refresh_after_auth_failure()
-                    continue
-                if exc.status_code not in (429, 500, 502, 503, 504):
+        async with self:
+            backoff_seconds = [1.0, 2.0, 4.0, 8.0]
+            last_error: Exception | None = None
+            auth_retried = False
+            for attempt in range(4):
+                try:
+                    return await self._request_once(
+                        method, path, params=params, json_body=json_body
+                    )
+                except OmadaRetryExhaustedError:
                     raise
-                if attempt == 3:
-                    raise OmadaRetryExhaustedError(
-                        f"OpenAPI transient error after retries: {exc.status_code}"
-                    ) from exc
-                await asyncio.sleep(backoff_seconds[attempt])
-            except httpx.RequestError as exc:
-                last_error = exc
-                if attempt == 3:
-                    raise OmadaRetryExhaustedError(
-                        f"OpenAPI request failed after retries: {type(exc).__name__}"
-                    ) from exc
-                await asyncio.sleep(backoff_seconds[attempt])
-        raise OmadaRetryExhaustedError(f"OpenAPI retries exhausted: {type(last_error).__name__}")
+                except OmadaClientError as exc:
+                    last_error = exc
+                    if exc.status_code in (401, 403) and not auth_retried:
+                        auth_retried = True
+                        await self.refresh_after_auth_failure()
+                        continue
+                    if exc.status_code not in (429, 500, 502, 503, 504):
+                        raise
+                    if attempt == 3:
+                        raise OmadaRetryExhaustedError(
+                            f"OpenAPI transient error after retries: {exc.status_code}"
+                        ) from exc
+                    await asyncio.sleep(backoff_seconds[attempt])
+                except httpx.RequestError as exc:
+                    last_error = exc
+                    if attempt == 3:
+                        raise OmadaRetryExhaustedError(
+                            f"OpenAPI request failed after retries: {type(exc).__name__}"
+                        ) from exc
+                    await asyncio.sleep(backoff_seconds[attempt])
+            raise OmadaRetryExhaustedError(
+                f"OpenAPI retries exhausted: {type(last_error).__name__}"
+            )
 
     async def _request_once(
         self,
@@ -318,18 +349,13 @@ class OpenApiClient:
         Returns:
             Parsed Omada response payload.
         """
-        async with httpx.AsyncClient(
-            timeout=self._timeout(),
-            verify=self.verify_ssl,
-            transport=self.transport,
-        ) as client:
-            request_kwargs: dict[str, Any] = {
-                "headers": await self.auth_headers(),
-                "params": params,
-            }
-            if json_body is not None:
-                request_kwargs["json"] = json_body
-            response = await client.request(method, self._url(path), **request_kwargs)
+        request_kwargs: dict[str, Any] = {
+            "headers": await self.auth_headers(),
+            "params": params,
+        }
+        if json_body is not None:
+            request_kwargs["json"] = json_body
+        response = await self._active_client().request(method, self._url(path), **request_kwargs)
         if response.status_code >= 500 or response.status_code == 429:
             raise OmadaClientError(
                 f"OpenAPI transient HTTP status {response.status_code}",

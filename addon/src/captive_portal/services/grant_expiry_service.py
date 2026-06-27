@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import update
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
 
@@ -127,19 +128,19 @@ class GrantExpiryService:
         """Mark successfully revoked grants expired in a short DB session."""
         if not grant_ids:
             return 0
-        expired_count = 0
         with Session(self.engine) as session:
-            for grant_id in grant_ids:
-                grant = session.get(AccessGrant, grant_id)
-                if grant is None or grant.status != GrantStatus.ACTIVE:
-                    continue
-                grant.status = GrantStatus.EXPIRED
-                grant.updated_utc = datetime.now(timezone.utc)
-                session.add(grant)
-                expired_count += 1
-            if expired_count:
-                session.commit()
-        return expired_count
+            statement: Any = (
+                update(AccessGrant)
+                .where(col(AccessGrant.id).in_(grant_ids))
+                .where(col(AccessGrant.status) == GrantStatus.ACTIVE)
+                .values(
+                    status=GrantStatus.EXPIRED,
+                    updated_utc=datetime.now(timezone.utc),
+                )
+            )
+            result = session.exec(statement)
+            session.commit()
+            return int(result.rowcount or 0)
 
     def _build_adapter(self) -> OmadaControllerAdapter | None:
         """Build a worker-local adapter from runtime config.
