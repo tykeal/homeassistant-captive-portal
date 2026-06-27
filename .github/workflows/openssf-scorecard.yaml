@@ -1,0 +1,47 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Andrew Grimberg <tykeal@bardicgrove.org>
+
+# This workflow uses actions that are not certified by GitHub. They are provided
+# by a third-party and are governed by separate terms of service, privacy
+# policy, and support documentation.
+
+name: "OpenSSF Scorecard"
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+  # For Branch-Protection check. Only the default branch is supported. See
+  # https://github.com/ossf/scorecard/blob/main/docs/checks.md#branch-protection
+  branch_protection_rule:
+  # To guarantee Maintained check is occasionally updated. See
+  # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
+  schedule:
+    - cron: "50 4 * * 0"
+  push:
+    branches: ["main"]
+    paths:
+      - "**"
+      - "!.github/**"
+
+# Declare default permissions as none.
+permissions: {}
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  openssf-scorecard:
+    name: "OpenSSF Scorecard"
+    # yamllint disable-line rule:line-length
+    uses: lfit/releng-reusable-workflows/.github/workflows/reuse-openssf-scorecard.yaml@f43b219b8a91dcd082f26419008c8bf5544ec212  # v0.6.0
+    permissions:
+      # Needed by checkout to read repository contents.
+      contents: read
+      # Needed to upload the results to code-scanning dashboard.
+      security-events: write
+      # Needed to publish results and get a badge (see publish_results).
+      id-token: write
+      # Uncomment the permissions below if installing in a private repository.
+      # actions: read
