@@ -136,6 +136,36 @@ async def test_token_http_error_mentions_status_code() -> None:
 
 
 @pytest.mark.asyncio
+async def test_token_malformed_expires_in_raises_auth_error() -> None:
+    """Malformed token lifetimes fail with OmadaAuthenticationError."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Return a token response with an invalid expiresIn value."""
+        return httpx.Response(
+            200,
+            json={
+                "errorCode": 0,
+                "result": {
+                    "accessToken": "access-token",
+                    "refreshToken": "refresh-token",
+                    "expiresIn": None,
+                },
+            },
+        )
+
+    client = OpenApiClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="0123456789ab",
+        client_id="client-id",
+        client_secret="client-secret",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(Exception, match="expiresIn"):
+        await client.get_access_token()
+
+
+@pytest.mark.asyncio
 async def test_unauthorized_request_refreshes_token_once() -> None:
     """A stale token rejected by OpenAPI is refreshed and retried once."""
     seen_authorization: list[str] = []

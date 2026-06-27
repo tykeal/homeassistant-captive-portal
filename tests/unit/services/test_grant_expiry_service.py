@@ -160,3 +160,21 @@ async def test_process_once_builds_adapter_once_for_batch(db_engine: Engine) -> 
 
     assert await service.process_once() == 2
     assert build_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_process_once_skips_adapter_when_no_grants(db_engine: Engine) -> None:
+    """No adapter is built when no grants are due."""
+    service = GrantExpiryService(engine=db_engine, omada_config=None, interval_seconds=5)
+    build_calls = 0
+
+    def build_adapter() -> None:
+        """Track unexpected adapter construction."""
+        nonlocal build_calls
+        build_calls += 1
+        return None
+
+    service._build_adapter = build_adapter  # type: ignore[method-assign]
+
+    assert await service.process_once() == 0
+    assert build_calls == 0

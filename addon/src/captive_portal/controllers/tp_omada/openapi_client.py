@@ -155,7 +155,10 @@ class OpenApiClient:
         if not isinstance(access_token, str) or not access_token:
             raise OmadaAuthenticationError("OpenAPI token response omitted access token")
         refresh_token = result.get("refreshToken")
-        expires_in = int(result.get("expiresIn", 7200))
+        try:
+            expires_in = int(result.get("expiresIn", 7200))
+        except (TypeError, ValueError) as exc:
+            raise OmadaAuthenticationError("OpenAPI token response had invalid expiresIn") from exc
         self.token_state.access_token = access_token
         self.token_state.refresh_token = refresh_token if isinstance(refresh_token, str) else None
         self.token_state.expires_at_monotonic = time.monotonic() + max(expires_in, 1)

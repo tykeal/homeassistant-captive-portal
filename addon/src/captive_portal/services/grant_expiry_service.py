@@ -77,6 +77,8 @@ class GrantExpiryService:
                 .where(col(AccessGrant.end_utc) <= now)
             )
             grants = list(session.exec(statement).all())
+            if not grants:
+                return 0
             expired_count = 0
             adapter = self._build_adapter()
             for grant in grants:

@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-from sqlmodel import Session
 import pytest
+from sqlmodel import Session
 
 from captive_portal.models.omada_config import OmadaConfig
 
