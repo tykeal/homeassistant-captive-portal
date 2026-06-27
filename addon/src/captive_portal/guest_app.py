@@ -62,6 +62,39 @@ _GUEST_CSP = (
 )
 
 
+async def _run_config_migration(settings: AppSettings, engine: Any) -> None:
+    """Run YAML→DB migration (non-fatal).
+
+    Args:
+        settings: Application settings.
+        engine: SQLAlchemy engine.
+    """
+    from captive_portal.services.config_migration import migrate_yaml_to_db
+
+    from sqlmodel import Session
+
+    migration_session = Session(engine)
+    try:
+        result = await migrate_yaml_to_db(settings, migration_session)
+        if result.omada_migrated:
+            logger.info("Config migration: Omada settings migrated from YAML to DB.")
+        if result.session_fields_migrated > 0:
+            logger.info(
+                "Config migration: %d session fields migrated.",
+                result.session_fields_migrated,
+            )
+        if result.guest_url_migrated:
+            logger.info("Config migration: guest_external_url migrated.")
+    except Exception as exc:
+        logger.warning(
+            "Config migration skipped (non-fatal): %s",
+            exc,
+            exc_info=True,
+        )
+    finally:
+        migration_session.close()
+
+
 class _DebugLoggingMiddleware:
     """Log request/response details when debug_guest_portal is enabled.
 
@@ -240,6 +273,7 @@ def _make_guest_lifespan(
         try:
             engine = create_db_engine(f"sqlite:///{settings.db_path}")
             init_db(engine)
+            await _run_config_migration(settings, engine)
             booking_authorize.set_db_engine(engine)
             logger.info("Guest listener database initialized at %s", settings.db_path)
         except Exception:
