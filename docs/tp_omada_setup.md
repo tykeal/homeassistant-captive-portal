@@ -9,14 +9,32 @@ This guide explains how to configure your TP-Link Omada Controller (hardware or 
 
 ## Overview
 
-The Captive Portal integrates with TP-Link Omada Controllers using the **External Portal API** to authorize and revoke guest devices on your WiFi network. This guide covers controller prerequisites, external portal configuration, and API access setup.
+The Captive Portal integrates with TP-Link Omada Controllers by using either
+the legacy **External Portal API** or the documented **Omada OpenAPI**
+(Northbound) backend to authorize and revoke guest devices on your WiFi
+network. At startup, the add-on selects the backend according to
+`omada_openapi_mode`: `auto` probes OpenAPI only when both
+`omada_client_id` and `omada_client_secret` are set, then selects legacy when
+the probe cannot run or fails and legacy `omada_username` and `omada_password`
+credentials are configured. Without a complete OpenAPI configuration or legacy
+fallback, startup reports a configuration error. `openapi` requires OpenAPI,
+and `legacy` skips the OpenAPI probe.
+
+See [Omada OpenAPI app setup](#omada-openapi-app-setup) below for the app
+credentials used by the OpenAPI backend.
 
 ### Prerequisites
 
-- **Omada Controller** version 5.0.15 or higher
+- **Omada Controller** version 5.0.15 or higher for the legacy External Portal
+  API
   - Hardware Controller: OC200, OC300
   - Software Controller: Windows/Linux installation
   - Cloud-based Controller (Omada Cloud) - see Cloud Mode section
+- **OpenAPI backend**: Omada SDN Controller v5.13+
+  - Older controllers use the legacy fallback in `auto` mode when legacy
+    hotspot credentials are configured
+  - Uses Client ID and Client Secret from **Settings → Platform Integration →
+    Open API**, instead of a hotspot operator account
 - **Network Access**: Captive Portal must reach controller on HTTPS (default port 8043)
 - **Admin Credentials**: Controller administrator account for initial setup
 - **Site Configuration**: At least one site created (default: "Default")
@@ -78,7 +96,11 @@ The Captive Portal integrates with TP-Link Omada Controllers using the **Externa
 
 ### Step 3: Create Hotspot Manager Account
 
-The Captive Portal requires an **operator account** to authenticate API calls.
+For legacy External Portal API deployments, the Captive Portal requires a
+**hotspot operator account** to authenticate API calls. OpenAPI deployments can
+skip this step when `omada_openapi_mode` is `openapi` and use the Client ID and
+Client Secret from [Omada OpenAPI app setup](#omada-openapi-app-setup). Keep
+legacy credentials configured when using `auto` mode and you want fallback.
 
 1. **Navigate to Hotspot Manager**
    - Go to **Settings** → **Authentication** → **Hotspot Manager**
@@ -168,6 +190,16 @@ omada_controller_id: "a1b2c3d4e5f6"   # Required — hex string from controller 
 # Connection Settings (optional)
 omada_verify_ssl: true                # Set false for self-signed certs (not recommended)
 ```
+
+For the OpenAPI backend, `omada_client_id`, `omada_client_secret`, and
+`omada_openapi_mode` are add-on migration options. Their standalone migration
+environment variables are `CP_OMADA_CLIENT_ID`, `CP_OMADA_CLIENT_SECRET`, and
+`CP_OMADA_OPENAPI_MODE`. These values seed the database and UI settings during
+migration; they can also be managed in the admin UI on the **Omada** settings
+page. Legacy `omada_username` and `omada_password` credentials are not required
+when `omada_openapi_mode` is `openapi`. Changes made on that page apply
+immediately in the admin UI process; restart the add-on for the separate guest
+listener to adopt a new selected backend.
 
 ### Standalone Container Configuration
 
@@ -579,7 +611,7 @@ Csrf-Token: {token_from_login_response}
 - Retry queue with exponential backoff
 - SSL certificate verification
 
-## Optional: Omada OpenAPI app setup
+## Omada OpenAPI app setup
 
 Controllers with Omada OpenAPI support can use the documented OpenAPI backend instead of the legacy hotspot operator API. In the Omada UI, go to **Settings → Platform Integration → Open API → New App**, create an app, and copy the Client ID and Client Secret into the Captive Portal Omada settings page.
 
