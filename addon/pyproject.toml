@@ -12,6 +12,7 @@ dependencies = [
   "fastapi",
   "uvicorn[standard]",
   "httpx",
+  "sqlalchemy",
   "sqlmodel",
   "pydantic",
   "jinja2",
