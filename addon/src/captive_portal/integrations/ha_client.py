@@ -130,6 +130,11 @@ class HAClient:
                 user_message="Home Assistant returned an unexpected error",
                 detail=str(exc),
             ) from exc
+        except httpx.RequestError as exc:
+            raise HAConnectionError(
+                user_message="Cannot connect to Home Assistant",
+                detail=str(exc),
+            ) from exc
 
     async def get_entity_registry(self, timeout: float = 10.0) -> List[Dict[str, Any]]:
         """Retrieve all entity registry entries from Home Assistant.
@@ -196,6 +201,11 @@ class HAClient:
         except httpx.HTTPStatusError as exc:
             raise HAServerError(
                 user_message="Home Assistant returned an unexpected error",
+                detail=str(exc),
+            ) from exc
+        except httpx.RequestError as exc:
+            raise HAConnectionError(
+                user_message="Cannot connect to Home Assistant",
                 detail=str(exc),
             ) from exc
 

@@ -5,10 +5,13 @@
 """Network utility functions for client IP detection and validation."""
 
 import ipaddress
+import logging
 import re
 from typing import Optional
 
 from fastapi import Request
+
+_logger = logging.getLogger(__name__)
 
 
 def get_client_ip(
@@ -48,7 +51,11 @@ def get_client_ip(
             if not is_trusted:
                 # Connection is not from a trusted proxy, use direct IP
                 return direct_ip
-        except ValueError:
+        except ValueError as exc:
+            _logger.debug(
+                "Invalid trusted proxy configuration ignored: %s",
+                exc,
+            )
             # Invalid IP address, fall back to direct IP
             return direct_ip
 
@@ -61,16 +68,22 @@ def get_client_ip(
         try:
             ipaddress.ip_address(client_ip)
             return client_ip
-        except ValueError:
-            pass  # Invalid IP, fall through to other checks
+        except ValueError as exc:
+            _logger.debug(
+                "Invalid X-Forwarded-For client IP ignored: %s",
+                exc,
+            )
 
     real_ip = request.headers.get("X-Real-IP")
     if real_ip:
         try:
             ipaddress.ip_address(real_ip)
             return real_ip
-        except ValueError:
-            pass
+        except ValueError as exc:
+            _logger.debug(
+                "Invalid X-Real-IP header ignored: %s",
+                exc,
+            )
 
     # No valid proxy headers found, use direct connection IP
     return direct_ip

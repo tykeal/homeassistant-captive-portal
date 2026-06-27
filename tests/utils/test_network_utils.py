@@ -4,6 +4,7 @@
 
 """Tests for network utility functions."""
 
+import logging
 import pytest
 from unittest.mock import Mock
 
@@ -87,19 +88,23 @@ class TestGetClientIP:
         )
         assert ip == "203.0.113.50"  # Leftmost IP is original client
 
-    def test_xff_invalid_ip(self) -> None:
+    def test_xff_invalid_ip(self, caplog: pytest.LogCaptureFixture) -> None:
         """Test handling of invalid IP in X-Forwarded-For."""
         request = Mock(spec=Request)
         request.client = Mock()
         request.client.host = "10.0.0.1"
         request.headers = {"X-Forwarded-For": "not-an-ip"}
 
-        ip = get_client_ip(
-            request,
-            trust_proxies=True,
-            trusted_networks=["10.0.0.0/8"],
-        )
+        with caplog.at_level(logging.DEBUG, logger="captive_portal.utils.network_utils"):
+            ip = get_client_ip(
+                request,
+                trust_proxies=True,
+                trusted_networks=["10.0.0.0/8"],
+            )
+
         assert ip == "10.0.0.1"  # Falls back to direct IP
+        assert "Invalid X-Forwarded-For client IP ignored" in caplog.text
+        assert "not-an-ip" in caplog.text
 
     def test_x_real_ip_header(self) -> None:
         """Test X-Real-IP header as fallback."""
@@ -114,6 +119,27 @@ class TestGetClientIP:
             trusted_networks=["10.0.0.0/8"],
         )
         assert ip == "203.0.113.50"
+
+    def test_x_real_ip_invalid_ip_logs(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Invalid X-Real-IP headers are logged before falling back."""
+        request = Mock(spec=Request)
+        request.client = Mock()
+        request.client.host = "10.0.0.1"
+        request.headers = {"X-Real-IP": "not-an-ip"}
+
+        with caplog.at_level(logging.DEBUG, logger="captive_portal.utils.network_utils"):
+            ip = get_client_ip(
+                request,
+                trust_proxies=True,
+                trusted_networks=["10.0.0.0/8"],
+            )
+
+        assert ip == "10.0.0.1"
+        assert "Invalid X-Real-IP header ignored" in caplog.text
+        assert "not-an-ip" in caplog.text
 
     def test_xff_preferred_over_x_real_ip(self) -> None:
         """Test that X-Forwarded-For is preferred over X-Real-IP."""

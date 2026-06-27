@@ -105,6 +105,25 @@ async def test_discover_missing_omadac_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_discover_malformed_result_raises_client_error() -> None:
+    """Malformed result payload raises OmadaClientError instead of AttributeError."""
+    resp = _make_response(
+        body={
+            "errorCode": 0,
+            "result": None,
+        }
+    )
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        with pytest.raises(OmadaClientError, match="omadacId not found"):
+            await discover_controller_id("https://controller:443")
+
+
+@pytest.mark.asyncio
 async def test_discover_http_error() -> None:
     """HTTP error status raises OmadaClientError."""
     resp = _make_response(status_code=500, body={"error": "fail"})

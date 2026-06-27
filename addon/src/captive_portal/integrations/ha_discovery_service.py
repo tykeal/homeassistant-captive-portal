@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from pydantic import BaseModel, computed_field
 from sqlmodel import Session, select
@@ -88,12 +88,27 @@ def _is_rental_control_calendar(entity: dict[str, Any]) -> bool:
         return False
     if _RENTAL_CONTROL_PLATFORM in entity_id:
         return True
-    friendly = entity.get("attributes", {}).get("friendly_name", "")
+    friendly = _entity_attributes(entity).get("friendly_name", "")
     if isinstance(friendly, str) and friendly.startswith(
         _RENTAL_CONTROL_FRIENDLY_PREFIX,
     ):
         return True
     return False
+
+
+def _entity_attributes(entity: dict[str, Any]) -> dict[str, Any]:
+    """Return normalized HA entity attributes.
+
+    Args:
+        entity: Entity state dict from Home Assistant.
+
+    Returns:
+        Attribute dictionary, or an empty dict when HA omits or malforms it.
+    """
+    attributes = entity.get("attributes")
+    if isinstance(attributes, dict):
+        return cast(dict[str, Any], attributes)
+    return {}
 
 
 class HADiscoveryService:
@@ -141,9 +156,16 @@ class HADiscoveryService:
                 if entry.get("platform") == _RENTAL_CONTROL_PLATFORM
                 and entry.get("entity_id", "").startswith("calendar.")
             }
-        except Exception:
+        except HADiscoveryError as exc:
+            category = _ERROR_CATEGORY_MAP.get(type(exc), "unknown")
             logger.warning(
-                "Entity registry unavailable, falling back to attribute-based discovery",
+                "Entity registry unavailable, falling back to attribute-based discovery: %s detail=%s",
+                exc,
+                exc.detail,
+                extra={
+                    "category": category,
+                    "detail": exc.detail,
+                },
             )
 
         try:
@@ -190,7 +212,7 @@ class HADiscoveryService:
         # Map to DiscoveredIntegration models
         integrations: list[DiscoveredIntegration] = []
         for entity in rental_entities:
-            attrs = entity.get("attributes", {})
+            attrs = _entity_attributes(entity)
             raw_friendly_name = attrs.get("friendly_name")
             if isinstance(raw_friendly_name, str) and raw_friendly_name.strip():
                 friendly_name = raw_friendly_name

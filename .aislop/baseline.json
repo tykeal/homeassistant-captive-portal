@@ -1,34 +1,11 @@
 {
   "schema": "aislop.baseline.v2",
-  "updatedAt": "2026-06-27T14:10:26.103Z",
-  "score": 54,
-  "byEngine": {},
+  "updatedAt": "2026-06-27T17:44:37.738Z",
+  "score": 100,
+  "byEngine": {
+    "code-quality": 100,
+    "ai-slop": 100
+  },
   "fileCount": 96,
-  "findingFingerprints": [
-    "addon/src/captive_portal/api/routes/guest_portal.py:0:complexity/file-too-large",
-    "addon/src/captive_portal/api/routes/guest_portal.py:324:complexity/too-many-params",
-    "addon/src/captive_portal/api/routes/guest_portal.py:591:complexity/function-too-long",
-    "addon/src/captive_portal/api/routes/guest_portal.py:591:complexity/too-many-params",
-    "addon/src/captive_portal/api/routes/integrations_ui.py:192:complexity/function-too-long",
-    "addon/src/captive_portal/api/routes/omada_settings_ui.py:0:complexity/file-too-large",
-    "addon/src/captive_portal/api/routes/omada_settings_ui.py:200:complexity/too-many-params",
-    "addon/src/captive_portal/api/routes/omada_settings_ui.py:338:complexity/function-too-long",
-    "addon/src/captive_portal/api/routes/portal_settings_ui.py:105:complexity/too-many-params",
-    "addon/src/captive_portal/api/routes/vouchers_ui.py:0:complexity/file-too-large",
-    "addon/src/captive_portal/config/settings.py:0:complexity/file-too-large",
-    "addon/src/captive_portal/guest_app.py:0:complexity/file-too-large",
-    "addon/src/captive_portal/guest_app.py:300:complexity/function-too-long",
-    "addon/src/captive_portal/persistence/repositories.py:0:complexity/file-too-large",
-    "addon/src/captive_portal/security/csrf.py:90:ai-slop/swallowed-exception",
-    "addon/src/captive_portal/security/hmac_csrf.py:319:ai-slop/swallowed-exception",
-    "addon/src/captive_portal/utils/network_utils.py:64:ai-slop/swallowed-exception",
-    "addon/src/captive_portal/utils/network_utils.py:72:ai-slop/swallowed-exception",
-    "addon/src/captive_portal/config/settings.py:148:ai-slop/python-repetitive-dispatch",
-    "addon/src/captive_portal/controllers/tp_omada/legacy_client.py:115:ai-slop/python-chained-dict-get",
-    "addon/src/captive_portal/controllers/tp_omada/legacy_client.py:249:ai-slop/python-chained-dict-get",
-    "addon/src/captive_portal/integrations/ha_discovery_service.py:91:ai-slop/python-chained-dict-get",
-    "addon/src/captive_portal/security/csrf.py:90:ai-slop/python-broad-except",
-    "addon/src/captive_portal/security/hmac_csrf.py:319:ai-slop/python-broad-except",
-    "addon/src/captive_portal/integrations/ha_discovery_service.py:144:ai-slop/silent-recovery"
-  ]
+  "findingFingerprints": []
 }

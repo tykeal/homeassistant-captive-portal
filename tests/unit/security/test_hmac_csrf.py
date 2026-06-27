@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac as hmac_mod
+import logging
 import time
 from typing import Optional
 from unittest.mock import AsyncMock, patch
@@ -510,3 +511,28 @@ class TestQueryParamExtraction:
             method="GET",
         )
         await csrf.validate_token(request)
+
+    @pytest.mark.asyncio
+    async def test_form_parse_failure_logs_and_returns_none(
+        self,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """Form parse failures are logged while preserving fallback behavior."""
+        csrf = HMACCSRFProtection()
+        request = _make_request(form_data={"csrf_token": "ignored"})
+
+        async def _raise_form_error() -> dict[str, str]:
+            """Raise the expected Starlette stream-consumption error."""
+            raise RuntimeError("stream consumed")
+
+        request.form = _raise_form_error
+
+        with caplog.at_level(
+            logging.WARNING,
+            logger="captive_portal.security.hmac_csrf",
+        ):
+            token = await csrf._extract_request_token(request)
+
+        assert token is None
+        assert "Unable to parse HMAC CSRF form token" in caplog.text
+        assert "stream consumed" in caplog.text
