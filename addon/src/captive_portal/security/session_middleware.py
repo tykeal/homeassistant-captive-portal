@@ -14,7 +14,7 @@ Implements secure session handling with:
 
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID
 
 from fastapi import Request, Response
@@ -32,6 +32,70 @@ class SessionConfig(BaseModel):
     cookie_secure: bool = True
     cookie_httponly: bool = True
     cookie_samesite: Literal["strict", "lax", "none"] = "strict"
+
+
+def refresh_runtime_session_config(
+    app_state: Any,
+    idle_minutes: int,
+    max_hours: int,
+) -> SessionConfig:
+    """Apply persisted session timeout settings to app state.
+
+    Args:
+        app_state: FastAPI application state that stores session_config.
+        idle_minutes: Saved session idle timeout in minutes.
+        max_hours: Saved absolute session timeout in hours.
+
+    Returns:
+        Refreshed SessionConfig instance used by runtime session handling.
+    """
+    current_config = getattr(app_state, "session_config", None)
+    if current_config is None:
+        current_config = SessionConfig()
+
+    saved_config = SessionConfig(
+        idle_minutes=idle_minutes,
+        max_hours=max_hours,
+        cookie_name=current_config.cookie_name,
+        cookie_secure=current_config.cookie_secure,
+        cookie_httponly=current_config.cookie_httponly,
+        cookie_samesite=current_config.cookie_samesite,
+    )
+    session_store = getattr(app_state, "session_store", None)
+    if session_store is not None:
+        session_store.cleanup_expired(current_config)
+        for session in session_store._sessions.values():
+            session.expires_utc = min(
+                session.expires_utc,
+                session.created_utc + timedelta(hours=saved_config.max_hours),
+            )
+        session_store.cleanup_expired(saved_config)
+
+    current_config.idle_minutes = saved_config.idle_minutes
+    current_config.max_hours = saved_config.max_hours
+    app_state.session_config = current_config
+    return current_config
+
+
+def _is_session_data_expired(
+    session: "SessionData",
+    config: SessionConfig,
+    now: datetime,
+) -> bool:
+    """Check whether session data is expired for the active config.
+
+    Args:
+        session: Stored session data.
+        config: Current session timeout configuration.
+        now: Current UTC timestamp.
+
+    Returns:
+        True when idle or absolute timeout has elapsed.
+    """
+    idle_threshold = now - timedelta(minutes=config.idle_minutes)
+    configured_expires_utc = session.created_utc + timedelta(hours=config.max_hours)
+    absolute_expires_utc = min(session.expires_utc, configured_expires_utc)
+    return session.last_activity_utc < idle_threshold or absolute_expires_utc < now
 
 
 class SessionData(BaseModel):
@@ -104,8 +168,7 @@ class SessionStore:
 
     def _is_expired(self, session: SessionData, config: SessionConfig, now: datetime) -> bool:
         """Check if session is expired (idle or absolute timeout)."""
-        idle_threshold = now - timedelta(minutes=config.idle_minutes)
-        return session.last_activity_utc < idle_threshold or session.expires_utc < now
+        return _is_session_data_expired(session, config, now)
 
 
 class SessionMiddleware(BaseHTTPMiddleware):
@@ -130,10 +193,13 @@ class SessionMiddleware(BaseHTTPMiddleware):
 
         if session_id:
             session = self.store.get(session_id)
-            if session and not self._is_session_expired(session):
-                self.store.update_activity(session_id, self.config)
-                request.state.session_id = session_id
-                request.state.admin_id = session.admin_id
+            if session:
+                if self._is_session_expired(session):
+                    self.store.delete(session_id)
+                else:
+                    self.store.update_activity(session_id, self.config)
+                    request.state.session_id = session_id
+                    request.state.admin_id = session.admin_id
 
         response = await call_next(request)
         return response
@@ -141,8 +207,7 @@ class SessionMiddleware(BaseHTTPMiddleware):
     def _is_session_expired(self, session: SessionData) -> bool:
         """Check if session has expired."""
         now = datetime.now(timezone.utc)
-        idle_threshold = now - timedelta(minutes=self.config.idle_minutes)
-        return session.last_activity_utc < idle_threshold or session.expires_utc < now
+        return _is_session_data_expired(session, self.config, now)
 
     def create_session(
         self,

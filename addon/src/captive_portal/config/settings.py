@@ -262,20 +262,9 @@ def _validate_guest_url(value: Any) -> bool:
     if stripped == "":
         return True
 
-    from urllib.parse import urlsplit
+    from captive_portal.services.redirect_validator import GuestExternalUrlValidator
 
-    parts = urlsplit(stripped)
-    if parts.scheme not in ("http", "https"):
-        return False
-    if not parts.netloc:
-        return False
-    if parts.query or parts.fragment:
-        return False
-    if parts.path and parts.path != "/":
-        return False
-    if stripped.endswith("/"):
-        return False
-    return True
+    return GuestExternalUrlValidator.validate(stripped).valid
 
 
 def _validate_omada_url(value: Any) -> bool:

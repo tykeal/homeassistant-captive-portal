@@ -58,6 +58,13 @@ class TestGuestUrlMigrationFromEnv:
             legacy = AppSettings._load_for_migration(options_path="/nonexistent/path.json")
         assert legacy["guest_external_url"] == "http://10.0.0.1:8099"
 
+    def test_rejects_unsafe_env_var(self) -> None:
+        """Migration ignores unsafe CP_GUEST_EXTERNAL_URL values."""
+        env = {"CP_GUEST_EXTERNAL_URL": "https://guest.example.com@evil.example"}
+        with patch.dict(os.environ, env, clear=True):
+            legacy = AppSettings._load_for_migration(options_path="/nonexistent/path.json")
+        assert legacy["guest_external_url"] == ""
+
 
 class TestGuestUrlMigrationPrecedence:
     """Test three-tier precedence for migration guest_external_url."""

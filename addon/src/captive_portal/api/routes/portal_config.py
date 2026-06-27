@@ -12,7 +12,11 @@ from sqlmodel import Session, select
 from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.portal_config import PortalConfig
 from captive_portal.persistence.database import get_session
-from captive_portal.security.session_middleware import require_admin
+from captive_portal.security.session_middleware import (
+    refresh_runtime_session_config,
+    require_admin,
+)
+from captive_portal.services.redirect_validator import GuestExternalUrlValidator
 
 # Validation constants from PortalConfig model
 MAX_REDIRECT_URL_LENGTH = 2048
@@ -68,6 +72,27 @@ class PortalConfigUpdate(BaseModel):
     session_idle_minutes: int | None = Field(None, ge=1, le=1440)
     session_max_hours: int | None = Field(None, ge=1, le=168)
     guest_external_url: str | None = Field(None, max_length=MAX_REDIRECT_URL_LENGTH)
+
+
+def _validated_guest_external_url(guest_external_url: str) -> str:
+    """Validate and normalize a guest external URL API value.
+
+    Args:
+        guest_external_url: Submitted guest external URL.
+
+    Returns:
+        Normalized URL safe to persist.
+
+    Raises:
+        HTTPException: If the submitted URL is unsafe.
+    """
+    guest_url_validation = GuestExternalUrlValidator.validate(guest_external_url)
+    if not guest_url_validation.valid:
+        raise HTTPException(
+            status_code=422,
+            detail=f"guest_external_url: {guest_url_validation.error_message}",
+        )
+    return guest_url_validation.normalized_url
 
 
 @router.get("", response_model=PortalConfigResponse)
@@ -144,11 +169,16 @@ async def update_portal_config(
     if updates.session_max_hours is not None:
         config.session_max_hours = updates.session_max_hours
     if updates.guest_external_url is not None:
-        config.guest_external_url = updates.guest_external_url
+        config.guest_external_url = _validated_guest_external_url(updates.guest_external_url)
 
     session.add(config)
     session.commit()
     session.refresh(config)
+    refresh_runtime_session_config(
+        request.app.state,
+        config.session_idle_minutes,
+        config.session_max_hours,
+    )
 
     return PortalConfigResponse(
         id=config.id,

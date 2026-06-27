@@ -49,7 +49,7 @@ def test_openapi_mode_validation_rejects_invalid_value() -> None:
             "true",
             "/admin/omada-settings/",
         )
-        == "Backend+mode+must+be+auto,+openapi,+or+legacy"
+        == "Backend mode must be auto, openapi, or legacy"
     )
 
 
@@ -88,7 +88,7 @@ def test_forced_openapi_requires_new_or_stored_secret() -> None:
             "/admin/omada-settings/",
             client_secret_exists=False,
         )
-        == "Client+Secret+is+required+for+OpenAPI+mode"
+        == "Client Secret is required for OpenAPI mode"
     )
 
 
@@ -151,5 +151,8 @@ def test_audit_secret_changed_tracks_submitted_secret() -> None:
 
 def test_runtime_config_none_reports_configuration_error() -> None:
     """A failed runtime rebuild is surfaced as a settings error."""
-    assert _omada_runtime_error_message(None) == "Settings+saved+but+configuration+error"
+    assert (
+        _omada_runtime_error_message(None)
+        == "Settings saved, but Omada configuration could not be applied."
+    )
     assert _omada_runtime_error_message(object()) is None

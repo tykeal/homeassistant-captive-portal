@@ -23,6 +23,7 @@ from captive_portal.config.settings import AppSettings
 from captive_portal.models.omada_config import OmadaConfig
 from captive_portal.models.portal_config import PortalConfig
 from captive_portal.security.credential_encryption import decrypt_credential, encrypt_credential
+from captive_portal.services.redirect_validator import GuestExternalUrlValidator
 
 logger = logging.getLogger("captive_portal.services.config_migration")
 
@@ -297,16 +298,27 @@ async def migrate_yaml_to_db(
         )
 
     # Migrate guest_external_url
+    guest_url_changed = False
+    existing_guest_url = GuestExternalUrlValidator.validate(portal_config.guest_external_url)
+    if portal_config.guest_external_url and not existing_guest_url.valid:
+        portal_config.guest_external_url = ""
+        guest_url_changed = True
+        logger.warning("Cleared invalid guest_external_url from database.")
+    elif portal_config.guest_external_url != existing_guest_url.normalized_url:
+        portal_config.guest_external_url = existing_guest_url.normalized_url
+        guest_url_changed = True
+
     guest_url = str(legacy["guest_external_url"])
-    if portal_config.guest_external_url == "" and guest_url != "":
-        portal_config.guest_external_url = guest_url
+    guest_url_validation = GuestExternalUrlValidator.validate(guest_url)
+    if portal_config.guest_external_url == "" and guest_url_validation.valid and guest_url != "":
+        portal_config.guest_external_url = guest_url_validation.normalized_url
         result.guest_url_migrated = True
         logger.info(
             "Migrated guest_external_url from YAML: %s",
-            guest_url,
+            guest_url_validation.normalized_url,
         )
 
-    if result.session_fields_migrated > 0 or result.guest_url_migrated:
+    if result.session_fields_migrated > 0 or result.guest_url_migrated or guest_url_changed:
         session.add(portal_config)
         session.commit()
 
