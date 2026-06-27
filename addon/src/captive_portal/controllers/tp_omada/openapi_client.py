@@ -207,6 +207,7 @@ class OpenApiClient:
                 if self._has_fresh_token() and self.token_state.access_token:
                     return self.token_state.access_token
                 grant_type = (
+                    # aislop-ignore-next-line ai-slop/hardcoded-id -- OAuth grant type
                     "refresh_token" if self.token_state.refresh_token else "client_credentials"
                 )
                 await self._post_token(grant_type)
@@ -228,10 +229,12 @@ class OpenApiClient:
                 self.token_state.expires_at_monotonic = 0.0
                 if self.token_state.refresh_token:
                     try:
+                        # aislop-ignore-next-line ai-slop/hardcoded-id -- OAuth grant type
                         await self._post_token("refresh_token")
                         return
                     except OmadaAuthenticationError:
                         self.token_state.refresh_token = None
+                # aislop-ignore-next-line ai-slop/hardcoded-id -- OAuth grant type
                 await self._post_token("client_credentials")
 
     async def auth_headers(self) -> dict[str, str]:

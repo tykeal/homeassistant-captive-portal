@@ -115,7 +115,6 @@ async def create_admin_account(
     """
     await csrf.validate_token(request)
 
-    # Check for duplicate username
     stmt: Any = select(AdminUser).where(AdminUser.username == account.username)
     existing_username = cast(Optional[AdminUser], db.exec(stmt).first())
     if existing_username:
@@ -124,7 +123,6 @@ async def create_admin_account(
             detail="Username already exists",
         )
 
-    # Check for duplicate email
     stmt = select(AdminUser).where(AdminUser.email == account.email)
     existing_email = cast(Optional[AdminUser], db.exec(stmt).first())
     if existing_email:
@@ -179,7 +177,6 @@ async def update_admin_account(
         )
 
     if updates.email is not None:
-        # Check for duplicate email
         stmt = select(AdminUser).where(AdminUser.email == updates.email, AdminUser.id != admin_id)
         existing_email = cast(Optional[AdminUser], db.exec(stmt).first())
         if existing_email:

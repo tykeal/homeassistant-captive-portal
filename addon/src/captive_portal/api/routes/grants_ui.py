@@ -149,7 +149,6 @@ async def extend_grant(
     """
     root = request.scope.get("root_path", "")
 
-    # Validate CSRF
     try:
         await csrf.validate_token(request)
     except HTTPException:
@@ -159,7 +158,6 @@ async def extend_grant(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    # Parse and validate minutes from form data
     form = await request.form()
     minutes_raw = form.get("minutes", "")
     try:
@@ -178,7 +176,6 @@ async def extend_grant(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    # Execute extend
     from captive_portal.persistence.repositories import AccessGrantRepository
 
     grant_service = GrantService(session=session, grant_repo=AccessGrantRepository(session))
@@ -240,7 +237,6 @@ async def revoke_grant(
     """
     root = request.scope.get("root_path", "")
 
-    # Validate CSRF
     try:
         await csrf.validate_token(request)
     except HTTPException:
@@ -250,7 +246,6 @@ async def revoke_grant(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    # Execute revoke
     from captive_portal.api.routes.grants import _revoke_with_controller
     from captive_portal.persistence.repositories import AccessGrantRepository
 

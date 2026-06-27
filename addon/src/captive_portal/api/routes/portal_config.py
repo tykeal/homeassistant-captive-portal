@@ -123,12 +123,10 @@ async def update_portal_config(
             detail="Only administrators can modify portal configuration",
         )
 
-    # Get singleton config
     stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
     config: Optional[PortalConfig] = session.exec(stmt).first()
 
     if not config:
-        # Create config with provided updates
         config = PortalConfig(id=1)
         session.add(config)
 

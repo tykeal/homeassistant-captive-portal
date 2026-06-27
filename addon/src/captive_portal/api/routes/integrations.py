@@ -117,7 +117,6 @@ async def create_integration(
     """
     audit_service = AuditService(session)
 
-    # Check for duplicate integration_id
     statement: Any = select(HAIntegrationConfig).where(
         HAIntegrationConfig.integration_id == config.integration_id
     )
@@ -131,7 +130,6 @@ async def create_integration(
             detail=f"Integration '{config.integration_id}' already exists",
         )
 
-    # Create new configuration
     new_config = HAIntegrationConfig(
         integration_id=config.integration_id,
         identifier_attr=config.identifier_attr,

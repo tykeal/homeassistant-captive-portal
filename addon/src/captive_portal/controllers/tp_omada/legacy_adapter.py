@@ -160,7 +160,6 @@ class OmadaLegacyAdapter:
         endpoint = f"/{self.client.controller_id}/api/v2/hotspot/extPortal/auth"
         response = await self._post_with_managed_client(endpoint, payload)
 
-        # Extract result
         result = response.get("result", {})
         return {
             "grant_id": result.get("clientId", mac),  # Use MAC as fallback ID

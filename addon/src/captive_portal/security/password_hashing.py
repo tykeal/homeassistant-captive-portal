@@ -3,8 +3,13 @@
 
 """Password hashing using argon2 with OWASP parameters."""
 
+# aislop-ignore-next-line ai-slop/hallucinated-import -- provided by argon2-cffi
 from argon2._password_hasher import PasswordHasher
+
+# aislop-ignore-next-line ai-slop/hallucinated-import -- provided by argon2-cffi
 from argon2.exceptions import InvalidHash, VerificationError, VerifyMismatchError
+
+# aislop-ignore-next-line ai-slop/hallucinated-import -- provided by argon2-cffi
 from argon2.low_level import Type
 
 # OWASP recommended parameters for argon2id

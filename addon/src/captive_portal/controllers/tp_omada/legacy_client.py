@@ -112,7 +112,6 @@ class OmadaLegacyClient:
                     f"Omada login failed: {data.get('msg', 'Unknown error')}"
                 )
 
-            # Extract CSRF token from response
             self._csrf_token = data.get("result", {}).get("token")
             if not self._csrf_token:
                 raise OmadaAuthenticationError("CSRF token not found in login response")
@@ -184,7 +183,6 @@ class OmadaLegacyClient:
                 response.raise_for_status()
                 data: dict[str, Any] = response.json()
 
-                # Check Omada errorCode
                 error_code = data.get("errorCode", 0)
                 if error_code != 0:
                     # Retry on 5xxx error codes (server/transient errors)

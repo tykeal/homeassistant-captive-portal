@@ -233,7 +233,6 @@ class RentalControlService:
         """
         attributes = event_data.get("attributes", {})
 
-        # Extract timestamps
         start_str = attributes.get("start")
         end_str = attributes.get("end")
 
@@ -264,12 +263,10 @@ class RentalControlService:
             end_utc = parsed_end.replace(tzinfo=fallback_tz).astimezone(timezone.utc)
         # Note: Grace period NOT applied here - applied at grant creation time
 
-        # Extract identifiers
         slot_name = attributes.get("slot_name")
         slot_code = attributes.get("slot_code")
         last_four = attributes.get("last_four")
 
-        # Validate at least one identifier exists
         if not any([slot_name, slot_code, last_four]):
             logger.warning(
                 "Skipping event with no valid identifiers",

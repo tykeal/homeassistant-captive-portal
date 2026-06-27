@@ -53,7 +53,6 @@ class RateLimiter:
             self.cleanup()
             self._last_cleanup = now
 
-        # Clean old attempts for this IP
         self._attempts[ip_address] = [ts for ts in self._attempts[ip_address] if ts > window_start]
 
         # Check if under limit

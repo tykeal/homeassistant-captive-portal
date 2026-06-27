@@ -326,7 +326,6 @@ class BookingCodeValidator:
         if not event or not integration:
             raise BookingNotFoundError("Booking not found")
 
-        # Check time window
         now = datetime.now(timezone.utc)
         grace_minutes = integration.checkout_grace_minutes
 
@@ -351,7 +350,6 @@ class BookingCodeValidator:
         if now > effective_end:
             raise BookingOutsideWindowError("Booking expired")
 
-        # Check for duplicate active grant
         existing: AccessGrant | None = self.session.exec(
             select(AccessGrant)
             .where(AccessGrant.booking_ref == code)
@@ -361,7 +359,6 @@ class BookingCodeValidator:
         if existing:
             raise DuplicateGrantError("Active grant already exists")
 
-        # Create new grant
         grant = AccessGrant(
             device_id=device_id,
             booking_ref=code,  # Use booking_ref field

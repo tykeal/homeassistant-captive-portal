@@ -139,7 +139,6 @@ class RetryQueueService:
 
             now_utc = datetime.now(timezone.utc)
 
-            # Process all operations ready for retry
             processed = 0
             while self._queue and processed < len(self._queue):
                 operation = self._queue.popleft()
@@ -151,7 +150,6 @@ class RetryQueueService:
                     processed += 1
                     continue
 
-                # Execute retry
                 operation.attempts += 1
                 try:
                     if self._executor:

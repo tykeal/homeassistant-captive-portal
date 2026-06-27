@@ -57,7 +57,6 @@ _ENV_VAR_MAP: dict[str, str] = {
     "CP_DEBUG_GUEST_PORTAL": "debug_guest_portal",
 }
 
-
 # Reverse maps: field name → addon option key / env var name
 _FIELD_TO_ADDON_KEY: dict[str, str] = {v: k for k, v in _ADDON_OPTION_MAP.items()}
 _FIELD_TO_ENV_KEY: dict[str, str] = {v: k for k, v in _ENV_VAR_MAP.items()}
@@ -111,7 +110,6 @@ def _validate_non_empty_str(value: Any) -> bool:
     return isinstance(value, str) and len(value.strip()) > 0
 
 
-# Dispatch table for field validation
 _FIELD_VALIDATORS: dict[str, Callable[[Any], bool]] = {
     "log_level": lambda v: isinstance(v, str) and v.lower() in _VALID_LOG_LEVELS,
     "db_path": lambda v: isinstance(v, str) and len(v) > 0,
@@ -186,11 +184,6 @@ def _try_addon_option(field_name: str, addon_key: str, raw: Any) -> tuple[bool, 
     )
     return False, None
 
-
-# --- Migration-only maps and validators --------------------------------
-# These are used exclusively by ``_load_for_migration()`` to read legacy
-# YAML / env var values for the one-time DB migration.  They are *not*
-# part of the active ``AppSettings`` class.
 
 _MIGRATION_ADDON_MAP: dict[str, str] = {
     "session_idle_timeout": "session_idle_minutes",
@@ -374,6 +367,7 @@ class AppSettings(BaseModel):
 
     log_level: str = "info"
     db_path: str = "/data/captive_portal.db"
+    # aislop-ignore-next-line ai-slop/hardcoded-url -- stable HA Supervisor endpoint
     ha_base_url: str = "http://supervisor/core/api"
     ha_token: str = ""
     debug_guest_portal: bool = False
@@ -393,7 +387,6 @@ class AppSettings(BaseModel):
         Returns:
             Fully resolved ``AppSettings`` instance.
         """
-        # --- Layer 1: Read addon options (if file exists) ---
         addon_options: dict[str, Any] = {}
         try:
             with open(options_path) as fh:
@@ -413,7 +406,6 @@ class AppSettings(BaseModel):
             "ha_token",
             "debug_guest_portal",
         ):
-            # --- Try addon option ---
             addon_key = _FIELD_TO_ADDON_KEY.get(field_name)
             if addon_key and addon_key in addon_options:
                 resolved_ok, value = _try_addon_option(
@@ -425,8 +417,6 @@ class AppSettings(BaseModel):
                     resolved[field_name] = value
                     continue
 
-            # --- Try environment variable ---
-            # ha_token has a special primary source: SUPERVISOR_TOKEN
             if field_name == "ha_token":
                 sv_token = os.environ.get("SUPERVISOR_TOKEN")
                 if sv_token is not None and _validate_field(field_name, sv_token):
@@ -440,7 +430,6 @@ class AppSettings(BaseModel):
                     resolved[field_name] = _coerce_field(field_name, env_val)
                     continue
 
-            # --- Fall through to built-in default ---
             resolved[field_name] = getattr(defaults, field_name)
 
         return cls(**resolved)
@@ -481,7 +470,6 @@ class AppSettings(BaseModel):
         for field_name, default_val in _MIGRATION_DEFAULTS.items():
             validator = _MIGRATION_VALIDATORS.get(field_name)
 
-            # --- Try addon option ---
             addon_key = rev_addon.get(field_name)
             if addon_key and addon_key in addon_options:
                 raw = addon_options[addon_key]
@@ -496,7 +484,6 @@ class AppSettings(BaseModel):
                     result[field_name] = _coerce_migration_field(field_name, raw)
                     continue
 
-            # --- Try env var ---
             env_key = rev_env.get(field_name)
             if env_key:
                 env_val = os.environ.get(env_key)
@@ -504,7 +491,6 @@ class AppSettings(BaseModel):
                     result[field_name] = _coerce_migration_field(field_name, env_val)
                     continue
 
-            # --- Default ---
             result[field_name] = default_val
 
         return result

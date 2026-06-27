@@ -170,7 +170,6 @@ async def authorize_booking(
             message="Access already granted (existing authorization)",
         )
 
-    # Create new access grant
     grant = AccessGrant(
         id=uuid4(),
         mac=request.mac_address,

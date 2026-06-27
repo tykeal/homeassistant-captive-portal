@@ -148,7 +148,6 @@ async def update_portal_settings(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    # Validate CSRF token
     try:
         await csrf.validate_token(request)
     except HTTPException:
@@ -157,7 +156,6 @@ async def update_portal_settings(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    # Validate input ranges
     if rate_limit_attempts < 1 or rate_limit_attempts > 1000:
         return RedirectResponse(
             url=f"{root}/admin/portal-settings?error=Rate+limit+attempts+must+be+between+1+and+1000",
@@ -188,12 +186,10 @@ async def update_portal_settings(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    # Get singleton config
     stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
     config: Optional[PortalConfig] = session.exec(stmt).first()
 
     if not config:
-        # Create config with provided values
         config = PortalConfig(id=1)
         session.add(config)
 
@@ -209,7 +205,6 @@ async def update_portal_settings(
     session.add(config)
     session.commit()
 
-    # Log audit event
     audit_service = AuditService(session)
     await audit_service.log_admin_action(
         admin_id=current_user.id,

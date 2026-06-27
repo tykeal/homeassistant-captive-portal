@@ -16,7 +16,6 @@ function hideError() {
     errorDiv.classList.add('hidden');
 }
 
-// Check auth status and show appropriate form
 async function checkAuthStatus() {
     try {
         const resp = await fetch(rootPath + '/api/admin/auth/status');
@@ -58,7 +57,6 @@ loginForm.addEventListener('submit', async function(e) {
     }
 });
 
-// Setup form handler
 setupForm.addEventListener('submit', async function(e) {
     e.preventDefault();
     hideError();

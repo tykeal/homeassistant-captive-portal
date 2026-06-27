@@ -76,7 +76,6 @@ def readiness_check(
     checks: dict[str, str] = {}
     overall = "ok"
 
-    # Check database connectivity
     try:
         result = session.execute(text("SELECT 1"))
         result.close()

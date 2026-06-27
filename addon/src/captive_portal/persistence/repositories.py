@@ -10,7 +10,6 @@ from uuid import UUID
 from sqlalchemy import delete as sa_delete
 from sqlmodel import Session, col, select
 
-
 from captive_portal.models.access_grant import AccessGrant
 from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.audit_log import AuditLog
@@ -467,7 +466,6 @@ class RentalControlEventRepository(BaseRepository[RentalControlEvent]):
         Returns:
             Updated event instance
         """
-        # Check for existing event
         statement: Any = select(RentalControlEvent).where(
             RentalControlEvent.integration_id == event.integration_id,
             RentalControlEvent.event_index == event.event_index,
@@ -475,7 +473,6 @@ class RentalControlEventRepository(BaseRepository[RentalControlEvent]):
         existing: RentalControlEvent | None = self.session.exec(statement).first()
 
         if existing:
-            # Update existing
             existing.slot_name = event.slot_name
             existing.slot_code = event.slot_code
             existing.last_four = event.last_four

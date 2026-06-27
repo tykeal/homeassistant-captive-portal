@@ -116,7 +116,6 @@ def _make_lifespan(
         Yields:
             Control to the application after startup completes.
         """
-        # --- Startup ---
         log_cfg = settings.to_log_config()
         if not logging.getLogger().handlers:
             logging.basicConfig(**log_cfg)
@@ -136,10 +135,8 @@ def _make_lifespan(
             dispose_engine()
             raise
 
-        # Run one-time YAML→DB migration
         await _run_config_migration(settings, engine)
 
-        # Create HA client for API communication
         ha_client = HAClient(settings.ha_base_url, settings.ha_token)
         app.state.ha_client = ha_client
         logger.info("HAClient initialized for %s", settings.ha_base_url)
@@ -164,7 +161,6 @@ def _make_lifespan(
         app.state.grant_expiry_task = grant_expiry_task
         logger.info("Grant expiry worker started.")
 
-        # Start background poller for Rental Control event sync
         poller_session = Session(engine)
         event_repo = RentalControlEventRepository(poller_session)
         rental_service = RentalControlService(
@@ -183,7 +179,6 @@ def _make_lifespan(
 
         yield
 
-        # --- Shutdown ---
         await app.state.grant_expiry_service.stop()
         app.state.grant_expiry_task.cancel()
         try:

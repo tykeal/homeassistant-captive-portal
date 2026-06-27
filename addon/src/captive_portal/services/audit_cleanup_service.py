@@ -34,7 +34,6 @@ class AuditCleanupService:
         """
         cutoff = datetime.now(timezone.utc) - timedelta(days=self.config.audit_retention_days)
 
-        # Delete logs older than retention period
         stmt = delete(AuditLog).where(
             AuditLog.timestamp_utc < cutoff  # type: ignore[arg-type]
         )

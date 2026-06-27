@@ -386,7 +386,6 @@ async def update_omada_settings(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    # Validate CSRF token
     try:
         await csrf.validate_token(request)
     except HTTPException:
@@ -403,7 +402,6 @@ async def update_omada_settings(
     site_name = site_name.strip() or "Default"
     controller_id = controller_id.strip()
 
-    # Validate form inputs
     existing_stmt: Any = select(OmadaConfig).where(OmadaConfig.id == 1)
     existing_config: Optional[OmadaConfig] = session.exec(existing_stmt).first()
     error = _validate_omada_form(
@@ -427,10 +425,8 @@ async def update_omada_settings(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    # Load or create config
     config = existing_config or _get_or_create_omada_config(session)
 
-    # Update fields
     config.controller_url = controller_url
     config.username = username
     config.site_name = site_name
@@ -439,7 +435,6 @@ async def update_omada_settings(
     config.client_id = client_id
     config.openapi_mode = openapi_mode
 
-    # Handle password
     if password_changed == "true" and password:
         config.encrypted_password = encrypt_credential(password)
     # If password_changed is false, preserve existing encrypted_password
@@ -456,18 +451,20 @@ async def update_omada_settings(
     else:
         _set_runtime_omada_config(request.app.state, None)
 
-    # Log audit event
     audit_service = AuditService(session)
     await audit_service.log_admin_action(
         admin_id=current_user.id,
         action="omada_config.update",
         target_type="omada_config",
+        # aislop-ignore-next-line ai-slop/hardcoded-id -- singleton config audit target
         target_id="1",
         metadata={
             "controller_url": controller_url,
             "username": username,
             "password_changed": password_changed == "true",
+            # aislop-ignore-next-line ai-slop/hardcoded-id -- audit metadata key
             "client_id_set": bool(client_id),
+            # aislop-ignore-next-line ai-slop/hardcoded-id -- audit metadata key
             "client_secret_changed": _client_secret_changed_for_audit(
                 client_secret,
                 client_secret_changed,
