@@ -128,9 +128,10 @@ class OmadaLegacyClient:
                     f"Omada login failed: {data.get('msg', 'Unknown error')}"
                 )
 
-            self._csrf_token = _response_result(data).get("token")
-            if not self._csrf_token:
+            csrf_token = _response_result(data).get("token")
+            if not isinstance(csrf_token, str) or not csrf_token:
                 raise OmadaAuthenticationError("CSRF token not found in login response")
+            self._csrf_token = csrf_token
 
             # Extract session cookie (TPEAP_SESSIONID or TPOMADA_SESSIONID)
             cookies = response.cookies
