@@ -191,3 +191,20 @@ async def test_get_all_states_default_timeout_is_10s() -> None:
 
     call_kwargs = mock_get.call_args
     assert call_kwargs.kwargs.get("timeout") == 10.0
+
+
+@pytest.mark.asyncio
+async def test_get_entity_registry_protocol_error_raises_connection_error() -> None:
+    """Transport protocol errors are normalized to HAConnectionError."""
+    from captive_portal.integrations.ha_client import HAClient
+    from captive_portal.integrations.ha_errors import HAConnectionError
+
+    client = HAClient(base_url="http://supervisor/core/api", token="test_token")
+    mock_get = AsyncMock(side_effect=httpx.ProtocolError("malformed response"))
+
+    with patch.object(client.client, "get", mock_get):
+        with pytest.raises(HAConnectionError) as exc_info:
+            await client.get_entity_registry()
+
+    assert exc_info.value.user_message == "Cannot connect to Home Assistant"
+    assert exc_info.value.detail == "malformed response"

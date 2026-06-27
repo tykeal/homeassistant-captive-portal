@@ -27,6 +27,9 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException, Request, status
 
+# Starlette exposes malformed multipart parsing through this exception class.
+from starlette.formparsers import MultiPartException
+
 _logger = logging.getLogger(__name__)
 
 
@@ -316,8 +319,12 @@ class HMACCSRFProtection:
                 token = form.get(self.config.form_field_name)
                 if isinstance(token, str):
                     return token
-            except Exception:
-                pass
+            except (MultiPartException, RuntimeError, ValueError) as exc:
+                _logger.warning(
+                    "Unable to parse HMAC CSRF form token: %s",
+                    exc,
+                    extra={"content_type": content_type, "method": request.method},
+                )
 
         # 3. Check query params for GET (captive portal workaround)
         if request.method == "GET":

@@ -11,11 +11,17 @@ Implements double-submit cookie pattern (D14):
 - Constant-time comparison
 """
 
+import logging
 import secrets
 from typing import Literal, Optional
 
 from fastapi import HTTPException, Request, Response, status
 from pydantic import BaseModel
+
+# Starlette exposes malformed multipart parsing through this exception class.
+from starlette.formparsers import MultiPartException
+
+_logger = logging.getLogger(__name__)
 
 
 class CSRFConfig(BaseModel):
@@ -87,8 +93,12 @@ class CSRFProtection:
                 # Ensure we only return strings, not UploadFile objects
                 if isinstance(token, str):
                     return token
-            except Exception:
-                pass
+            except (MultiPartException, RuntimeError, ValueError) as exc:
+                _logger.warning(
+                    "Unable to parse CSRF form token: %s",
+                    exc,
+                    extra={"content_type": content_type},
+                )
 
         return None
 

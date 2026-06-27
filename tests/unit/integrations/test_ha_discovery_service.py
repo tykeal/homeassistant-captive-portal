@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -472,6 +473,7 @@ async def test_discover_excludes_wrong_platform_with_prefix(
 async def test_discover_fallback_to_prefix_on_registry_failure(
     db_engine: Engine,  # noqa: ARG001
     db_session: Session,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Falls back to prefix matching when entity registry fails."""
     from captive_portal.integrations.ha_client import HAClient
@@ -494,8 +496,42 @@ async def test_discover_fallback_to_prefix_on_registry_failure(
     )
 
     service = HADiscoveryService(ha_client=mock_client, session=db_session)
-    result = await service.discover()
+    with caplog.at_level(logging.WARNING, logger="captive_portal"):
+        result = await service.discover()
 
     assert result.available is True
     assert len(result.integrations) == 1
     assert result.integrations[0].entity_id == ("calendar.rental_control_unit1")
+    assert "Entity registry unavailable" in caplog.text
+    assert "Server error" in caplog.text
+    assert "HTTP 500" in caplog.text
+
+
+def test_rental_control_calendar_handles_missing_attributes() -> None:
+    """Fallback matching treats missing attributes as an explicit non-match."""
+    from captive_portal.integrations.ha_discovery_service import (
+        _is_rental_control_calendar,
+    )
+
+    entity = {"entity_id": "calendar.beach_house", "state": "off"}
+
+    assert _is_rental_control_calendar(entity) is False
+
+
+@pytest.mark.asyncio
+async def test_unexpected_registry_error_propagates(
+    db_engine: Engine,  # noqa: ARG001
+    db_session: Session,
+) -> None:
+    """Unexpected registry errors are not silently converted to fallback."""
+    from captive_portal.integrations.ha_client import HAClient
+    from captive_portal.integrations.ha_discovery_service import HADiscoveryService
+
+    mock_client = MagicMock(spec=HAClient)
+    mock_client.get_all_states = AsyncMock(return_value=[])
+    mock_client.get_entity_registry = AsyncMock(side_effect=RuntimeError("programming mistake"))
+
+    service = HADiscoveryService(ha_client=mock_client, session=db_session)
+
+    with pytest.raises(RuntimeError, match="programming mistake"):
+        await service.discover()

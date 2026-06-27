@@ -35,6 +35,22 @@ class OmadaRetryExhaustedError(OmadaClientError):
     pass
 
 
+def _response_result(data: dict[str, Any]) -> dict[str, Any]:
+    """Return normalized Omada response result payload.
+
+    Args:
+        data: Decoded Omada response payload.
+
+    Returns:
+        Result dictionary, or an empty dict when the result is missing or
+        malformed.
+    """
+    result = data.get("result")
+    if isinstance(result, dict):
+        return result
+    return {}
+
+
 class OmadaLegacyClient:
     """HTTP client for the legacy TP-Omada controller API with authentication.
 
@@ -112,9 +128,10 @@ class OmadaLegacyClient:
                     f"Omada login failed: {data.get('msg', 'Unknown error')}"
                 )
 
-            self._csrf_token = data.get("result", {}).get("token")
-            if not self._csrf_token:
+            csrf_token = _response_result(data).get("token")
+            if not isinstance(csrf_token, str) or not csrf_token:
                 raise OmadaAuthenticationError("CSRF token not found in login response")
+            self._csrf_token = csrf_token
 
             # Extract session cookie (TPEAP_SESSIONID or TPOMADA_SESSIONID)
             cookies = response.cookies
@@ -246,8 +263,8 @@ async def discover_controller_id(
                 raise OmadaClientError(
                     f"Controller info request failed: {data.get('msg', 'Unknown error')}"
                 )
-            omadac_id: str | None = data.get("result", {}).get("omadacId")
-            if not omadac_id:
+            omadac_id = _response_result(data).get("omadacId")
+            if not isinstance(omadac_id, str) or not omadac_id:
                 raise OmadaClientError("omadacId not found in /api/info response")
             return omadac_id
         except httpx.HTTPStatusError as e:
