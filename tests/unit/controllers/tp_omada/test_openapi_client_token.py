@@ -5,10 +5,12 @@
 from __future__ import annotations
 
 import time
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 
+from captive_portal.controllers.tp_omada.base_client import OmadaRetryExhaustedError
 from captive_portal.controllers.tp_omada.openapi_client import OpenApiClient, OpenApiTokenState
 
 
@@ -163,6 +165,35 @@ async def test_token_malformed_expires_in_raises_auth_error() -> None:
 
     with pytest.raises(Exception, match="expiresIn"):
         await client.get_access_token()
+
+
+@pytest.mark.asyncio
+async def test_transient_http_errors_raise_retry_exhausted() -> None:
+    """Persistent transient OpenAPI errors use retry-exhausted semantics."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Return token success and persistent transient API failures."""
+        if request.url.path == "/openapi/authorize/token":
+            return httpx.Response(
+                200,
+                json={"errorCode": 0, "result": {"accessToken": "token", "expiresIn": 7200}},
+            )
+        return httpx.Response(503, json={"errorCode": 503, "msg": "unavailable"})
+
+    client = OpenApiClient(
+        base_url="https://ctrl.test:8043",
+        controller_id="0123456789ab",
+        client_id="client-id",
+        client_secret="client-secret",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with patch(
+        "captive_portal.controllers.tp_omada.openapi_client.asyncio.sleep",
+        new_callable=AsyncMock,
+    ):
+        with pytest.raises(OmadaRetryExhaustedError):
+            await client.get("/openapi/v1/0123456789ab/sites")
 
 
 @pytest.mark.asyncio

@@ -21,6 +21,7 @@ from captive_portal.controllers.tp_omada.base_client import (
     OmadaRetryExhaustedError,
 )
 from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
+from captive_portal.controllers.tp_omada.legacy_adapter import OmadaLegacyAdapter
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.models.portal_config import PortalConfig
@@ -1060,11 +1061,8 @@ async def _process_authorization(  # noqa: C901
     grant.omada_radio_id = _truncate(radio_id, 2)
 
     # Override adapter site_id if Omada controller sent a site identifier
-    if omada_adapter is not None and hasattr(omada_adapter, "site_id"):
-        legacy_adapter: Any = omada_adapter
-        legacy_adapter.site_id = _apply_site_override(
-            site, legacy_adapter.site_id, _SITE_ID_PATTERN
-        )
+    if isinstance(omada_adapter, OmadaLegacyAdapter):
+        omada_adapter.site_id = _apply_site_override(site, omada_adapter.site_id, _SITE_ID_PATTERN)
 
     if debug:
         _logger.debug(

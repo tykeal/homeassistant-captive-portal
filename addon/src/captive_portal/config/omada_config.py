@@ -46,7 +46,7 @@ async def build_omada_config(
     config: OmadaConfig,
     logger: logging.Logger,
 ) -> OmadaRuntimeConfig | None:
-    """Build Omada configuration dict, auto-discovering controller ID if needed.
+    """Build Omada runtime configuration, discovering controller ID if needed.
 
     The encrypted password is decrypted to produce the plaintext
     needed by the Omada client.

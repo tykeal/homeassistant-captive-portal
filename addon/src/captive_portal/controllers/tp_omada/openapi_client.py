@@ -283,8 +283,12 @@ class OpenApiClient:
                     auth_retried = True
                     await self.refresh_after_auth_failure()
                     continue
-                if exc.status_code not in (429, 500, 502, 503, 504) or attempt == 3:
+                if exc.status_code not in (429, 500, 502, 503, 504):
                     raise
+                if attempt == 3:
+                    raise OmadaRetryExhaustedError(
+                        f"OpenAPI transient error after retries: {exc.status_code}"
+                    ) from exc
                 await asyncio.sleep(backoff_seconds[attempt])
             except httpx.RequestError as exc:
                 last_error = exc

@@ -7,7 +7,8 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, col, select
@@ -96,11 +97,7 @@ class GrantExpiryService:
         """
         if self.omada_config is None:
             return None
-        fake_request = type(
-            "_WorkerRequest",
-            (),
-            {"app": type("_WorkerApp", (), {"state": type("_State", (), {})()})()},
-        )()
+        fake_request = cast(Any, SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace())))
         fake_request.app.state.omada_config = self.omada_config
         return get_omada_adapter(fake_request)
 
