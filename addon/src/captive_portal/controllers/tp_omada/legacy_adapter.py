@@ -43,10 +43,10 @@ class OmadaLegacyAdapter:
         Returns:
             Parsed legacy controller response.
         """
-        if (
-            "post_with_retry" in self.client.__dict__
-            or getattr(self.client, "_client", None) is not None
-        ):
+        active_client = getattr(self.client, "_client", None)
+        if active_client is not None and not getattr(active_client, "is_closed", False):
+            return await self.client.post_with_retry(endpoint, payload)
+        if "post_with_retry" in self.client.__dict__ and type(self.client) is OmadaLegacyClient:
             return await self.client.post_with_retry(endpoint, payload)
         async with self.client:
             return await self.client.post_with_retry(endpoint, payload)
