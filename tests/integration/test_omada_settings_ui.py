@@ -7,6 +7,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from typing import Any
 from unittest.mock import AsyncMock, patch
+from urllib.parse import quote_plus
 
 import pytest
 from fastapi.testclient import TestClient
@@ -308,6 +309,77 @@ class TestOmadaSettingsPost:
 
         assert response.status_code == 303
         assert "error" in response.headers.get("location", "")
+
+    def test_encodes_validation_error_redirect(
+        self,
+        authenticated_client: TestClient,
+    ) -> None:
+        """POST URL-encodes validation errors before redirecting."""
+        csrf_token = self._get_csrf_token(authenticated_client)
+
+        response = authenticated_client.post(
+            "/admin/omada-settings/",
+            data={
+                "csrf_token": csrf_token,
+                "controller_url": "",
+                "username": "",
+                "password": "",
+                "password_changed": "false",
+                "openapi_mode": "invalid",
+                "site_name": "Default",
+                "controller_id": "",
+            },
+            follow_redirects=False,
+        )
+
+        expected_error = quote_plus("Backend mode must be auto, openapi, or legacy")
+        location = response.headers.get("location", "")
+        assert response.status_code == 303
+        assert f"error={expected_error}" in location
+        assert "," not in location
+
+    def test_runtime_exception_uses_generic_error(
+        self,
+        authenticated_client: TestClient,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """POST hides runtime exception details in redirect errors."""
+        csrf_token = self._get_csrf_token(authenticated_client)
+        caplog.set_level("ERROR", logger="captive_portal.routes.omada_settings")
+
+        with (
+            patch(
+                "captive_portal.config.omada_config.build_omada_config",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("database password=secret&debug=true"),
+            ),
+            patch(
+                "captive_portal.api.routes.omada_settings_ui.encrypt_credential",
+                return_value="test_encrypted_password",
+            ),
+        ):
+            response = authenticated_client.post(
+                "/admin/omada-settings/",
+                data={
+                    "csrf_token": csrf_token,
+                    "controller_url": "https://omada.test:8043",
+                    "username": "operator",
+                    "password": "secret",
+                    "password_changed": "true",
+                    "site_name": "Default",
+                    "controller_id": "",
+                },
+                follow_redirects=False,
+            )
+
+        expected_error = quote_plus("Settings saved, but Omada configuration could not be applied.")
+        location = response.headers.get("location", "")
+        assert response.status_code == 303
+        assert f"error={expected_error}" in location
+        assert "password" not in location
+        assert "debug" not in location
+        assert "password" not in caplog.text
+        assert "debug" not in caplog.text
 
     def test_logs_audit_event(
         self,

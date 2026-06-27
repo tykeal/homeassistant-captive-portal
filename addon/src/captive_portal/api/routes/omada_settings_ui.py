@@ -13,7 +13,7 @@ import logging
 import re
 from pathlib import Path
 from typing import Annotated, Any, Optional, cast
-from urllib.parse import urlsplit
+from urllib.parse import quote_plus, urlsplit
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
@@ -40,6 +40,10 @@ templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 templates.env.globals["app_version"] = __version__
 
 _CONTROLLER_ID_PATTERN = re.compile(r"^[a-fA-F0-9]{12,64}$")
+_OMADA_CONFIGURATION_ERROR = "Settings saved, but Omada configuration could not be applied."
+_OMADA_CONNECTION_ERROR = (
+    "Settings saved, but connection test failed. Check controller URL and credentials."
+)
 
 
 def _get_current_admin(request: Request, db: Session = Depends(get_session)) -> AdminUser:  # noqa: B008
@@ -234,10 +238,10 @@ def _validate_omada_form(
     if controller_url:
         parts = urlsplit(controller_url)
         if parts.scheme not in ("http", "https") or not parts.netloc:
-            return "Controller+URL+must+be+a+valid+HTTP+or+HTTPS+URL"
+            return "Controller URL must be a valid HTTP or HTTPS URL"
 
     if openapi_mode not in {"auto", "openapi", "legacy"}:
-        return "Backend+mode+must+be+auto,+openapi,+or+legacy"
+        return "Backend mode must be auto, openapi, or legacy"
 
     openapi_secret_available = bool(client_id) and bool(client_secret or client_secret_exists)
     legacy_required = openapi_mode == "legacy" or (
@@ -245,19 +249,19 @@ def _validate_omada_form(
     )
 
     if controller_url and legacy_required and not username:
-        return "Username+is+required+when+controller+URL+is+set"
+        return "Username is required when controller URL is set"
 
     if controller_id and not _CONTROLLER_ID_PATTERN.match(controller_id):
-        return "Controller+ID+must+be+a+hex+string+(12-64+characters)"
+        return "Controller ID must be a hex string (12-64 characters)"
 
     if controller_url and legacy_required and password_changed == "true" and not password:
-        return "Password+is+required+when+setting+up+a+new+connection"
+        return "Password is required when setting up a new connection"
 
     if openapi_mode == "openapi" and not client_id:
-        return "Client+ID+is+required+for+OpenAPI+mode"
+        return "Client ID is required for OpenAPI mode"
 
     if openapi_mode == "openapi" and not openapi_secret_available:
-        return "Client+Secret+is+required+for+OpenAPI+mode"
+        return "Client Secret is required for OpenAPI mode"
 
     return None
 
@@ -296,11 +300,27 @@ def _omada_runtime_error_message(runtime_config: Any) -> str | None:
         runtime_config: Runtime Omada config returned by the builder.
 
     Returns:
-        URL-encoded error message when config is unusable, otherwise ``None``.
+        Error message when config is unusable, otherwise ``None``.
     """
     if runtime_config is None:
-        return "Settings+saved+but+configuration+error"
+        return _OMADA_CONFIGURATION_ERROR
     return None
+
+
+def _settings_error_redirect(redirect_base: str, message: str) -> RedirectResponse:
+    """Build a settings redirect with a URL-encoded error message.
+
+    Args:
+        redirect_base: Base URL for the Omada settings page.
+        message: User-facing error message to include in the query string.
+
+    Returns:
+        Redirect response to the settings page.
+    """
+    return RedirectResponse(
+        url=f"{redirect_base}?error={quote_plus(message)}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 async def _rebuild_runtime_after_save(config: OmadaConfig, app_state: Any) -> str | None:
@@ -311,7 +331,7 @@ async def _rebuild_runtime_after_save(config: OmadaConfig, app_state: Any) -> st
         app_state: FastAPI application state.
 
     Returns:
-        URL-encoded error message when rebuild or connectivity failed.
+        Error message when rebuild or connectivity failed.
     """
     try:
         from captive_portal.config.omada_config import build_omada_config
@@ -322,15 +342,13 @@ async def _rebuild_runtime_after_save(config: OmadaConfig, app_state: Any) -> st
         if error_msg is not None:
             return error_msg
         if await _test_omada_connection(app_state) == "error":
-            return (
-                "Settings+saved+but+connection+test+failed+-+check+controller+URL+and+credentials"
-            )
+            return _OMADA_CONNECTION_ERROR
     except Exception as exc:
         logger.error(
             "Omada config build error after settings update: %s",
-            exc,
+            type(exc).__name__,
         )
-        return "Settings+saved+but+configuration+error"
+        return _OMADA_CONFIGURATION_ERROR
     return None
 
 
@@ -381,18 +399,15 @@ async def update_omada_settings(
 
     # Only admins can update configuration
     if current_user.role != "admin":
-        return RedirectResponse(
-            url=f"{redirect_base}?error=Only+administrators+can+modify+Omada+configuration",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return _settings_error_redirect(
+            redirect_base,
+            "Only administrators can modify Omada configuration",
         )
 
     try:
         await csrf.validate_token(request)
     except HTTPException:
-        return RedirectResponse(
-            url=f"{redirect_base}?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return _settings_error_redirect(redirect_base, "Invalid CSRF token")
 
     # Strip inputs
     controller_url = controller_url.strip()
@@ -420,10 +435,7 @@ async def update_omada_settings(
         ),
     )
     if error:
-        return RedirectResponse(
-            url=f"{redirect_base}?error={error}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return _settings_error_redirect(redirect_base, error)
 
     config = existing_config or _get_or_create_omada_config(session)
 
@@ -477,10 +489,7 @@ async def update_omada_settings(
     )
 
     if error_msg:
-        return RedirectResponse(
-            url=f"{redirect_base}?error={error_msg}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return _settings_error_redirect(redirect_base, error_msg)
 
     return RedirectResponse(
         url=f"{redirect_base}?success=Omada+controller+settings+saved+successfully",
