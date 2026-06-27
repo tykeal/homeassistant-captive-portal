@@ -25,6 +25,13 @@ from captive_portal.persistence.database import get_session
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
 from captive_portal.security.session_middleware import require_admin
 from captive_portal.services.audit_service import AuditService
+from captive_portal.api.routes.integrations_helpers import (
+    IntegrationSaveData,
+    create_integration_record,
+    integrations_redirect,
+    parse_allowed_vlans,
+    update_integration_record,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -227,40 +234,24 @@ async def save_integration(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for integration save")
-        return RedirectResponse(
-            url=f"{root}/admin/integrations/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return integrations_redirect(root, "error", "Invalid CSRF token")
 
     try:
         resolved_attr = _resolve_identifier_attr(identifier_attr, auth_attribute)
     except HTTPException as exc:
-        from urllib.parse import quote_plus
-
-        msg = quote_plus(str(exc.detail))
         logger.warning("Invalid identifier attribute for integration save: %s", exc.detail)
-        return RedirectResponse(
-            url=f"{root}/admin/integrations/?error={msg}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return integrations_redirect(root, "error", str(exc.detail))
 
-    parsed_vlans: list[int] | None = None
-    if allowed_vlans and allowed_vlans.strip():
-        try:
-            parsed_vlans = sorted(
-                set(int(v.strip()) for v in allowed_vlans.split(",") if v.strip())
-            )
-            for vid in parsed_vlans:
-                if vid < 1 or vid > 4094:
-                    raise ValueError(f"Invalid VLAN ID: {vid}")
-        except ValueError as exc:
-            from urllib.parse import quote_plus
+    parsed_vlans = parse_allowed_vlans(allowed_vlans, root)
+    if isinstance(parsed_vlans, RedirectResponse):
+        return parsed_vlans
 
-            msg = quote_plus(f"Invalid VLAN input: {exc}")
-            return RedirectResponse(
-                url=f"{root}/admin/integrations/?error={msg}",
-                status_code=status.HTTP_303_SEE_OTHER,
-            )
+    data = IntegrationSaveData(
+        integration_id=integration_id,
+        identifier_attr=resolved_attr,
+        checkout_grace_minutes=checkout_grace_minutes,
+        allowed_vlans=parsed_vlans,
+    )
 
     audit_service = AuditService(session)
 
@@ -268,68 +259,14 @@ async def save_integration(
         integration = session.get(HAIntegrationConfig, id)
         if not integration:
             logger.warning("Integration not found for update: %s", id)
-            return RedirectResponse(
-                url=f"{root}/admin/integrations/?error=Integration+not+found",
-                status_code=status.HTTP_303_SEE_OTHER,
-            )
-
-        old_vlans = list(integration.allowed_vlans or [])
-        integration.integration_id = integration_id
-        integration.identifier_attr = resolved_attr
-        integration.checkout_grace_minutes = checkout_grace_minutes
-        integration.allowed_vlans = parsed_vlans
-
-        session.add(integration)
-        session.commit()
-
-        await audit_service.log_admin_action(
-            admin_id=admin_id,
-            action="update_integration",
-            target_type="ha_integration_config",
-            target_id=str(id),
-            metadata={
-                "integration_id": integration_id,
-                "allowed_vlans_old": old_vlans,
-                "allowed_vlans_new": list(parsed_vlans or []),
-            },
-        )
+            return integrations_redirect(root, "error", "Integration not found")
+        await update_integration_record(session, audit_service, admin_id, integration, data)
     else:
-        # Duplicate guard
-        dup_stmt: Any = select(HAIntegrationConfig).where(
-            HAIntegrationConfig.integration_id == integration_id
-        )
-        existing: HAIntegrationConfig | None = cast(
-            Optional[HAIntegrationConfig], session.exec(dup_stmt).first()
-        )
-        if existing:
-            logger.warning("Duplicate integration: %s", integration_id)
-            return RedirectResponse(
-                url=f"{root}/admin/integrations/?error=Integration+already+exists",
-                status_code=status.HTTP_303_SEE_OTHER,
-            )
+        duplicate = await create_integration_record(session, audit_service, admin_id, data, root)
+        if duplicate is not None:
+            return duplicate
 
-        integration = HAIntegrationConfig(
-            integration_id=integration_id,
-            identifier_attr=resolved_attr,
-            checkout_grace_minutes=checkout_grace_minutes,
-            allowed_vlans=parsed_vlans,
-        )
-
-        session.add(integration)
-        session.commit()
-        session.refresh(integration)
-
-        await audit_service.log_admin_action(
-            admin_id=admin_id,
-            action="create_integration",
-            target_type="ha_integration_config",
-            target_id=str(integration.id),
-        )
-
-    return RedirectResponse(
-        url=f"{root}/admin/integrations/?success=Integration+saved+successfully",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return integrations_redirect(root, "success", "Integration saved successfully")
 
 
 @router.post("/delete/{integration_id}")

@@ -12,31 +12,31 @@ This module is the entry point for the guest listener's uvicorn process
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
-from starlette.exceptions import HTTPException
-from starlette.requests import ClientDisconnect
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from captive_portal._version import __version__
 from captive_portal.api.routes import booking_authorize
 from captive_portal.config.settings import AppSettings
+from captive_portal.guest_debug import DebugLoggingMiddleware as _DebugLoggingMiddleware
 from captive_portal.persistence.database import (
     create_db_engine,
     dispose_engine,
     init_db,
 )
-from captive_portal.web.middleware.security_headers import SecurityHeadersMiddleware
+from captive_portal.guest_routes import (
+    configure_guest_middleware,
+    mount_guest_static,
+    register_guest_routes_and_handlers,
+)
+
+__all__ = ["_DebugLoggingMiddleware", "create_guest_app", "templates"]
 
 logger = logging.getLogger("captive_portal.guest")
 
@@ -47,19 +47,6 @@ _TEMPLATES_DIR = Path(__file__).resolve().parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 templates.env.autoescape = True
 templates.env.globals["app_version"] = __version__
-
-# Guest-specific Content-Security-Policy (same-origin framing for CNA compat)
-_GUEST_CSP = (
-    "default-src 'self'; "
-    "script-src 'self'; "
-    "style-src 'self' 'unsafe-inline'; "
-    "img-src 'self' data:; "
-    "font-src 'self'; "
-    "connect-src 'self'; "
-    "base-uri 'self'; "
-    "frame-ancestors 'self'; "
-    "object-src 'none'"
-)
 
 
 async def _run_config_migration(settings: AppSettings, engine: Any) -> None:
@@ -93,151 +80,6 @@ async def _run_config_migration(settings: AppSettings, engine: Any) -> None:
         )
     finally:
         migration_session.close()
-
-
-class _DebugLoggingMiddleware:
-    """Log request/response details when debug_guest_portal is enabled.
-
-    Implemented as a pure ASGI middleware (not BaseHTTPMiddleware) to
-    avoid the body-consumption bug that breaks Form() parsing when
-    multiple BaseHTTPMiddleware subclasses are stacked.
-
-    Args:
-        app: ASGI application.
-        debug_enabled: Activate debug logging when ``True``.
-    """
-
-    def __init__(self, app: ASGIApp, debug_enabled: bool = False) -> None:
-        """Initialise with debug toggle.
-
-        Args:
-            app: ASGI application.
-            debug_enabled: Whether to emit debug log lines.
-        """
-        self._app = app
-        self._debug = debug_enabled
-
-    @staticmethod
-    def _wrap_receive(receive: Receive, method: str, path: str) -> Receive:
-        """Create a logging wrapper around the ASGI receive callable.
-
-        Args:
-            receive: Original ASGI receive callable.
-            method: HTTP method for log context.
-            path: Request path for log context.
-
-        Returns:
-            A wrapped receive callable that logs each message.
-        """
-
-        async def receive_wrapper() -> Message:
-            """Log each ASGI receive message before forwarding."""
-            message = await receive()
-            msg_type = message.get("type", "")
-            if msg_type == "http.request":
-                body_len = len(message.get("body", b""))
-                more = message.get("more_body", False)
-                logger.debug(
-                    "RECEIVE  %s %s  type=%s  body_len=%d  more_body=%s",
-                    method,
-                    path,
-                    msg_type,
-                    body_len,
-                    more,
-                )
-            elif msg_type == "http.disconnect":
-                logger.warning(
-                    "RECEIVE  %s %s  type=http.disconnect (client closed connection)",
-                    method,
-                    path,
-                )
-            else:
-                logger.debug(
-                    "RECEIVE  %s %s  type=%s",
-                    method,
-                    path,
-                    msg_type,
-                )
-            return message
-
-        return receive_wrapper
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        """ASGI entry point — log request/response when debug is active."""
-        if scope["type"] != "http" or not self._debug:
-            await self._app(scope, receive, send)
-            return
-
-        method = scope.get("method", "")
-        path = scope.get("path", "")
-        headers = dict(
-            (k.decode("latin-1"), v.decode("latin-1")) for k, v in scope.get("headers", [])
-        )
-
-        logger.debug(
-            "REQUEST  %s %s  User-Agent=%s  Content-Type=%s  Origin=%s  Referer=%s",
-            method,
-            path,
-            headers.get("user-agent", ""),
-            headers.get("content-type", ""),
-            headers.get("origin", ""),
-            headers.get("referer", ""),
-        )
-
-        status_code = 0
-        response_headers: dict[str, str] = {}
-
-        async def send_wrapper(message: Message) -> None:
-            """Capture response metadata and log before forwarding."""
-            nonlocal status_code, response_headers
-            if message["type"] == "http.response.start":
-                status_code = message.get("status", 0)
-                response_headers = dict(
-                    (
-                        k.decode("latin-1").lower(),
-                        v.decode("latin-1"),
-                    )
-                    for k, v in message.get("headers", [])
-                )
-                logger.debug(
-                    "RESPONSE %s %s  status=%d  CSP=%s  X-Frame-Options=%s  Cache-Control=%s",
-                    method,
-                    path,
-                    status_code,
-                    response_headers.get("content-security-policy", ""),
-                    response_headers.get("x-frame-options", ""),
-                    response_headers.get("cache-control", ""),
-                )
-            await send(message)
-
-        # Wrap receive for body-bearing methods to trace ASGI messages
-        effective_receive: Receive = receive
-        if method in {"POST", "PUT", "PATCH"}:
-            effective_receive = self._wrap_receive(receive, method, path)
-
-        try:
-            await self._app(scope, effective_receive, send_wrapper)
-        except ClientDisconnect:
-            logger.warning(
-                "CLIENT_DISCONNECT  %s %s  (body read failed — client closed connection)",
-                method,
-                path,
-            )
-            raise
-        except asyncio.CancelledError:
-            logger.warning(
-                "REQUEST_CANCELLED  %s %s  (task cancelled — possible server shutdown or timeout)",
-                method,
-                path,
-            )
-            raise
-        except Exception:
-            logger.exception(
-                "UNHANDLED_ERROR  %s %s",
-                method,
-                path,
-            )
-            raise
 
 
 def _make_guest_lifespan(
@@ -335,11 +177,11 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
     """Create and configure the guest-only FastAPI application.
 
     This factory produces a FastAPI app that registers **only** guest,
-    captive-detection, and health routers.  Admin routes are never
+    captive-detection, and health routers. Admin routes are never
     imported and are therefore unreachable on the guest listener.
 
     Args:
-        settings: Optional application settings.  When ``None``,
+        settings: Optional application settings. When ``None``,
             ``AppSettings.load()`` is called to resolve configuration.
 
     Returns:
@@ -355,158 +197,11 @@ def create_guest_app(settings: AppSettings | None = None) -> FastAPI:
         lifespan=_make_guest_lifespan(settings),
     )
 
-    # guest_external_url is loaded from DB during lifespan startup;
-    # set a default so the attribute always exists before lifespan runs.
     app.state.guest_external_url = ""
-
-    # Store debug toggle in app state for route handlers
     app.state.debug_guest_portal = settings.debug_guest_portal
 
-    # Security headers middleware — CNA-compatible policy for guest listener
-    app.add_middleware(
-        SecurityHeadersMiddleware,
-        frame_options="SAMEORIGIN",
-        csp=_GUEST_CSP,
-    )
-
-    # Debug logging middleware — runs before SecurityHeadersMiddleware
-    # (add_middleware reverses order, so adding after means it runs first)
-    app.add_middleware(
-        _DebugLoggingMiddleware,
-        debug_enabled=settings.debug_guest_portal,
-    )
-
-    # NO SessionMiddleware — guest routes do not use admin sessions
-
-    # Mount static files for themes
-    if _THEMES_DIR.is_dir():
-        app.mount(
-            "/static/themes",
-            StaticFiles(directory=str(_THEMES_DIR)),
-            name="themes",
-        )
-    else:
-        msg = (
-            "Static themes directory '%s' not found; "
-            "templates expect assets under '/static/themes'. "
-            "Verify that static theme files are included in the deployment."
-        )
-        raise RuntimeError(msg % _THEMES_DIR)
-
-    # Register ONLY guest, captive-detection, and health routers
-    from captive_portal.api.routes import (
-        booking_authorize,
-        captive_detect,
-        guest_portal,
-        health,
-    )
-
-    app.include_router(captive_detect.router)
-    app.include_router(guest_portal.router)
-    app.include_router(booking_authorize.router)
-    app.include_router(health.router)
-
-    # Root redirect: GET / → /guest/authorize (not admin portal-settings)
-    @app.get("/")
-    async def guest_root_redirect(request: Request) -> RedirectResponse:
-        """Redirect root to guest authorization page.
-
-        Uses the configured guest_external_url when available so the
-        redirect works correctly even behind DNS interception.
-
-        Args:
-            request: Incoming HTTP request.
-
-        Returns:
-            303 redirect to the guest authorization page.
-        """
-        guest_url: str = getattr(request.app.state, "guest_external_url", "")
-        base = guest_url if guest_url else ""
-        return RedirectResponse(
-            url=f"{base}/guest/authorize",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    # Custom exception handler: render error.html instead of JSON
-    _friendly_messages = {
-        400: "There was a problem with your request.",
-        403: "Access is not available at this time.",
-        404: "The requested resource was not found.",
-        409: "This device has already been authorized.",
-        410: "This code has expired or is no longer valid.",
-        429: "Too many attempts. Please wait a moment and try again.",
-        500: "An internal error occurred.",
-        502: "WiFi authorization could not be completed. Please try again or contact the host.",
-        503: "The service is temporarily unavailable. Please try again later.",
-    }
-
-    @app.exception_handler(HTTPException)
-    async def guest_http_exception_handler(
-        request: Request,
-        exc: HTTPException,
-    ) -> HTMLResponse:
-        """Render friendly HTML error page for guest portal errors.
-
-        Maps HTTP status codes to user-friendly titles and renders
-        the guest error template instead of returning raw JSON.
-
-        Args:
-            request: Incoming HTTP request.
-            exc: The HTTPException that was raised.
-
-        Returns:
-            HTMLResponse with the rendered error template.
-        """
-        error_message = str(exc.detail)
-        friendly_title = _friendly_messages.get(
-            exc.status_code,
-            "Something went wrong",
-        )
-
-        retry_query = getattr(request.state, "retry_query", "")
-        rp = request.scope.get("root_path", "")
-        retry_url = f"{rp}/guest/authorize"
-        if retry_query:
-            retry_url += f"?{retry_query}"
-
-        return templates.TemplateResponse(
-            request=request,
-            name="guest/error.html",
-            context={
-                "error_message": error_message,
-                "error_title": friendly_title,
-                "status_code": exc.status_code,
-                "retry_url": retry_url,
-            },
-            status_code=exc.status_code,
-        )
-
-    @app.exception_handler(RequestValidationError)
-    async def guest_validation_exception_handler(
-        request: Request,
-        exc: RequestValidationError,
-    ) -> HTMLResponse:
-        """Render friendly HTML for request validation errors.
-
-        Catches FastAPI 422 validation errors (missing/invalid query
-        or form parameters) and renders the guest error template.
-
-        Args:
-            request: Incoming HTTP request.
-            exc: The RequestValidationError that was raised.
-
-        Returns:
-            HTMLResponse with the rendered error template.
-        """
-        return templates.TemplateResponse(
-            request=request,
-            name="guest/error.html",
-            context={
-                "error_message": "There was a problem with your request.",
-                "error_title": "There was a problem with your request.",
-                "status_code": 422,
-            },
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        )
+    configure_guest_middleware(app, settings)
+    mount_guest_static(app, _THEMES_DIR)
+    register_guest_routes_and_handlers(app)
 
     return app
