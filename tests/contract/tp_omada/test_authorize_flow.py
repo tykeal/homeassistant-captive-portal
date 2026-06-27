@@ -29,6 +29,7 @@ async def test_omada_authorize_request_structure() -> None:
         verify_ssl=False,
     )
     adapter = OmadaAdapter(client=client, site_id="TestSite")
+    client._client = object()  # type: ignore[assignment]
 
     # Mock the client's post_with_retry to capture payload
     captured_payloads: list[dict[str, Any]] = []
@@ -78,6 +79,7 @@ async def test_omada_authorize_response_success() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
+    client._client = object()  # type: ignore[assignment]
 
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
         return_value={"errorCode": 0, "result": {"clientId": "grant-xyz", "authorized": True}}
@@ -104,6 +106,7 @@ async def test_omada_authorize_response_error() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
+    client._client = object()  # type: ignore[assignment]
 
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
         side_effect=OmadaClientError("Client error 400: Invalid MAC", status_code=400)
@@ -127,6 +130,7 @@ async def test_omada_authorize_succeeds_via_post_with_retry() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
+    client._client = object()  # type: ignore[assignment]
 
     # Adapter delegates to post_with_retry which handles retries
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
@@ -151,6 +155,7 @@ async def test_omada_authorize_idempotent() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
+    client._client = object()  # type: ignore[assignment]
 
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
         return_value={"errorCode": 0, "result": {"clientId": "grant-1", "authorized": True}}

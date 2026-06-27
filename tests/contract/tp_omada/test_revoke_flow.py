@@ -27,6 +27,7 @@ async def test_omada_revoke_request_structure() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="TestSite")
+    client._client = object()  # type: ignore[assignment]
 
     captured_payloads: list[dict[str, Any]] = []
     captured_endpoints: list[str] = []
@@ -63,6 +64,7 @@ async def test_omada_revoke_includes_gateway_params() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="TestSite")
+    client._client = object()  # type: ignore[assignment]
 
     captured_payloads: list[dict[str, Any]] = []
 
@@ -96,6 +98,7 @@ async def test_omada_revoke_includes_eap_params() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="TestSite")
+    client._client = object()  # type: ignore[assignment]
 
     captured_payloads: list[dict[str, Any]] = []
 
@@ -127,6 +130,7 @@ async def test_omada_revoke_includes_eap_params() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
+    client._client = object()  # type: ignore[assignment]
 
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
         return_value={"errorCode": 0, "result": {}}
@@ -148,6 +152,7 @@ async def test_omada_revoke_response_not_found() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
+    client._client = object()  # type: ignore[assignment]
 
     # 404 on a fixed endpoint indicates misconfiguration, not idempotency
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
@@ -169,6 +174,7 @@ async def test_omada_revoke_succeeds_via_post_with_retry() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
+    client._client = object()  # type: ignore[assignment]
 
     # Simulate successful revoke via retry-capable path
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
@@ -190,6 +196,7 @@ async def test_omada_revoke_idempotent() -> None:
         password="pass",
     )
     adapter = OmadaAdapter(client=client, site_id="Default")
+    client._client = object()  # type: ignore[assignment]
 
     client.post_with_retry = AsyncMock(  # type: ignore[method-assign]
         return_value={"errorCode": 0, "result": {}}

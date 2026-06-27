@@ -177,6 +177,11 @@ class TestOmadaSettingsPost:
                 "captive_portal.api.routes.omada_settings_ui.encrypt_credential",
                 return_value="test_encrypted_password",
             ),
+            patch(
+                "captive_portal.api.routes.omada_settings_ui._test_omada_connection",
+                new_callable=AsyncMock,
+                return_value="connected",
+            ),
         ):
             response = authenticated_client.post(
                 "/admin/omada-settings/",
@@ -223,10 +228,17 @@ class TestOmadaSettingsPost:
 
         csrf_token = self._get_csrf_token(authenticated_client)
 
-        with patch(
-            "captive_portal.config.omada_config.build_omada_config",
-            new_callable=AsyncMock,
-            return_value=_TEST_RUNTIME,
+        with (
+            patch(
+                "captive_portal.config.omada_config.build_omada_config",
+                new_callable=AsyncMock,
+                return_value=_TEST_RUNTIME,
+            ),
+            patch(
+                "captive_portal.api.routes.omada_settings_ui._test_omada_connection",
+                new_callable=AsyncMock,
+                return_value="connected",
+            ),
         ):
             response = authenticated_client.post(
                 "/admin/omada-settings/",

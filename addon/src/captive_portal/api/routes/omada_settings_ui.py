@@ -110,10 +110,25 @@ async def _test_omada_connection(app_state: Any) -> str | None:
         return None
 
     from captive_portal.controllers.tp_omada.adapter_factory import OmadaRuntimeConfig
+    from captive_portal.controllers.tp_omada.base_client import OmadaClientError
 
     if isinstance(omada_cfg, OmadaRuntimeConfig):
         if omada_cfg.selected_backend == "openapi":
-            return "connected"
+            from captive_portal.controllers.tp_omada.openapi_client import OpenApiClient
+
+            try:
+                await OpenApiClient(
+                    base_url=omada_cfg.base_url,
+                    controller_id=omada_cfg.controller_id,
+                    client_id=omada_cfg.client_id,
+                    client_secret=omada_cfg.client_secret,
+                    verify_ssl=omada_cfg.verify_ssl,
+                    token_state=omada_cfg.token_state,
+                ).get_access_token()
+                return "connected"
+            except OmadaClientError as exc:
+                logger.warning("Omada OpenAPI connection test failed: %s", exc)
+                return "error"
         legacy_cfg: dict[str, Any] = {
             "base_url": omada_cfg.base_url,
             "controller_id": omada_cfg.controller_id,
@@ -124,10 +139,7 @@ async def _test_omada_connection(app_state: Any) -> str | None:
     else:
         legacy_cfg = omada_cfg
 
-    from captive_portal.controllers.tp_omada.base_client import (
-        OmadaClient,
-        OmadaClientError,
-    )
+    from captive_portal.controllers.tp_omada.base_client import OmadaClient
 
     try:
         async with OmadaClient(
