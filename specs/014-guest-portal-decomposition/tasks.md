@@ -50,12 +50,12 @@ units, then clear complexity findings and run quality gates.
 **Purpose**: Start implementation from the merged spec and plan while proving
 that task execution is limited to the guest portal decomposition scope.
 
-- [ ] T001 Create implementation branch `014-guest-portal-decomposition` from
+- [x] T001 Create implementation branch `014-guest-portal-decomposition` from
   `main`; confirm `specs/014-guest-portal-decomposition/` contains `spec.md`,
   `plan.md`, `research.md`, `data-model.md`, `quickstart.md`,
   `contracts/guest-http-contract.md`, and this `tasks.md`
 
-- [ ] T002 [US1] Confirm the live source inventory in
+- [x] T002 [US1] Confirm the live source inventory in
   `addon/src/captive_portal/api/routes/guest_portal.py` still includes
   `_truncate`, `_apply_site_override`, `_sanitize_error_message`,
   `_authorize_with_controller`, `_handle_get_submission`,
@@ -80,14 +80,14 @@ through T014 are complete and T015 is green on unmodified production code.
 > **Write these tests FIRST; confirm they PASS against the current
 > `guest_portal.py` before moving production code**
 
-- [ ] T003 [P] [US1] Create golden normalization helpers in
+- [x] T003 [P] [US1] Create golden normalization helpers in
   `tests/utils/guest_portal_characterization.py` for replacing only dynamic
   CSRF token values, generated grant IDs, `grant_id` cookie values, controller
   grant IDs, ISO timestamps, and audit timestamps while preserving stable HTTP
   bodies, headers, redirects, cookies attributes, audit metadata, grant fields,
   and controller payloads exactly
 
-- [ ] T004 [P] [US1] Extend
+- [x] T004 [P] [US1] Extend
   `tests/integration/test_guest_portal_form_flow.py` to characterize
   `GET /guest/authorize` form rendering with `clientMac`, `clientIp`, `site`,
   `apMac`, `gatewayMac`, `radioId`, `ssidName`, `vid`, `t`, `redirectUrl`,
@@ -95,7 +95,7 @@ through T014 are complete and T015 is green on unmodified production code.
   effective continue selection, debug redaction, content type, status code, and
   route-level security headers
 
-- [ ] T005 [P] [US1] Extend
+- [x] T005 [P] [US1] Extend
   `tests/integration/test_guest_authorization_flow_voucher.py` to characterize
   successful voucher authorization, GET submission with `code` and `csrf_token`,
   POST submission, expired/revoked vouchers, invalid voucher format,
@@ -103,7 +103,7 @@ through T014 are complete and T015 is green on unmodified production code.
   persisted `AccessGrant` fields, audit entries, controller payload, 303
   redirect, safe continue handling, and `grant_id` cookie attributes
 
-- [ ] T006 [P] [US1] Extend
+- [x] T006 [P] [US1] Extend
   `tests/integration/test_guest_authorization_flow_booking.py` to characterize
   successful booking authorization, missing integration, booking not found,
   outside-window denial, duplicate active grants, grace-period handling,
@@ -111,34 +111,34 @@ through T014 are complete and T015 is green on unmodified production code.
   booking VLAN denial, audit metadata, controller payload, 303 redirect, and
   `grant_id` cookie attributes
 
-- [ ] T007 [P] [US1] Extend `tests/unit/security/test_hmac_csrf.py` and guest
+- [x] T007 [P] [US1] Extend `tests/unit/security/test_hmac_csrf.py` and guest
   route integration coverage to characterize CSRF extraction from GET query
   parameters, POST form data, and `X-CSRF-Token`; missing, malformed, expired,
   tampered, Origin-mismatched, and Referer-mismatched CSRF failures must keep
   current status codes, sanitized guest-facing HTML, retry links, and audit
   behavior
 
-- [ ] T008 [P] [US1] Extend
+- [x] T008 [P] [US1] Extend
   `tests/unit/routes/test_guest_portal_mac_extraction.py` to characterize MAC
   priority order across `X-MAC-Address`, `X-Client-Mac`, `Client-MAC`, submitted
   form MAC, and `clientMac` query; include dash-separated Omada normalization,
   invalid MAC HTTP 400 detail, missing MAC HTTP 400 detail, and MAC failure
   audit metadata
 
-- [ ] T009 [P] [US1] Extend
+- [x] T009 [P] [US1] Extend
   `tests/unit/routes/test_guest_portal_omada_params.py` and
   `tests/unit/routes/test_guest_portal_omada.py` to characterize Omada metadata
   pass-through, truncation lengths, retry-query keys, legacy site override for
   valid 12-64 character hex sites, invalid site preservation, no-adapter
   success, adapter authorize arguments, and `controller_grant_id` persistence
 
-- [ ] T010 [P] [US1] Extend
+- [x] T010 [P] [US1] Extend
   `tests/unit/routes/test_guest_portal_omada_errors.py` to characterize
   `OmadaClientError` and `OmadaRetryExhaustedError` handling, including FAILED
   grant status, sanitized HTTP 502 guest error, diagnostic-only detail, audit
   metadata, logging redaction, and absence of leaked controller internals
 
-- [ ] T011 [P] [US1] Extend
+- [x] T011 [P] [US1] Extend
   `tests/integration/test_guest_external_url.py`,
   `tests/integration/test_post_auth_redirect_fallback.py`,
   `tests/integration/test_post_auth_redirect_original_destination.py`, and
@@ -146,7 +146,7 @@ through T014 are complete and T015 is green on unmodified production code.
   continue URLs, unsafe URL fallback, root-path-aware `/guest/welcome`, retry
   URL construction, and open-redirect protections
 
-- [ ] T012 [P] [US1] Extend
+- [x] T012 [P] [US1] Extend
   `tests/integration/test_guest_security_headers.py`,
   `tests/integration/test_guest_portal_full_rendering.py`, and
   `tests/unit/test_guest_error_handler.py` to characterize `/guest/welcome` and
@@ -154,19 +154,19 @@ through T014 are complete and T015 is green on unmodified production code.
   root-path-aware retry URLs, content type, cache headers, CSP fallback,
   `X-Frame-Options`, `X-Content-Type-Options`, and `Referrer-Policy`
 
-- [ ] T013 [P] [US1] Extend
+- [x] T013 [P] [US1] Extend
   `tests/integration/test_rate_limit_enforcement.py` and
   `tests/unit/security/test_rate_limiter.py` to characterize trusted-proxy-aware
   client IP resolution, rate-limit denial, `Retry-After`, rate-limit audit
   metadata, and successful rate-limit clearing after authorization
 
-- [ ] T014 [P] [US1] Extend
+- [x] T014 [P] [US1] Extend
   `tests/integration/test_vlan_voucher_authorization.py` and
   `tests/integration/test_vlan_booking_authorization.py` to characterize voucher
   and booking VLAN allowlist decisions, audit metadata, HTTP 403 behavior, and
   absence or presence of controller calls on denial
 
-- [ ] T015 [US1] Run the complete characterization baseline on current code and
+- [x] T015 [US1] Run the complete characterization baseline on current code and
   confirm it is green before production movement:
 
   ```bash
@@ -213,31 +213,31 @@ extraction and verify byte-for-byte equivalence for all stable outputs.
 > **Write each focused helper-boundary test before extracting the helper; the
 > characterization suite from Phase 2 remains the golden contract.**
 
-- [ ] T016 [P] [US1] Write failing context grouping tests in
+- [x] T016 [P] [US1] Write failing context grouping tests in
   `tests/unit/routes/test_guest_authorization_context.py` for `GuestOmadaParams`,
   `GuestAuthorizationDependencies`, `GuestAuthorizationContext`, and
   `AuthorizationDecisionResult` preserving query/form aliases, empty-value
   handling, retry-query keys, dependency override behavior, and grant/audit flow
   state (RED 🔴)
 
-- [ ] T017 [P] [US1] Write failing form helper tests in
+- [x] T017 [P] [US1] Write failing form helper tests in
   `tests/unit/routes/test_guest_authorization_form.py` for GET submission
   detection, Omada hidden-field context, effective continue selection,
   root-path-aware fallback, debug redaction, CSRF token insertion, and route
   security headers (RED 🔴)
 
-- [ ] T018 [P] [US1] Write failing MAC helper compatibility tests in
+- [x] T018 [P] [US1] Write failing MAC helper compatibility tests in
   `tests/unit/routes/test_guest_portal_mac_extraction.py` verifying the extracted
   helper preserves current priority order, normalization, HTTP 400 details, and
   import compatibility for existing guest route tests (RED 🔴)
 
-- [ ] T019 [P] [US1] Write failing controller helper tests in
+- [x] T019 [P] [US1] Write failing controller helper tests in
   `tests/unit/routes/test_guest_authorization_controller.py` for `_truncate`,
   legacy site override, no-adapter success, adapter authorize payloads,
   controller grant ID storage, failed status transitions, diagnostic-only error
   detail, and secret-safe logging (RED 🔴)
 
-- [ ] T020 [P] [US1] Write failing redirect and error helper tests in
+- [x] T020 [P] [US1] Write failing redirect and error helper tests in
   `tests/unit/routes/test_guest_authorization_redirects.py` and
   `tests/unit/routes/test_guest_authorization_errors.py` for safe continue
   validation, fallback `/guest/welcome`, retry URL construction,
@@ -246,7 +246,7 @@ extraction and verify byte-for-byte equivalence for all stable outputs.
 
 ### Implementation for User Story 1 (GREEN/REFACTOR) 🟢♻️
 
-- [ ] T021 [US1] Create
+- [x] T021 [US1] Create
   `addon/src/captive_portal/api/routes/guest_authorization/__init__.py` and
   `addon/src/captive_portal/api/routes/guest_authorization/context.py` with SPDX
   headers, typed data carriers, and docstrings for Omada metadata,
@@ -254,33 +254,33 @@ extraction and verify byte-for-byte equivalence for all stable outputs.
   `guest_portal.py` to group internal values without changing FastAPI-visible
   route parameters or accepted fields (GREEN 🟢 — T016 passes)
 
-- [ ] T022 [US1] Extract GET form rendering, submission detection, hidden Omada
+- [x] T022 [US1] Extract GET form rendering, submission detection, hidden Omada
   context, effective continue selection, debug redaction, CSRF form context, and
   route security header helpers into
   `addon/src/captive_portal/api/routes/guest_authorization/form.py`; keep
   `show_authorize_form` response bodies, headers, status codes, and aliases
   unchanged (GREEN 🟢 — T017 passes)
 
-- [ ] T023 [US1] Extract MAC extraction and normalization into
+- [x] T023 [US1] Extract MAC extraction and normalization into
   `addon/src/captive_portal/api/routes/guest_authorization/mac_address.py`; keep
   existing route-level wrapper or import compatibility in `guest_portal.py` so
   current tests and private helper users retain behavior (GREEN 🟢 — T018
   passes)
 
-- [ ] T024 [US1] Extract `_truncate`, legacy Omada site override, and controller
+- [x] T024 [US1] Extract `_truncate`, legacy Omada site override, and controller
   authorization behavior into
   `addon/src/captive_portal/api/routes/guest_authorization/controller.py`; keep
   no-adapter success, adapter payloads, grant status transitions, commits,
   refreshes, `controller_grant_id`, audit detail, and logging behavior unchanged
   (GREEN 🟢 — T019 passes)
 
-- [ ] T025 [US1] Extract redirect construction and sanitized guest error helpers
+- [x] T025 [US1] Extract redirect construction and sanitized guest error helpers
   into `addon/src/captive_portal/api/routes/guest_authorization/redirects.py` and
   `addon/src/captive_portal/api/routes/guest_authorization/errors.py`; preserve
   success 303 responses, `grant_id` cookies, retry links, root-path awareness,
   HTML error pages, and security headers (GREEN 🟢 — T020 passes)
 
-- [ ] T026 [US1] Run the unchanged Phase 2 characterization command after the
+- [x] T026 [US1] Run the unchanged Phase 2 characterization command after the
   low-risk extraction tasks T021-T025 and fix only behavior regressions within
   `guest_portal.py`, `guest_authorization/`, or characterization tests that were
   incorrect about pre-refactor behavior
@@ -300,13 +300,13 @@ before and after flow extraction.
 
 ### Tests for Decision Helpers (RED) 🔴
 
-- [ ] T027 [P] [US1] Write failing voucher flow helper tests in
+- [x] T027 [P] [US1] Write failing voucher flow helper tests in
   `tests/unit/routes/test_guest_authorization_vouchers.py` for voucher format
   validation, service lookup/redemption calls, VLAN validation order,
   device-limit denial, redemption failure, duplicate-device behavior, grant
   field preservation, target metadata, and audit intent (RED 🔴)
 
-- [ ] T028 [P] [US1] Write failing booking flow helper tests in
+- [x] T028 [P] [US1] Write failing booking flow helper tests in
   `tests/unit/routes/test_guest_authorization_bookings.py` for integration
   lookup across configured integrations, no-integration HTTP 503, not-found HTTP
   404, outside-window HTTP 403, duplicate active grant HTTP 409, grace-period
@@ -315,24 +315,24 @@ before and after flow extraction.
 
 ### Implementation for Decision Helpers (GREEN/REFACTOR) 🟢♻️
 
-- [ ] T029 [US1] Extract voucher validation, VLAN checking, redemption, grant
+- [x] T029 [US1] Extract voucher validation, VLAN checking, redemption, grant
   field handling, exception mapping, and audit metadata into
   `addon/src/captive_portal/api/routes/guest_authorization/vouchers.py` while
   preserving current `VoucherService` calls and HTTP outcomes (GREEN 🟢 — T027
   passes)
 
-- [ ] T030 [US1] Extract booking lookup, window checks, duplicate detection,
+- [x] T030 [US1] Extract booking lookup, window checks, duplicate detection,
   VLAN checking, grant construction, exception mapping, and audit metadata into
   `addon/src/captive_portal/api/routes/guest_authorization/bookings.py` while
   preserving current repository and service behavior (GREEN 🟢 — T028 passes)
 
-- [ ] T031 [US1] Refactor `_process_authorization` in
+- [x] T031 [US1] Refactor `_process_authorization` in
   `addon/src/captive_portal/api/routes/guest_portal.py` into a thin orchestrator
   that calls context, CSRF/rate-limit, MAC, voucher or booking, Omada metadata,
   controller, audit, and redirect helpers in the current observable order
   defined by `contracts/guest-http-contract.md` (REFACTOR ♻️)
 
-- [ ] T032 [US1] Run the unchanged Phase 2 characterization command plus
+- [x] T032 [US1] Run the unchanged Phase 2 characterization command plus
   `uv run pytest tests/integration/test_authorize_end_to_end.py -v` and confirm
   voucher, booking, controller, grant, audit, redirect, cookie, CSRF, and MAC
   behavior remain green after T029-T031
@@ -350,41 +350,41 @@ changing the public HTTP contract or touching out-of-scope settings code.
 **Independent Test**: Ruff C901 and staged `aislop` complexity gates report no
 unhandled guest portal findings; characterization tests remain green.
 
-- [ ] T033 [US2] Reduce internal parameter counts in
+- [x] T033 [US2] Reduce internal parameter counts in
   `addon/src/captive_portal/api/routes/guest_portal.py` and extracted helpers by
   using `GuestOmadaParams`, `GuestAuthorizationDependencies`, and related
   internal grouping; do not remove, rename, retype, or change any FastAPI-visible
   query parameters, form fields, aliases, defaults, optionality, or validation
   behavior
 
-- [ ] T034 [US2] Remove `# noqa: C901` from `show_authorize_form` in
+- [x] T034 [US2] Remove `# noqa: C901` from `show_authorize_form` in
   `addon/src/captive_portal/api/routes/guest_portal.py` only after helper
   extraction and targeted ruff checks prove the function passes C901 while the
   GET form contract remains unchanged
 
-- [ ] T035 [US2] Remove `# noqa: C901` from `_process_authorization` in
+- [x] T035 [US2] Remove `# noqa: C901` from `_process_authorization` in
   `addon/src/captive_portal/api/routes/guest_portal.py` only after flow
   extraction and targeted ruff checks prove the orchestrator passes C901 while
   the authorization sequence remains unchanged
 
-- [ ] T036 [US2] Run targeted complexity linting with
+- [x] T036 [US2] Run targeted complexity linting with
   `uv run ruff check addon/src/captive_portal/api/routes/ tests/unit/routes/`
   and confirm no C901 violation and no C901 suppression remains on
   `show_authorize_form` or `_process_authorization`
 
-- [ ] T037 [US2] Run the staged `aislop` complexity gate and refresh
+- [x] T037 [US2] Run the staged `aislop` complexity gate and refresh
   `.aislop/baseline.json` only if required by the tool; confirm no unhandled
   `complexity/file-too-large` finding for `guest_portal.py`, no
   `complexity/function-too-long` finding for `_process_authorization`, and no
   unhandled guest portal `complexity/too-many-params` finding remains
 
-- [ ] T038 [US2] If a FastAPI route parameter-count finding cannot be safely
+- [x] T038 [US2] If a FastAPI route parameter-count finding cannot be safely
   cleared without risking the pinned HTTP contract, document or baseline only
   that route finding with a reason linked to `contracts/guest-http-contract.md`;
   explicitly leave `addon/src/captive_portal/api/routes/portal_settings_ui.py`
   and `portal_settings_ui.py:110` unchanged and out of scope
 
-- [ ] T039 [US2] Run the unchanged Phase 2 characterization command after T033
+- [x] T039 [US2] Run the unchanged Phase 2 characterization command after T033
   through T038 and confirm complexity cleanup did not alter HTTP, audit, grant,
   cookie, redirect, CSRF, MAC, or controller behavior
 
@@ -403,12 +403,12 @@ ownership.
 MAC extraction, controller authorization, redirect handling, and error/audit
 behavior to a cohesive helper and a targeted test file.
 
-- [ ] T040 [P] [US3] Ensure every new source file under
+- [x] T040 [P] [US3] Ensure every new source file under
   `addon/src/captive_portal/api/routes/guest_authorization/` has the required
   SPDX headers, module docstring, function/class docstrings, and public type
   annotations required by constitution §I
 
-- [ ] T041 [P] [US3] Ensure `tests/unit/routes/test_guest_authorization_context.py`,
+- [x] T041 [P] [US3] Ensure `tests/unit/routes/test_guest_authorization_context.py`,
   `tests/unit/routes/test_guest_authorization_form.py`,
   `tests/unit/routes/test_guest_authorization_vouchers.py`,
   `tests/unit/routes/test_guest_authorization_bookings.py`,
@@ -417,13 +417,13 @@ behavior to a cohesive helper and a targeted test file.
   `tests/unit/routes/test_guest_authorization_errors.py` each name the protected
   behavior they cover and fail clearly when their extracted unit regresses
 
-- [ ] T042 [US3] Keep `addon/src/captive_portal/api/routes/guest_portal.py` as
+- [x] T042 [US3] Keep `addon/src/captive_portal/api/routes/guest_portal.py` as
   thin FastAPI route definitions plus compatibility wrappers only; verify it no
   longer owns voucher decisions, booking decisions, MAC extraction internals,
   controller authorization internals, redirect construction internals, or error
   sanitization internals
 
-- [ ] T043 [US3] In the implementation PR description, include the
+- [x] T043 [US3] In the implementation PR description, include the
   characterization evidence map required by SC-007: extracted helper file,
   protected behavior, and targeted characterization or unit test path; do not add
   unrelated repository documentation files for this evidence
@@ -438,7 +438,7 @@ cohesive unit and protected by targeted tests plus the unchanged golden suite.
 **Purpose**: Run the smallest targeted gates first, then repository-level gates,
 without broadening implementation scope.
 
-- [ ] T044 [P] Run targeted guest regression tests from
+- [x] T044 [P] Run targeted guest regression tests from
   `specs/014-guest-portal-decomposition/quickstart.md`:
 
   ```bash
@@ -461,23 +461,23 @@ without broadening implementation scope.
     tests/unit/security/test_rate_limiter.py
   ```
 
-- [ ] T045 [P] Run code quality gates for changed code:
+- [x] T045 [P] Run code quality gates for changed code:
   `uv run ruff check addon/src/captive_portal/api/routes/ tests/`,
   `uv run mypy addon/src/captive_portal`,
   `uv run interrogate -vv --fail-under=100 addon/src/captive_portal tests`, and
   `uv run reuse lint`; fix only issues within `guest_portal.py`,
   `guest_authorization/`, tests, or `.aislop/baseline.json`
 
-- [ ] T046 [P] Run `uv run pre-commit run --all-files` and fix hook failures
+- [x] T046 [P] Run `uv run pre-commit run --all-files` and fix hook failures
   without bypassing hooks; if hooks update files automatically, stage the
   changes and rerun the affected checks
 
-- [ ] T047 Run full regression suite `uv run pytest tests/ -v` and confirm no
+- [x] T047 Run full regression suite `uv run pytest tests/ -v` and confirm no
   guest portal, guest authorization, redirect, security-header, Omada, VLAN,
   CSRF, rate-limiter, or integration regression remains before opening the
   implementation PR
 
-- [ ] T048 In the implementation PR only, mark completed checkboxes in
+- [x] T048 In the implementation PR only, mark completed checkboxes in
   `specs/014-guest-portal-decomposition/tasks.md` as a separate documentation
   commit after the functional code commits; do not combine code changes with
   task-completion checkbox updates
