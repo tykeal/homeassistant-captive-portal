@@ -103,4 +103,6 @@ def test_admin_routes_do_not_concatenate_root_path_into_admin_redirects() -> Non
     for route_file in routes_dir.glob("*.py"):
         content = route_file.read_text(encoding="utf-8")
         assert 'f"{root}/admin' not in content, route_file.name
+        assert "f'{root}/admin" not in content, route_file.name
         assert 'f"{redirect_base}' not in content, route_file.name
+        assert "f'{redirect_base}" not in content, route_file.name
