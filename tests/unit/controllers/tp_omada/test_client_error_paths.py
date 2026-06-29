@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
@@ -209,7 +210,57 @@ async def test_openapi_request_json_body_and_invalid_json_response() -> None:
 
     with pytest.raises(OmadaClientError, match="not valid JSON"):
         await client.post("/openapi/v1/ctrl/sites/site/hotspot/clients/AA/auth", json_body={"x": 1})
-    assert captured_content == [b'{"x":1}']
+    assert json.loads(captured_content[0]) == {"x": 1}
+
+
+@pytest.mark.asyncio
+async def test_openapi_auth_failure_on_last_retry_still_retries_after_refresh() -> None:
+    """A final-attempt auth failure refreshes credentials and retries once."""
+    api_calls = 0
+    grant_types: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Return transient failures, one auth failure, then success."""
+        nonlocal api_calls
+        if request.url.path == "/openapi/authorize/token":
+            grant_types.append(request.url.params["grant_type"])
+            token = "stale" if grant_types[-1] == "client_credentials" else "fresh"
+            return httpx.Response(
+                200,
+                json={
+                    "errorCode": 0,
+                    "result": {
+                        "accessToken": token,
+                        "refreshToken": "refresh",
+                        "expiresIn": 7200,
+                    },
+                },
+            )
+        api_calls += 1
+        if api_calls <= 3:
+            return httpx.Response(503, json={"errorCode": 503})
+        if api_calls == 4:
+            return httpx.Response(401, json={"errorCode": 401})
+        assert request.headers["Authorization"] == "AccessToken=fresh"
+        return httpx.Response(200, json={"errorCode": 0, "result": {"ok": True}})
+
+    client = OpenApiClient(
+        base_url="https://ctrl.test",
+        controller_id="ctrl",
+        client_id="id",
+        client_secret="secret",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with patch(
+        "captive_portal.controllers.tp_omada.openapi_client.asyncio.sleep",
+        new_callable=AsyncMock,
+    ):
+        assert await client.get("/openapi/v1/ctrl/sites") == {
+            "errorCode": 0,
+            "result": {"ok": True},
+        }
+    assert grant_types == ["client_credentials", "refresh_token"]
 
 
 @pytest.mark.asyncio
