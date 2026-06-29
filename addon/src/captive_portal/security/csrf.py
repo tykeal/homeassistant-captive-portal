@@ -13,6 +13,7 @@ Implements double-submit cookie pattern (D14):
 
 import logging
 import secrets
+import string
 from typing import Literal, Optional
 
 from fastapi import HTTPException, Request, Response, status
@@ -22,6 +23,12 @@ from pydantic import BaseModel
 from starlette.formparsers import MultiPartException
 
 _logger = logging.getLogger(__name__)
+_CSRF_TOKEN_SAFE_CHARS = frozenset(string.ascii_letters + string.digits + "-_")
+
+
+def _is_safe_csrf_cookie_value(token: str) -> bool:
+    """Return whether a CSRF token is safe to place in a cookie value."""
+    return bool(token) and all(char in _CSRF_TOKEN_SAFE_CHARS for char in token)
 
 
 class CSRFConfig(BaseModel):
@@ -104,6 +111,10 @@ class CSRFProtection:
 
     def set_csrf_cookie(self, response: Response, token: str) -> None:
         """Set CSRF token in cookie."""
+        if not _is_safe_csrf_cookie_value(token):
+            _logger.error("Refusing to set invalid CSRF token cookie")
+            raise ValueError("CSRF token contains characters unsafe for cookie values")
+
         response.set_cookie(
             key=self.config.cookie_name,
             value=token,
