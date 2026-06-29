@@ -4,12 +4,33 @@
 
 from __future__ import annotations
 
-import re
 from typing import TypeVar
 
 from starlette.responses import Response
 
 ResponseT = TypeVar("ResponseT", bound=Response)
+
+
+def _strip_html_tags(message: str) -> str:
+    """Strip HTML-like tags with a linear scan."""
+    stripped_parts: list[str] = []
+    cursor = 0
+
+    while True:
+        start = message.find("<", cursor)
+        if start == -1:
+            stripped_parts.append(message[cursor:])
+            break
+
+        end = message.find(">", start + 1)
+        if end == -1:
+            stripped_parts.append(message[cursor:])
+            break
+
+        stripped_parts.append(message[cursor:start])
+        cursor = end + 1
+
+    return "".join(stripped_parts)
 
 
 def add_security_headers(response: ResponseT) -> ResponseT:
@@ -53,5 +74,5 @@ def sanitize_error_message(message: str | None) -> str:
     if len(message) > 500:
         message = message[:500] + "..."
 
-    message = re.sub(r"<[^>]*>", "", message)
+    message = _strip_html_tags(message)
     return message.strip() or "An error occurred. Please try again."

@@ -16,7 +16,25 @@ def test_sanitize_error_message_preserves_current_rules() -> None:
     assert sanitize_error_message("<div><span></span></div>") == (
         "An error occurred. Please try again."
     )
+    assert sanitize_error_message("Keep <broken tag") == "Keep <broken tag"
     assert sanitize_error_message("A" * 600) == ("A" * 500) + "..."
+
+
+def test_sanitize_error_message_handles_pathological_input_promptly() -> None:
+    """Long tag-like input is truncated and stripped promptly."""
+    from captive_portal.api.routes.guest_authorization.errors import (
+        _strip_html_tags,
+        sanitize_error_message,
+    )
+
+    message = ("<" * 50_000) + ("tag>" * 50_000)
+    long_tag = "prefix" + ("<" * 50_000) + ">" + "suffix"
+
+    sanitized = sanitize_error_message(message)
+    stripped = _strip_html_tags(long_tag)
+
+    assert sanitized == ("<" * 500) + "..."
+    assert stripped == "prefixsuffix"
 
 
 def test_security_headers_preserve_route_contract() -> None:

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from html.parser import HTMLParser
 from typing import Any
 from unittest.mock import AsyncMock, patch
 from urllib.parse import quote_plus
@@ -25,6 +26,32 @@ _TEST_RUNTIME = OmadaRuntimeConfig(
     site_name="Default",
     verify_ssl=True,
 )
+
+
+class _InputValueExtractor(HTMLParser):
+    """Collect input values by name from rendered form HTML."""
+
+    def __init__(self) -> None:
+        """Initialize an empty input value mapping."""
+        super().__init__()
+        self.values: dict[str, str | None] = {}
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        """Record values from input tags with a name attribute."""
+        if tag != "input":
+            return
+
+        attr_dict = dict(attrs)
+        name = attr_dict.get("name")
+        if name is not None:
+            self.values[name] = attr_dict.get("value")
+
+
+def _extract_input_values(html: str) -> dict[str, str | None]:
+    """Return rendered form input values keyed by field name."""
+    parser = _InputValueExtractor()
+    parser.feed(html)
+    return parser.values
 
 
 @pytest.fixture
@@ -131,10 +158,11 @@ class TestOmadaSettingsGet:
 
         response = authenticated_client.get("/admin/omada-settings/")
         assert response.status_code == 200
-        assert "https://omada.test:8043" in response.text
-        assert "testoperator" in response.text
-        assert "MySite" in response.text
-        assert "aabbccdd1122" in response.text
+        input_values = _extract_input_values(response.text)
+        assert input_values["controller_url"] == "https://omada.test:8043"
+        assert input_values["username"] == "testoperator"
+        assert input_values["site_name"] == "MySite"
+        assert input_values["controller_id"] == "aabbccdd1122"
 
     def test_requires_authentication(self, client: TestClient) -> None:
         """GET returns 401/redirect when not authenticated."""
