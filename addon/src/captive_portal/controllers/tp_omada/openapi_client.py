@@ -328,7 +328,9 @@ class OpenApiClient:
                             f"OpenAPI request failed after retries: {type(exc).__name__}"
                         ) from exc
                     await asyncio.sleep(backoff_seconds[attempt])
-            raise OmadaRetryExhaustedError(
+            # The fixed retry loop always returns or raises above; this
+            # defensive guard remains for future retry-loop refactors.
+            raise OmadaRetryExhaustedError(  # pragma: no cover
                 f"OpenAPI retries exhausted: {type(last_error).__name__}"
             )
 
