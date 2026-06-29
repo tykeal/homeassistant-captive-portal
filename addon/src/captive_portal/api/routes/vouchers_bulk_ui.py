@@ -9,10 +9,11 @@ import urllib.parse
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session
 
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
 from captive_portal.api.routes.vouchers_common import (
     BulkResult,
     format_bulk_message,
@@ -60,10 +61,7 @@ async def bulk_create_vouchers(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for bulk voucher create")
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=Invalid+CSRF+token")
 
     form = await request.form()
     parsed = parse_bulk_create_form(form, root)
@@ -104,26 +102,21 @@ async def bulk_create_vouchers(
 
     if len(created_codes) == parsed.count:
         if parsed.count == 1:
-            return RedirectResponse(
-                url=f"{root}/admin/vouchers/?new_code={created_codes[0]}&success=Voucher+created+successfully",
-                status_code=status.HTTP_303_SEE_OTHER,
+            return safe_admin_redirect(
+                root,
+                f"/admin/vouchers/?new_code={created_codes[0]}&success="
+                "Voucher+created+successfully",
             )
         msg = urllib.parse.quote_plus(f"Created {parsed.count} vouchers successfully")
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?success={msg}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, f"/admin/vouchers/?success={msg}")
     if created_codes:
         msg = urllib.parse.quote_plus(
             f"Created {len(created_codes)} of {parsed.count} vouchers (collision on remaining)"
         )
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?success={msg}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-    return RedirectResponse(
-        url=f"{root}/admin/vouchers/?error=Failed+to+generate+unique+voucher+codes",
-        status_code=status.HTTP_303_SEE_OTHER,
+        return safe_admin_redirect(root, f"/admin/vouchers/?success={msg}")
+    return safe_admin_redirect(
+        root,
+        "/admin/vouchers/?error=Failed+to+generate+unique+voucher+codes",
     )
 
 
@@ -150,17 +143,11 @@ async def bulk_revoke_vouchers(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for bulk voucher revoke")
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=Invalid+CSRF+token")
     form = await request.form()
     codes = form.getlist("codes")
     if not codes:
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=No+vouchers+selected",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=No+vouchers+selected")
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     audit_service = AuditService(session)
     voucher_repo = voucher_service.voucher_repo
@@ -185,10 +172,7 @@ async def bulk_revoke_vouchers(
             result.skip_reasons["not found"] = result.skip_reasons.get("not found", 0) + 1
     msg, param_key = format_bulk_message(result)
     encoded_msg = urllib.parse.quote_plus(msg)
-    return RedirectResponse(
-        url=f"{root}/admin/vouchers/?{param_key}={encoded_msg}",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return safe_admin_redirect(root, f"/admin/vouchers/?{param_key}={encoded_msg}")
 
 
 @router.post("/bulk-delete")
@@ -214,17 +198,11 @@ async def bulk_delete_vouchers(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for bulk voucher delete")
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=Invalid+CSRF+token")
     form = await request.form()
     codes = form.getlist("codes")
     if not codes:
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=No+vouchers+selected",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=No+vouchers+selected")
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     audit_service = AuditService(session)
     result = BulkResult(action="deleted")
@@ -248,7 +226,4 @@ async def bulk_delete_vouchers(
             result.skip_reasons["not found"] = result.skip_reasons.get("not found", 0) + 1
     msg, param_key = format_bulk_message(result)
     encoded_msg = urllib.parse.quote_plus(msg)
-    return RedirectResponse(
-        url=f"{root}/admin/vouchers/?{param_key}={encoded_msg}",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return safe_admin_redirect(root, f"/admin/vouchers/?{param_key}={encoded_msg}")

@@ -21,15 +21,7 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
 from captive_portal._version import __version__
-from captive_portal.models.admin_user import AdminUser
-from captive_portal.models.omada_config import OmadaConfig
-from captive_portal.persistence.database import get_session
-from captive_portal.security.credential_encryption import (
-    encrypt_credential,
-)
-from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
-from captive_portal.security.session_middleware import require_admin
-from captive_portal.services.audit_service import AuditService
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
 from captive_portal.api.routes.omada_settings_helpers import (
     OmadaFormData,
     client_secret_changed_for_audit as _client_secret_changed_for_audit,
@@ -39,6 +31,15 @@ from captive_portal.api.routes.omada_settings_helpers import (
     test_omada_connection as _test_omada_connection,
     validate_omada_form as _validate_omada_form,
 )
+from captive_portal.models.admin_user import AdminUser
+from captive_portal.models.omada_config import OmadaConfig
+from captive_portal.persistence.database import get_session
+from captive_portal.security.credential_encryption import (
+    encrypt_credential,
+)
+from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
+from captive_portal.security.session_middleware import require_admin
+from captive_portal.services.audit_service import AuditService
 
 __all__ = [
     "_client_secret_changed_for_audit",
@@ -109,20 +110,17 @@ def _get_or_create_omada_config(session: Session) -> OmadaConfig:
     return config
 
 
-def _settings_error_redirect(redirect_base: str, message: str) -> RedirectResponse:
+def _settings_error_redirect(root: str, message: str) -> RedirectResponse:
     """Build a settings redirect with a URL-encoded error message.
 
     Args:
-        redirect_base: Base URL for the Omada settings page.
+        root: ASGI root path prefix.
         message: User-facing error message to include in the query string.
 
     Returns:
         Redirect response to the settings page.
     """
-    return RedirectResponse(
-        url=f"{redirect_base}?error={quote_plus(message)}",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return safe_admin_redirect(root, f"/admin/omada-settings/?error={quote_plus(message)}")
 
 
 async def _rebuild_runtime_after_save(config: OmadaConfig, app_state: Any) -> str | None:
@@ -218,19 +216,18 @@ async def update_omada_settings(
         Redirect to settings page with success/error message.
     """
     root = request.scope.get("root_path", "")
-    redirect_base = f"{root}/admin/omada-settings/"
 
     # Only admins can update configuration
     if current_user.role != "admin":
         return _settings_error_redirect(
-            redirect_base,
+            root,
             "Only administrators can modify Omada configuration",
         )
 
     try:
         await csrf.validate_token(request)
     except HTTPException:
-        return _settings_error_redirect(redirect_base, "Invalid CSRF token")
+        return _settings_error_redirect(root, "Invalid CSRF token")
 
     # Strip inputs
     controller_url = controller_url.strip()
@@ -259,7 +256,7 @@ async def update_omada_settings(
         )
     )
     if error:
-        return _settings_error_redirect(redirect_base, error)
+        return _settings_error_redirect(root, error)
 
     config = existing_config or _get_or_create_omada_config(session)
 
@@ -311,9 +308,9 @@ async def update_omada_settings(
     )
 
     if error_msg:
-        return _settings_error_redirect(redirect_base, error_msg)
+        return _settings_error_redirect(root, error_msg)
 
-    return RedirectResponse(
-        url=f"{redirect_base}?success=Omada+controller+settings+saved+successfully",
-        status_code=status.HTTP_303_SEE_OTHER,
+    return safe_admin_redirect(
+        root,
+        "/admin/omada-settings/?success=Omada+controller+settings+saved+successfully",
     )

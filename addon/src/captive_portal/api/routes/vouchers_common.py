@@ -7,8 +7,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
-from fastapi import status
 from fastapi.responses import RedirectResponse
+
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
 
 
 def parse_vlan_form_input(raw: str | None) -> list[int] | None:
@@ -98,10 +99,7 @@ def form_error_redirect(root: str, message: str) -> RedirectResponse:
     Returns:
         303 redirect response.
     """
-    return RedirectResponse(
-        url=f"{root}/admin/vouchers/?error={message}",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return safe_admin_redirect(root, f"/admin/vouchers/?error={message}")
 
 
 def parse_bulk_create_form(

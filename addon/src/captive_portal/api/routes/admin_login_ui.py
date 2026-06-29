@@ -12,11 +12,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from captive_portal._version import __version__
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
 
 router = APIRouter(prefix="/admin", tags=["admin-ui-login"])
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
@@ -40,10 +41,7 @@ async def admin_login_page(request: Request) -> HTMLResponse | RedirectResponse:
     admin_id = getattr(request.state, "admin_id", None)
     if admin_id:
         root = request.scope.get("root_path", "")
-        return RedirectResponse(
-            url=f"{root}/admin/portal-settings/",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/portal-settings/")
 
     return templates.TemplateResponse(
         request=request,

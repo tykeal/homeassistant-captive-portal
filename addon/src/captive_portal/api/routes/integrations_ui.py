@@ -13,6 +13,14 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
 from captive_portal._version import __version__
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
+from captive_portal.api.routes.integrations_helpers import (
+    IntegrationSaveData,
+    create_integration_record,
+    integrations_redirect,
+    parse_allowed_vlans,
+    update_integration_record,
+)
 from captive_portal.integrations.ha_discovery_service import (
     DiscoveryResult,
     HADiscoveryService,
@@ -25,13 +33,6 @@ from captive_portal.persistence.database import get_session
 from captive_portal.security.csrf import CSRFProtection, get_csrf_protection
 from captive_portal.security.session_middleware import require_admin
 from captive_portal.services.audit_service import AuditService
-from captive_portal.api.routes.integrations_helpers import (
-    IntegrationSaveData,
-    create_integration_record,
-    integrations_redirect,
-    parse_allowed_vlans,
-    update_integration_record,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -295,18 +296,12 @@ async def delete_integration(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for integration delete %s", integration_id)
-        return RedirectResponse(
-            url=f"{root}/admin/integrations/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/integrations/?error=Invalid+CSRF+token")
 
     integration = session.get(HAIntegrationConfig, integration_id)
     if not integration:
         logger.warning("Integration not found for delete: %s", integration_id)
-        return RedirectResponse(
-            url=f"{root}/admin/integrations/?error=Integration+not+found",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/integrations/?error=Integration+not+found")
 
     session.delete(integration)
     session.commit()
@@ -319,7 +314,7 @@ async def delete_integration(
         target_id=str(integration_id),
     )
 
-    return RedirectResponse(
-        url=f"{root}/admin/integrations/?success=Integration+deleted+successfully",
-        status_code=status.HTTP_303_SEE_OTHER,
+    return safe_admin_redirect(
+        root,
+        "/admin/integrations/?success=Integration+deleted+successfully",
     )

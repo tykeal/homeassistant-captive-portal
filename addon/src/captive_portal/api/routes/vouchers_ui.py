@@ -15,12 +15,13 @@ from pathlib import Path
 from typing import Annotated, Any, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, col, select
 
 from captive_portal._version import __version__
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
 from captive_portal.api.routes.vouchers_bulk_ui import (
     bulk_create_vouchers,
     bulk_delete_vouchers,
@@ -205,34 +206,25 @@ async def revoke_voucher(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for voucher revoke %s", code)
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=Invalid+CSRF+token")
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     try:
         await voucher_service.revoke(code)
     except VoucherNotFoundError:
         logger.warning("Voucher not found for revoke: %s", code)
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Voucher+not+found",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=Voucher+not+found")
     except VoucherExpiredError:
         logger.warning("Cannot revoke expired voucher: %s", code)
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Cannot+revoke+an+expired+voucher",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return safe_admin_redirect(
+            root,
+            "/admin/vouchers/?error=Cannot+revoke+an+expired+voucher",
         )
     audit_service = AuditService(session)
     await audit_service.log_admin_action(
         admin_id=admin_id, action="voucher.revoke", target_type="voucher", target_id=code
     )
     success_message = urllib.parse.quote_plus(f"Voucher {code} revoked successfully")
-    return RedirectResponse(
-        url=f"{root}/admin/vouchers/?success={success_message}",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return safe_admin_redirect(root, f"/admin/vouchers/?success={success_message}")
 
 
 @router.post("/delete/{code}")
@@ -260,27 +252,18 @@ async def delete_voucher(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for voucher delete %s", code)
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=Invalid+CSRF+token")
     voucher_service = VoucherService(session=session, voucher_repo=VoucherRepository(session))
     try:
         meta = await voucher_service.delete(code)
     except VoucherNotFoundError:
         logger.warning("Voucher not found for delete: %s", code)
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Voucher+not+found",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=Voucher+not+found")
     except VoucherRedeemedError:
         logger.warning("Cannot delete redeemed voucher: %s", code)
         error_message = f"Cannot delete voucher {code} — it has been redeemed"
         encoded_error = urllib.parse.quote_plus(error_message)
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error={encoded_error}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, f"/admin/vouchers/?error={encoded_error}")
     audit_service = AuditService(session)
     await audit_service.log_admin_action(
         admin_id=admin_id,
@@ -290,7 +273,4 @@ async def delete_voucher(
         metadata=meta,
     )
     success_message = urllib.parse.quote_plus(f"Voucher {code} deleted successfully")
-    return RedirectResponse(
-        url=f"{root}/admin/vouchers/?success={success_message}",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return safe_admin_redirect(root, f"/admin/vouchers/?success={success_message}")

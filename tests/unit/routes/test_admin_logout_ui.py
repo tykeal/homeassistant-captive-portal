@@ -167,6 +167,20 @@ class TestLogoutUnauthenticated:
         assert resp.status_code == 303
         assert resp.headers["location"].endswith("/admin/login")
 
+    def test_no_session_preserves_ingress_root_path(self, logout_app: FastAPI) -> None:
+        """POST /admin/logout should preserve a valid ingress root_path."""
+        client = TestClient(logout_app, root_path="/api/hassio_ingress/abc123")
+        resp = client.post("/admin/logout", follow_redirects=False)
+        assert resp.status_code == 303
+        assert resp.headers["location"] == "/api/hassio_ingress/abc123/admin/login"
+
+    def test_no_session_neutralizes_protocol_relative_root_path(self, logout_app: FastAPI) -> None:
+        """POST /admin/logout should not redirect to protocol-relative hosts."""
+        client = TestClient(logout_app, root_path="//evil.example")
+        resp = client.post("/admin/logout", follow_redirects=False)
+        assert resp.status_code == 303
+        assert resp.headers["location"] == "/admin/login"
+
     def test_no_session_does_not_raise(self, logout_client: TestClient) -> None:
         """POST /admin/logout without a session must not produce 4xx/5xx."""
         resp = logout_client.post("/admin/logout", follow_redirects=False)

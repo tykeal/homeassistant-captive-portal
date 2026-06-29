@@ -10,10 +10,10 @@ from dataclasses import dataclass
 from typing import Any, Optional, cast
 from uuid import UUID
 
-from fastapi import status
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
 from captive_portal.models.ha_integration_config import (
     HAIntegrationConfig,
     IdentifierAttr,
@@ -44,10 +44,8 @@ def integrations_redirect(root: str, key: str, message: str) -> RedirectResponse
     Returns:
         303 redirect response.
     """
-    return RedirectResponse(
-        url=f"{root}/admin/integrations/?{key}={urllib.parse.quote_plus(message)}",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    encoded_message = urllib.parse.quote_plus(message)
+    return safe_admin_redirect(root, f"/admin/integrations/?{key}={encoded_message}")
 
 
 def parse_allowed_vlans(

@@ -14,12 +14,13 @@ from pathlib import Path
 from typing import Annotated, Any, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, col, select
 
 from captive_portal._version import __version__
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
 from captive_portal.controllers.tp_omada.adapter_protocol import OmadaControllerAdapter
 from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
@@ -153,10 +154,7 @@ async def extend_grant(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for grant extend %s", grant_id)
-        return RedirectResponse(
-            url=f"{root}/admin/grants/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/grants/?error=Invalid+CSRF+token")
 
     form = await request.form()
     minutes_raw = form.get("minutes", "")
@@ -164,16 +162,16 @@ async def extend_grant(
         minutes = int(minutes_raw)  # type: ignore[arg-type]
     except (ValueError, TypeError):
         logger.warning("Invalid minutes value '%s' for grant extend %s", minutes_raw, grant_id)
-        return RedirectResponse(
-            url=f"{root}/admin/grants/?error=Minutes+must+be+between+1+and+1440",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return safe_admin_redirect(
+            root,
+            "/admin/grants/?error=Minutes+must+be+between+1+and+1440",
         )
 
     if minutes < 1 or minutes > 1440:
         logger.warning("Minutes out of range (%d) for grant extend %s", minutes, grant_id)
-        return RedirectResponse(
-            url=f"{root}/admin/grants/?error=Minutes+must+be+between+1+and+1440",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return safe_admin_redirect(
+            root,
+            "/admin/grants/?error=Minutes+must+be+between+1+and+1440",
         )
 
     from captive_portal.persistence.repositories import AccessGrantRepository
@@ -183,15 +181,12 @@ async def extend_grant(
         await grant_service.extend(grant_id, minutes)
     except GrantNotFoundError:
         logger.warning("Grant not found for extend: %s", grant_id)
-        return RedirectResponse(
-            url=f"{root}/admin/grants/?error=Grant+not+found",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/grants/?error=Grant+not+found")
     except GrantOperationError:
         logger.warning("Cannot extend revoked grant: %s", grant_id)
-        return RedirectResponse(
-            url=f"{root}/admin/grants/?error=Cannot+extend+a+revoked+grant",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return safe_admin_redirect(
+            root,
+            "/admin/grants/?error=Cannot+extend+a+revoked+grant",
         )
 
     # Audit log
@@ -204,9 +199,9 @@ async def extend_grant(
         metadata={"minutes": minutes},
     )
 
-    return RedirectResponse(
-        url=f"{root}/admin/grants/?success=Grant+extended+by+{minutes}+minutes",
-        status_code=status.HTTP_303_SEE_OTHER,
+    return safe_admin_redirect(
+        root,
+        f"/admin/grants/?success=Grant+extended+by+{minutes}+minutes",
     )
 
 
@@ -241,10 +236,7 @@ async def revoke_grant(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for grant revoke %s", grant_id)
-        return RedirectResponse(
-            url=f"{root}/admin/grants/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/grants/?error=Invalid+CSRF+token")
 
     from captive_portal.api.routes.grants import _revoke_with_controller
     from captive_portal.persistence.repositories import AccessGrantRepository
@@ -254,10 +246,7 @@ async def revoke_grant(
         grant = await grant_service.revoke(grant_id)
     except GrantNotFoundError:
         logger.warning("Grant not found for revoke: %s", grant_id)
-        return RedirectResponse(
-            url=f"{root}/admin/grants/?error=Grant+not+found",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/grants/?error=Grant+not+found")
 
     # Best-effort controller revocation
     revocation_result = await _revoke_with_controller(
@@ -280,17 +269,12 @@ async def revoke_grant(
     )
 
     if revocation_result.controller_error:
-        return RedirectResponse(
-            url=(
-                f"{root}/admin/grants/"
-                "?success=Grant+revoked+successfully"
-                "&error=Controller+revocation+failed"
-                "%3B+may+need+manual+attention"
-            ),
-            status_code=status.HTTP_303_SEE_OTHER,
+        return safe_admin_redirect(
+            root,
+            "/admin/grants/"
+            "?success=Grant+revoked+successfully"
+            "&error=Controller+revocation+failed"
+            "%3B+may+need+manual+attention",
         )
 
-    return RedirectResponse(
-        url=f"{root}/admin/grants/?success=Grant+revoked+successfully",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return safe_admin_redirect(root, "/admin/grants/?success=Grant+revoked+successfully")
