@@ -284,31 +284,37 @@ async def discover_controller_id(
         OmadaClientError: If discovery fails
     """
     validated_base_url = validate_controller_base_url(base_url)
-    url = urljoin(validated_base_url + "/", "api/info")
+    endpoint = "/api/info"
+    request_path = endpoint.lstrip("/")
     discovery_timeout = httpx.Timeout(timeout, connect=min(timeout, 3.0))
-    async with httpx.AsyncClient(timeout=discovery_timeout, verify=verify_ssl) as client:
+    async with httpx.AsyncClient(
+        base_url=f"{validated_base_url}/",
+        timeout=discovery_timeout,
+        verify=verify_ssl,
+    ) as client:
         try:
-            response = await client.get(url)
+            response = await client.get(request_path)
             response.raise_for_status()
             try:
                 data: dict[str, Any] = response.json()
             except (ValueError, UnicodeDecodeError) as e:
-                raise OmadaClientError(f"Invalid JSON from /api/info: {e}") from e
+                raise OmadaClientError(f"Invalid JSON from {endpoint}: {e}") from e
             if data.get("errorCode") != 0:
                 raise OmadaClientError(
-                    f"Controller info request failed: {data.get('msg', 'Unknown error')}"
+                    f"Controller info request failed at {endpoint}: "
+                    f"{data.get('msg', 'Unknown error')}"
                 )
             omadac_id = _response_result(data).get("omadacId")
             if not isinstance(omadac_id, str) or not omadac_id:
-                raise OmadaClientError("omadacId not found in /api/info response")
+                raise OmadaClientError(f"omadacId not found in {endpoint} response")
             return omadac_id
         except httpx.HTTPStatusError as e:
             raise OmadaClientError(
-                f"HTTP {e.response.status_code} from /api/info: {e}",
+                f"HTTP {e.response.status_code} from {endpoint}: {e}",
                 status_code=e.response.status_code,
             ) from e
         except httpx.RequestError as e:
-            raise OmadaClientError(f"Connection error fetching /api/info: {e}") from e
+            raise OmadaClientError(f"Connection error fetching {endpoint}: {e}") from e
 
 
 OmadaClient = OmadaLegacyClient
