@@ -61,3 +61,18 @@ def test_set_csrf_cookie_rejects_unsafe_token(
 
     assert "Refusing to set invalid CSRF token cookie" in caplog.text
     assert "set-cookie" not in response.headers
+
+
+def test_set_csrf_cookie_rejects_unissued_token(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """URL-safe but unissued CSRF tokens are rejected before cookie creation."""
+    csrf = CSRFProtection()
+    response = Response()
+
+    with caplog.at_level(logging.ERROR, logger="captive_portal.security.csrf"):
+        with pytest.raises(ValueError, match="not generated"):
+            csrf.set_csrf_cookie(response, "A" * 43)
+
+    assert "Refusing to set unissued CSRF token cookie" in caplog.text
+    assert "set-cookie" not in response.headers
