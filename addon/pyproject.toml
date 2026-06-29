@@ -57,7 +57,7 @@ include = [
 source_pkgs = ["captive_portal"]
 branch = true
 omit = [
-  "src/captive_portal/_version.py",
+  "*/captive_portal/_version.py",
 ]
 
 [tool.coverage.report]
