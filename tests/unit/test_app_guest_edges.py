@@ -323,6 +323,7 @@ async def test_guest_lifespan_loads_configured_omada(
     monkeypatch.setattr(guest_module, "init_db", lambda _engine: None)
     monkeypatch.setattr(guest_module, "dispose_engine", lambda: None)
     monkeypatch.setattr(guest_module, "_run_config_migration", no_migration)
+    monkeypatch.setattr(guest_module.booking_authorize, "set_db_engine", lambda _engine: None)
     monkeypatch.setattr("sqlmodel.Session", _FakeSession)
     monkeypatch.setattr(
         "captive_portal.config.omada_config.build_omada_config",
