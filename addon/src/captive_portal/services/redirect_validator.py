@@ -66,9 +66,12 @@ class RedirectValidator:
             # Block protocol-relative and triple-slash attempts
             return url.startswith("/") and not url.startswith("//")
 
-        # Allow only http/https protocols
-        if parsed.scheme and parsed.scheme.lower() not in ["http", "https"]:
-            return False
+        # Allow only http/https protocols with an explicit host.
+        if parsed.scheme:
+            if parsed.scheme.lower() not in ["http", "https"]:
+                return False
+            if not parsed.netloc:
+                return False
 
         # If we have a domain, check whitelist
         if parsed.netloc:
