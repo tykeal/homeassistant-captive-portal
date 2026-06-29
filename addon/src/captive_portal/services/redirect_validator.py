@@ -86,7 +86,7 @@ class RedirectValidator:
 
             return domain in self.allowed_domains
 
-        return True
+        return True  # pragma: no cover - defensive fallback for parser edge cases.
 
 
 @dataclass(frozen=True)
