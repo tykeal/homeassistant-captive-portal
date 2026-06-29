@@ -14,10 +14,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import FastAPI
-from starlette.types import Message
 from fastapi.testclient import TestClient
+from starlette.types import Message
 
 from captive_portal.config.settings import AppSettings
+from captive_portal.controllers.tp_omada.adapter_factory import OmadaRuntimeConfig
 from captive_portal.guest_debug import DebugLoggingMiddleware
 from captive_portal.guest_errors import register_guest_exception_handlers
 from captive_portal.guest_routes import mount_guest_static
@@ -160,7 +161,18 @@ def test_app_lifespan_logs_configured_omada(
     monkeypatch.setattr(
         app_module,
         "_load_omada_config",
-        AsyncMock(return_value={"controller_url": "https://omada.example"}),
+        AsyncMock(
+            return_value=OmadaRuntimeConfig(
+                selected_backend="legacy",
+                selection_reason="test",
+                base_url="https://omada.example",
+                controller_id="",
+                site_name="Default",
+                verify_ssl=True,
+                username="operator",
+                password="secret",
+            ),
+        ),
     )
     monkeypatch.setattr(app_module.HAPoller, "start", AsyncMock())
     monkeypatch.setattr(app_module.HAPoller, "stop", AsyncMock())
@@ -168,7 +180,7 @@ def test_app_lifespan_logs_configured_omada(
 
     with caplog.at_level(logging.INFO, logger="captive_portal"):
         with TestClient(app):
-            assert app.state.omada_config == {"controller_url": "https://omada.example"}
+            assert app.state.omada_config.base_url == "https://omada.example"
 
     assert "Omada controller configured" in caplog.text
 

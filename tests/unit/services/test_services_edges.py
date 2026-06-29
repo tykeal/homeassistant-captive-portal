@@ -126,7 +126,7 @@ def test_redirect_validator_rejects_empty_and_unknown_scheme() -> None:
 
     assert validator.is_safe("") is False
     assert validator.is_safe("ftp://portal.example/path") is False
-    assert validator.is_safe("https:/local-only") is True
+    assert validator.is_safe("https:/local-only") is False
 
 
 def test_guest_external_url_rejects_bad_port_and_scheme() -> None:
