@@ -43,7 +43,14 @@ def _make_response(
     )
 
 
-@pytest.mark.parametrize("base_url", ["http://controller:8088", "https://controller:443"])
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "http://controller:8088",
+        "https://controller:443",
+        "https://controller:443/omada",
+    ],
+)
 @pytest.mark.asyncio
 async def test_discover_success(base_url: str) -> None:
     """Successful discovery accepts HTTP and HTTPS controller URLs."""
@@ -61,11 +68,13 @@ async def test_discover_success(base_url: str) -> None:
     mock_client.__aenter__ = AsyncMock(return_value=mock_client)
     mock_client.__aexit__ = AsyncMock(return_value=False)
 
-    with patch("httpx.AsyncClient", return_value=mock_client):
+    with patch("httpx.AsyncClient", return_value=mock_client) as async_client:
         result = await discover_controller_id(base_url)
 
     assert result == "abc123def456"
-    mock_client.get.assert_awaited_once_with(f"{base_url}/api/info")
+    async_client.assert_called_once()
+    assert async_client.call_args.kwargs["base_url"] == f"{base_url}/"
+    mock_client.get.assert_awaited_once_with("api/info")
 
 
 @pytest.mark.parametrize(
