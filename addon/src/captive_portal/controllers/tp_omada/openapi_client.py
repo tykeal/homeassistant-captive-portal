@@ -229,7 +229,6 @@ class OpenApiClient:
                 self.token_state.expires_at_monotonic = 0.0
                 if self.token_state.refresh_token:
                     try:
-                        # aislop-ignore-next-line ai-slop/hardcoded-id -- OAuth grant type
                         await self._post_token("refresh_token")
                         return
                     except OmadaAuthenticationError:
