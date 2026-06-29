@@ -51,8 +51,8 @@ repos:
   - repo: local
     hooks:
       - id: aislop
-        name: aislop ci (staged)
-        entry: aislop ci --staged
+        name: aislop ci (full)
+        entry: aislop ci
         language: node
         additional_dependencies:
           - aislop@0.12.0
