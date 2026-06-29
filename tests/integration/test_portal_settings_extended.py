@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import cast
+from typing import Any, cast
 
 import pytest
 from fastapi import FastAPI
@@ -68,6 +68,29 @@ def authenticated_client(client: TestClient, admin_role_user: AdminUser) -> Test
 class TestPortalSettingsExtended:
     """Tests for extended portal settings fields."""
 
+    def _portal_form(self, csrf_token: str, **overrides: str) -> dict[str, str]:
+        """Build the complete portal settings form payload.
+
+        Args:
+            csrf_token: CSRF token to submit.
+            overrides: Form values to override.
+
+        Returns:
+            Complete portal settings form data.
+        """
+        form = {
+            "csrf_token": csrf_token,
+            "rate_limit_attempts": "5",
+            "rate_limit_window_seconds": "60",
+            "success_redirect_url": "/guest/welcome",
+            "redirect_to_original_url": "true",
+            "session_idle_minutes": "30",
+            "session_max_hours": "8",
+            "guest_external_url": "",
+        }
+        form.update(overrides)
+        return form
+
     def _get_csrf_token(self, client: TestClient) -> str:
         """Extract CSRF token from client cookies.
 
@@ -78,6 +101,31 @@ class TestPortalSettingsExtended:
             CSRF token string.
         """
         return client.cookies.get("csrftoken") or ""
+
+    def _assert_redirect_response(self, response: Any, location: str) -> None:
+        """Assert exact redirect response metadata for form submissions.
+
+        Args:
+            response: HTTP response to inspect.
+            location: Expected redirect location header.
+        """
+        assert response.status_code == 303
+        assert response.headers["location"] == location
+        assert response.headers["content-length"] == "0"
+        assert response.headers.get("set-cookie") is None
+        assert dict(response.cookies) == {}
+
+    def _assert_validation_response(self, response: Any, detail: list[dict[str, Any]]) -> None:
+        """Assert exact FastAPI form validation response metadata.
+
+        Args:
+            response: HTTP response to inspect.
+            detail: Expected validation detail payload.
+        """
+        assert response.status_code == 422
+        assert response.headers["content-type"] == "application/json"
+        assert response.headers.get("set-cookie") is None
+        assert response.json() == {"detail": detail}
 
     def test_form_shows_session_fields(self, authenticated_client: TestClient) -> None:
         """GET shows session timeout fields in form."""
@@ -120,6 +168,297 @@ class TestPortalSettingsExtended:
         assert config is not None
         assert config.session_idle_minutes == 45
         assert config.session_max_hours == 12
+
+    def test_post_accepts_complete_form_contract(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """POST accepts every portal settings form field and persists them."""
+        csrf_token = self._get_csrf_token(authenticated_client)
+
+        response = authenticated_client.post(
+            "/admin/portal-settings/",
+            data=self._portal_form(
+                csrf_token,
+                rate_limit_attempts="7",
+                rate_limit_window_seconds="120",
+                success_redirect_url="/guest/done",
+                redirect_to_original_url="true",
+                session_idle_minutes="45",
+                session_max_hours="12",
+                guest_external_url="  https://guest.example.com  ",
+            ),
+            follow_redirects=False,
+        )
+
+        self._assert_redirect_response(
+            response,
+            "/admin/portal-settings?success=Portal+configuration+updated+successfully",
+        )
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.rate_limit_attempts == 7
+        assert config.rate_limit_window_seconds == 120
+        assert config.success_redirect_url == "/guest/done"
+        assert config.redirect_to_original_url is True
+        assert config.session_idle_minutes == 45
+        assert config.session_max_hours == 12
+        assert config.guest_external_url == "https://guest.example.com"
+
+    def test_post_uses_form_defaults_when_optional_fields_are_absent(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """POST applies handler defaults when optional form fields are absent."""
+        csrf_token = self._get_csrf_token(authenticated_client)
+        form = self._portal_form(csrf_token)
+        for field_name in (
+            "redirect_to_original_url",
+            "session_idle_minutes",
+            "session_max_hours",
+            "guest_external_url",
+        ):
+            del form[field_name]
+
+        response = authenticated_client.post(
+            "/admin/portal-settings/",
+            data=form,
+            follow_redirects=False,
+        )
+
+        self._assert_redirect_response(
+            response,
+            "/admin/portal-settings?success=Portal+configuration+updated+successfully",
+        )
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.rate_limit_attempts == 5
+        assert config.rate_limit_window_seconds == 60
+        assert config.success_redirect_url == "/guest/welcome"
+        assert config.redirect_to_original_url is False
+        assert config.session_idle_minutes == 30
+        assert config.session_max_hours == 8
+        assert config.guest_external_url == ""
+
+    def test_post_only_treats_true_checkbox_value_as_enabled(
+        self, authenticated_client: TestClient, db_session: Session
+    ) -> None:
+        """POST preserves exact checkbox string coercion behavior."""
+        db_session.merge(PortalConfig(id=1, redirect_to_original_url=True))
+        db_session.commit()
+        csrf_token = self._get_csrf_token(authenticated_client)
+
+        response = authenticated_client.post(
+            "/admin/portal-settings/",
+            data=self._portal_form(csrf_token, redirect_to_original_url="on"),
+            follow_redirects=False,
+        )
+
+        self._assert_redirect_response(
+            response,
+            "/admin/portal-settings?success=Portal+configuration+updated+successfully",
+        )
+
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.redirect_to_original_url is False
+
+    @pytest.mark.parametrize(
+        ("field_name", "field_value", "location"),
+        [
+            (
+                "rate_limit_attempts",
+                "0",
+                "/admin/portal-settings?error=Rate+limit+attempts+must+be+between+1+and+1000",
+            ),
+            (
+                "rate_limit_window_seconds",
+                "3601",
+                "/admin/portal-settings?error=Rate+limit+window+must+be+between+1+and+3600+seconds",
+            ),
+            (
+                "success_redirect_url",
+                "x" * 2049,
+                "/admin/portal-settings?error=Redirect+URL+too+long+(max+2048+characters)",
+            ),
+            (
+                "session_idle_minutes",
+                "0",
+                "/admin/portal-settings?error=Session+idle+timeout+must+be+between+1+and+1440+minutes",
+            ),
+            (
+                "session_max_hours",
+                "169",
+                "/admin/portal-settings?error=Session+max+duration+must+be+between+1+and+168+hours",
+            ),
+            (
+                "guest_external_url",
+                "https://guest.example.com/?next=evil",
+                "/admin/portal-settings?error=Guest+external+URL+must+be+an+HTTP+or+HTTPS+URL+with+a+host%2C+and+must+not+include+a+path%2C+query%2C+fragment%2C+trailing+slash%2C+or+control+characters",
+            ),
+        ],
+    )
+    def test_post_rejects_invalid_form_contract_values(
+        self,
+        authenticated_client: TestClient,
+        db_session: Session,
+        field_name: str,
+        field_value: str,
+        location: str,
+    ) -> None:
+        """POST redirects with exact errors for handler-level validation."""
+        db_session.merge(PortalConfig(id=1, rate_limit_attempts=11))
+        db_session.commit()
+        csrf_token = self._get_csrf_token(authenticated_client)
+
+        response = authenticated_client.post(
+            "/admin/portal-settings/",
+            data=self._portal_form(csrf_token, **{field_name: field_value}),
+            follow_redirects=False,
+        )
+
+        self._assert_redirect_response(response, location)
+        db_session.expire_all()
+        config = db_session.get(PortalConfig, 1)
+        assert config is not None
+        assert config.rate_limit_attempts == 11
+
+    @pytest.mark.parametrize(
+        ("missing_field", "detail"),
+        [
+            (
+                "csrf_token",
+                [
+                    {
+                        "type": "missing",
+                        "loc": ["body", "csrf_token"],
+                        "msg": "Field required",
+                        "input": None,
+                    }
+                ],
+            ),
+            (
+                "rate_limit_attempts",
+                [
+                    {
+                        "type": "missing",
+                        "loc": ["body", "rate_limit_attempts"],
+                        "msg": "Field required",
+                        "input": None,
+                    }
+                ],
+            ),
+            (
+                "rate_limit_window_seconds",
+                [
+                    {
+                        "type": "missing",
+                        "loc": ["body", "rate_limit_window_seconds"],
+                        "msg": "Field required",
+                        "input": None,
+                    }
+                ],
+            ),
+            (
+                "success_redirect_url",
+                [
+                    {
+                        "type": "missing",
+                        "loc": ["body", "success_redirect_url"],
+                        "msg": "Field required",
+                        "input": None,
+                    }
+                ],
+            ),
+        ],
+    )
+    def test_post_rejects_missing_required_form_fields(
+        self,
+        authenticated_client: TestClient,
+        missing_field: str,
+        detail: list[dict[str, Any]],
+    ) -> None:
+        """POST returns exact validation errors for missing required fields."""
+        csrf_token = self._get_csrf_token(authenticated_client)
+        form = self._portal_form(csrf_token)
+        del form[missing_field]
+
+        response = authenticated_client.post(
+            "/admin/portal-settings/",
+            data=form,
+            follow_redirects=False,
+        )
+
+        self._assert_validation_response(response, detail)
+
+    @pytest.mark.parametrize(
+        ("field_name", "detail"),
+        [
+            (
+                "rate_limit_attempts",
+                [
+                    {
+                        "type": "int_parsing",
+                        "loc": ["body", "rate_limit_attempts"],
+                        "msg": "Input should be a valid integer, unable to parse string as an integer",
+                        "input": "abc",
+                    }
+                ],
+            ),
+            (
+                "rate_limit_window_seconds",
+                [
+                    {
+                        "type": "int_parsing",
+                        "loc": ["body", "rate_limit_window_seconds"],
+                        "msg": "Input should be a valid integer, unable to parse string as an integer",
+                        "input": "abc",
+                    }
+                ],
+            ),
+            (
+                "session_idle_minutes",
+                [
+                    {
+                        "type": "int_parsing",
+                        "loc": ["body", "session_idle_minutes"],
+                        "msg": "Input should be a valid integer, unable to parse string as an integer",
+                        "input": "abc",
+                    }
+                ],
+            ),
+            (
+                "session_max_hours",
+                [
+                    {
+                        "type": "int_parsing",
+                        "loc": ["body", "session_max_hours"],
+                        "msg": "Input should be a valid integer, unable to parse string as an integer",
+                        "input": "abc",
+                    }
+                ],
+            ),
+        ],
+    )
+    def test_post_rejects_invalid_integer_form_fields(
+        self,
+        authenticated_client: TestClient,
+        field_name: str,
+        detail: list[dict[str, Any]],
+    ) -> None:
+        """POST returns exact validation errors for invalid integer fields."""
+        csrf_token = self._get_csrf_token(authenticated_client)
+
+        response = authenticated_client.post(
+            "/admin/portal-settings/",
+            data=self._portal_form(csrf_token, **{field_name: "abc"}),
+            follow_redirects=False,
+        )
+
+        self._assert_validation_response(response, detail)
 
     def test_refreshes_runtime_session_config(self, authenticated_client: TestClient) -> None:
         """POST applies saved session timeout values to app state."""
