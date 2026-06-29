@@ -210,3 +210,50 @@ class TestGuestPortalFormFlow:
         body = submit_resp.text.lower()
         assert "unable to determine device mac" not in body
         assert "not found" in body
+
+    def test_get_authorize_characterizes_all_omada_fields(
+        self,
+        guest_client: TestClient,
+    ) -> None:
+        """GET form preserves Omada fields, CSRF, continue, and headers."""
+        resp = guest_client.get(
+            "/guest/authorize"
+            "?clientMac=AA-BB-CC-DD-EE-FF"
+            "&clientIp=192.0.2.25"
+            "&site=686982d482171c5562624ad1"
+            "&apMac=11-22-33-44-55-66"
+            "&gatewayMac=22-33-44-55-66-77"
+            "&radioId=1"
+            "&ssidName=GuestWiFi"
+            "&vid=100"
+            "&t=123456789"
+            "&redirectUrl=https://example.test/original"
+            "&continue=/guest/welcome",
+        )
+
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("text/html")
+        assert resp.headers.get("X-Frame-Options") == "SAMEORIGIN"
+        assert resp.headers.get("X-Content-Type-Options") == "nosniff"
+        assert resp.headers.get("Referrer-Policy") == "strict-origin"
+        assert resp.headers.get("Cache-Control") == "no-store"
+
+        from tests.utils.guest_portal_characterization import normalize_guest_html
+
+        text = normalize_guest_html(resp.text)
+        assert 'method="get"' in text
+        assert 'name="csrf_token" value="<csrf-token>"' in text
+        for name, value in {
+            "continue": "/guest/welcome",
+            "clientMac": "AA-BB-CC-DD-EE-FF",
+            "clientIp": "192.0.2.25",
+            "site": "686982d482171c5562624ad1",
+            "apMac": "11-22-33-44-55-66",
+            "gatewayMac": "22-33-44-55-66-77",
+            "radioId": "1",
+            "ssidName": "GuestWiFi",
+            "vid": "100",
+            "t": "123456789",
+            "redirectUrl": "https://example.test/original",
+        }.items():
+            assert f'name="{name}" value="{value}"' in text

@@ -5,6 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 
 **Feature**: 014-guest-portal-decomposition
 **Date**: 2026-06-28
+**Branch**: `014-guest-portal-decomposition`
 
 ## Operator Impact
 

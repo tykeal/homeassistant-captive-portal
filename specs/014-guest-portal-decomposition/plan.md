@@ -3,7 +3,7 @@ SPDX-License-Identifier: Apache-2.0
 
 # Implementation Plan: Guest Portal Decomposition
 
-**Branch**: `014-guest-portal-plan` | **Date**: 2026-06-28 |
+**Branch**: `014-guest-portal-decomposition` | **Date**: 2026-06-28 |
 **Spec**: `specs/014-guest-portal-decomposition/spec.md`
 **Input**: Feature specification from
 `/specs/014-guest-portal-decomposition/spec.md`
