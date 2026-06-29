@@ -106,11 +106,14 @@ def test_create_app_loads_settings_when_none(monkeypatch: pytest.MonkeyPatch) ->
     assert app.state.debug_guest_portal == settings.debug_guest_portal
 
 
-def test_create_app_raises_when_static_themes_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_app_raises_when_static_themes_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     """create_app fails fast when static theme assets are unavailable."""
     app_module = importlib.import_module("captive_portal.app")
 
-    missing = Path("addon/src/captive_portal/web/themes-does-not-exist")
+    missing = tmp_path / "themes-does-not-exist"
     monkeypatch.setattr(app_module, "_THEMES_DIR", missing)
 
     with pytest.raises(RuntimeError, match="Static themes directory"):
@@ -180,10 +183,10 @@ def test_create_guest_app_loads_settings_when_none(monkeypatch: pytest.MonkeyPat
     assert app.state.debug_guest_portal is True
 
 
-def test_mount_guest_static_raises_for_missing_directory() -> None:
+def test_mount_guest_static_raises_for_missing_directory(tmp_path: Path) -> None:
     """Guest static mounting fails fast for missing theme assets."""
     with pytest.raises(RuntimeError, match="Static themes directory"):
-        mount_guest_static(FastAPI(), Path("addon/src/captive_portal/web/missing-themes"))
+        mount_guest_static(FastAPI(), tmp_path / "missing-themes")
 
 
 def test_guest_validation_exception_handler_renders_html() -> None:

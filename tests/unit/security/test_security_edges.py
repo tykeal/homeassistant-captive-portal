@@ -10,7 +10,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.testclient import TestClient
 
 from captive_portal.security import password_hashing
@@ -42,13 +42,15 @@ async def test_hmac_rejects_malformed_payload_and_timestamp() -> None:
 
     malformed_payload = "onlynonce"
     malformed_token = _signed_token(csrf, malformed_payload)
-    with pytest.raises(Exception, match="Malformed CSRF token payload"):
+    with pytest.raises(HTTPException) as malformed_exc:
         await csrf.validate_token(_request_with_header(malformed_token))
+    assert malformed_exc.value.detail == "Malformed CSRF token payload"
 
     invalid_timestamp_payload = "nonce:not-an-int"
     invalid_timestamp_token = _signed_token(csrf, invalid_timestamp_payload)
-    with pytest.raises(Exception, match="Invalid CSRF token timestamp"):
+    with pytest.raises(HTTPException) as timestamp_exc:
         await csrf.validate_token(_request_with_header(invalid_timestamp_token))
+    assert timestamp_exc.value.detail == "Invalid CSRF token timestamp"
 
 
 @pytest.mark.asyncio

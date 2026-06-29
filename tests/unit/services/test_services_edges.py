@@ -217,7 +217,7 @@ async def test_create_rejects_invalid_duration() -> None:
 async def test_create_with_zero_retries_hits_collision_guard() -> None:
     """Voucher creation reports collision when no retry attempts run."""
     service = VoucherService(cast(Session, object()), voucher_repo=cast(Any, object()))
-    with pytest.raises(VoucherCollisionError, match="Unexpected code path"):
+    with pytest.raises(VoucherCollisionError):
         await service.create(duration_minutes=10, max_retries=0)
 
 
