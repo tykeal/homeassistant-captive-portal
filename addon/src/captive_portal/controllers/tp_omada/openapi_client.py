@@ -16,6 +16,7 @@ from captive_portal.controllers.tp_omada.base_client import (
     OmadaAuthenticationError,
     OmadaClientError,
     OmadaRetryExhaustedError,
+    validate_controller_base_url,
 )
 
 
@@ -65,7 +66,7 @@ class OpenApiClient:
             token_state: Optional shared token cache.
             refresh_margin_seconds: Seconds before expiry to refresh.
         """
-        self.base_url = base_url.rstrip("/")
+        self.base_url = validate_controller_base_url(base_url)
         self.controller_id = controller_id
         self.client_id = client_id
         self.client_secret = client_secret

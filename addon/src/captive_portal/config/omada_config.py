@@ -61,7 +61,17 @@ async def build_omada_config(
     if not config.omada_configured and not config.openapi_configured:
         return None
 
+    from captive_portal.controllers.tp_omada.base_client import (
+        OmadaClientError,
+        validate_controller_base_url,
+    )
+
     controller_url = config.controller_url.strip()
+    try:
+        base_url = validate_controller_base_url(controller_url)
+    except OmadaClientError as exc:
+        logger.error("Omada controller URL failed validation: %s", exc)
+        return None
     username = config.username.strip()
     mode = config.openapi_mode.strip().lower()
     password = _decrypt_for_backend(
@@ -80,11 +90,8 @@ async def build_omada_config(
     controller_id = config.controller_id.strip()
     verify_ssl = config.verify_ssl
 
-    base_url = controller_url
-
     if not controller_id:
         from captive_portal.controllers.tp_omada.base_client import (
-            OmadaClientError,
             discover_controller_id,
         )
 

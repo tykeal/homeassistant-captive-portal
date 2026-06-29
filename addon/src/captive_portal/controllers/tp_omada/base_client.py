@@ -8,6 +8,7 @@ from captive_portal.controllers.tp_omada.legacy_client import (
     OmadaLegacyClient,
     OmadaRetryExhaustedError,
     discover_controller_id,
+    validate_controller_base_url,
 )
 
 OmadaClient = OmadaLegacyClient
@@ -19,4 +20,5 @@ __all__ = [
     "OmadaLegacyClient",
     "OmadaRetryExhaustedError",
     "discover_controller_id",
+    "validate_controller_base_url",
 ]

@@ -118,10 +118,17 @@ def validate_omada_url(value: Any) -> bool:
     stripped = value.strip()
     if stripped == "":
         return True
-    from urllib.parse import urlsplit
 
-    parts = urlsplit(stripped)
-    return parts.scheme in ("http", "https") and bool(parts.netloc)
+    from captive_portal.controllers.tp_omada.base_client import (
+        OmadaClientError,
+        validate_controller_base_url,
+    )
+
+    try:
+        validate_controller_base_url(stripped)
+    except OmadaClientError:
+        return False
+    return True
 
 
 def validate_openapi_mode(value: Any) -> bool:
