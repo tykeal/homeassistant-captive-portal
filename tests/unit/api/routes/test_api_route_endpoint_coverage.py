@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -61,11 +61,10 @@ _ADMIN_ID = UUID("00000000-0000-4000-8000-000000000001")
 class _AuditRecorder:
     """Replacement audit service used to avoid unrelated persistence behavior."""
 
-    calls: list[dict[str, Any]] = []
-
     def __init__(self, session: Session) -> None:
         """Accept the same session argument as the real audit service."""
         self.session = session
+        self.calls: list[dict[str, Any]] = []
 
     async def log_admin_action(self, **kwargs: Any) -> None:
         """Record admin audit calls."""
@@ -75,8 +74,8 @@ class _AuditRecorder:
 class _VoucherServiceFactory:
     """Replacement voucher service with configurable create outcomes."""
 
-    outcome: Voucher | Exception
-    seen_kwargs: dict[str, Any]
+    outcome: ClassVar[Voucher | Exception]
+    seen_kwargs: ClassVar[dict[str, Any]] = {}
 
     def __init__(self, session: Session) -> None:
         """Accept the same session argument as the real voucher service."""
@@ -373,9 +372,9 @@ class _CSRFFail(_CSRFPass):
 class _BulkVoucherService:
     """Voucher service replacement with configurable bulk-operation results."""
 
-    create_results: list[str | Exception] = []
-    revoke_results: dict[str, Exception | None] = {}
-    delete_results: dict[str, dict[str, str] | Exception] = {}
+    create_results: ClassVar[list[str | Exception]] = []
+    revoke_results: ClassVar[dict[str, Exception | None]] = {}
+    delete_results: ClassVar[dict[str, dict[str, str] | Exception]] = {}
 
     def __init__(self, **kwargs: Any) -> None:
         """Accept keyword arguments used by route constructors."""

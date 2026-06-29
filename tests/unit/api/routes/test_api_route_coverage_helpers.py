@@ -241,7 +241,7 @@ def _decision_context(
 
 def test_validate_omada_form_rejects_edge_cases() -> None:
     """Omada validation reports legacy and OpenAPI form errors."""
-    with pytest.raises(TypeError, match="requires 10 positional"):
+    with pytest.raises(TypeError, match="legacy Omada validation"):
         omada_settings_helpers.validate_omada_form("https://omada.test")
 
     def make_form(**overrides: str | bool) -> OmadaFormData:
@@ -469,6 +469,10 @@ async def test_health_readiness_handles_database_errors() -> None:
 
     class FailingSession:
         """Session stub that raises a SQLAlchemy error."""
+
+        def __init__(self) -> None:
+            """Initialize rollback tracking."""
+            self.rolled_back = False
 
         def execute(self, statement: object) -> object:
             """Raise a database connectivity failure."""
