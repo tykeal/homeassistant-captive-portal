@@ -133,7 +133,7 @@ async def authorize_with_controller(
     except (OmadaClientError, OmadaRetryExhaustedError) as exc:
         _logger.error(
             "Controller authorization failed for MAC %s: %s",
-            mac_address,
+            "<redacted>",
             exc,
         )
         grant.status = GrantStatus.FAILED
