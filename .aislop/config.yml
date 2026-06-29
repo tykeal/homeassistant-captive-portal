@@ -9,7 +9,7 @@ version: 1
 # `aislop-ignore-*` directives in source. Keep project-local config here.
 
 ci:
-  failBelow: 54
+  failBelow: 100
 
 rules:
   ai-slop/swallowed-exception: warning
