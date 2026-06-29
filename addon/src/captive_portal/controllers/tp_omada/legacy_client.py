@@ -4,9 +4,11 @@
 
 import asyncio
 from typing import Any, Optional
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import httpx
+
+_ALLOWED_CONTROLLER_SCHEMES = frozenset({"http", "https"})
 
 
 class OmadaClientError(Exception):
@@ -51,6 +53,38 @@ def _response_result(data: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def validate_controller_base_url(base_url: str) -> str:
+    """Validate and normalize an Omada controller base URL.
+
+    Args:
+        base_url: Raw controller base URL.
+
+    Returns:
+        The stripped controller base URL without trailing slashes.
+
+    Raises:
+        OmadaClientError: If the URL does not use HTTP(S), lacks a host,
+            or is malformed.
+    """
+    stripped = base_url.strip()
+    if any(char.isspace() or ord(char) < 0x20 or char == "\x7f" for char in stripped):
+        raise OmadaClientError(
+            "Invalid Omada controller URL: URL contains whitespace or control characters"
+        )
+    try:
+        parsed = urlparse(stripped)
+        scheme = parsed.scheme.lower()
+        hostname = parsed.hostname
+        _port = parsed.port
+    except ValueError as exc:
+        raise OmadaClientError(f"Invalid Omada controller URL: {exc}") from exc
+    if scheme not in _ALLOWED_CONTROLLER_SCHEMES:
+        raise OmadaClientError("Invalid Omada controller URL: scheme must be http or https")
+    if not hostname:
+        raise OmadaClientError("Invalid Omada controller URL: host is required")
+    return stripped.rstrip("/")
+
+
 class OmadaLegacyClient:
     """HTTP client for the legacy TP-Omada controller API with authentication.
 
@@ -81,7 +115,7 @@ class OmadaLegacyClient:
             verify_ssl: Whether to verify SSL certificates (default: True)
             timeout: HTTP request timeout in seconds (default: 10.0)
         """
-        self.base_url = base_url.rstrip("/")
+        self.base_url = validate_controller_base_url(base_url)
         self.controller_id = controller_id
         self.username = username
         self.password = password
@@ -249,7 +283,8 @@ async def discover_controller_id(
     Raises:
         OmadaClientError: If discovery fails
     """
-    url = urljoin(base_url.rstrip("/") + "/", "api/info")
+    validated_base_url = validate_controller_base_url(base_url)
+    url = urljoin(validated_base_url + "/", "api/info")
     discovery_timeout = httpx.Timeout(timeout, connect=min(timeout, 3.0))
     async with httpx.AsyncClient(timeout=discovery_timeout, verify=verify_ssl) as client:
         try:

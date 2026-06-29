@@ -9,7 +9,6 @@ import re
 from dataclasses import dataclass
 from collections.abc import Awaitable, Callable
 from typing import Any
-from urllib.parse import urlsplit
 
 from captive_portal.models.omada_config import OmadaConfig
 
@@ -194,8 +193,14 @@ def _validate_omada_form_data(form: OmadaFormData) -> str | None:
         Error message or None.
     """
     if form.controller_url:
-        parts = urlsplit(form.controller_url)
-        if parts.scheme not in ("http", "https") or not parts.netloc:
+        from captive_portal.controllers.tp_omada.base_client import (
+            OmadaClientError,
+            validate_controller_base_url,
+        )
+
+        try:
+            validate_controller_base_url(form.controller_url)
+        except OmadaClientError:
             return "Controller URL must be a valid HTTP or HTTPS URL"
 
     if form.openapi_mode not in {"auto", "openapi", "legacy"}:

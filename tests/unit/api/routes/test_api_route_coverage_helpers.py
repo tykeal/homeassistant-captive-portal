@@ -277,6 +277,12 @@ def test_validate_omada_form_rejects_edge_cases() -> None:
         == "Backend mode must be auto, openapi, or legacy"
     )
     assert (
+        omada_settings_helpers.validate_omada_form(
+            make_form(controller_url="https://omada example.test")
+        )
+        == "Controller URL must be a valid HTTP or HTTPS URL"
+    )
+    assert (
         omada_settings_helpers.validate_omada_form(make_form(username="", openapi_mode="legacy"))
         == "Username is required when controller URL is set"
     )

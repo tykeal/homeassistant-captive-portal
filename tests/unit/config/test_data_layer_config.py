@@ -71,6 +71,8 @@ def test_migration_validators_cover_edge_cases() -> None:
     assert validate_omada_url(123) is False
     assert validate_omada_url("   ") is True
     assert validate_omada_url("https://omada.example.test:8043") is True
+    assert validate_omada_url("https://omada example.test") is False
+    assert validate_omada_url("https://omada.example.test:bad") is False
     assert coerce_bool_like(True) is True
     assert coerce_bool_like("true") is True
     assert coerce_bool_like("0") is False
@@ -197,6 +199,26 @@ async def test_build_omada_config_returns_none_when_discovery_fails(
 
     assert runtime is None
     assert "Failed to auto-discover Omada controller ID" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_build_omada_config_returns_none_for_invalid_controller_url(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Invalid controller URLs are rejected during runtime config build."""
+    caplog.set_level(logging.ERROR, logger="test.omada")
+
+    runtime = await build_omada_config(
+        OmadaConfig(
+            controller_url="ftp://omada.example.test",
+            username="operator",
+            encrypted_password="legacy",
+        ),
+        logging.getLogger("test.omada"),
+    )
+
+    assert runtime is None
+    assert "Omada controller URL failed validation" in caplog.text
 
 
 @pytest.mark.asyncio
