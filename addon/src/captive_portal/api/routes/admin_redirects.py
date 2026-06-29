@@ -7,7 +7,7 @@ from __future__ import annotations
 from fastapi import status
 from fastapi.responses import RedirectResponse
 
-_FORBIDDEN_ROOT_CHARS = ("\r", "\n", "\\")
+_FORBIDDEN_ROOT_CHARS = ("\\", "?", "#")
 
 
 def sanitize_admin_root_path(root_path: object) -> str:
@@ -22,7 +22,10 @@ def sanitize_admin_root_path(root_path: object) -> str:
     """
     if not isinstance(root_path, str):
         return ""
-    if any(char in root_path for char in _FORBIDDEN_ROOT_CHARS):
+    if any(
+        char in _FORBIDDEN_ROOT_CHARS or char.isspace() or ord(char) < 32 or ord(char) == 127
+        for char in root_path
+    ):
         return ""
 
     root = root_path.strip()
@@ -48,7 +51,7 @@ def admin_redirect_url(root_path: object, admin_path: str) -> str:
     Raises:
         ValueError: If ``admin_path`` is not an absolute admin path.
     """
-    if not admin_path.startswith("/admin"):
+    if admin_path != "/admin" and not admin_path.startswith(("/admin/", "/admin?")):
         raise ValueError("admin_path must start with /admin")
     return f"{sanitize_admin_root_path(root_path)}{admin_path}"
 

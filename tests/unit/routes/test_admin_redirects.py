@@ -47,6 +47,11 @@ class TestSanitizeAdminRootPath:
             "//evil.example",
             "https://evil.example",
             "/api/hassio_ingress/abc123\r\nLocation: https://evil.example",
+            "/api/hassio_ingress/abc123\x00",
+            "/api/hassio_ingress/abc123\x7f",
+            "/api/hassio_ingress/abc 123",
+            "/api/hassio_ingress/abc123?next=/admin/login",
+            "/api/hassio_ingress/abc123#fragment",
             r"/api\hassio_ingress\abc123",
         ],
     )
@@ -69,6 +74,13 @@ class TestSafeAdminRedirect:
             "/api/hassio_ingress/abc123/admin/vouchers/?success=Voucher+created+successfully"
         )
 
+    @pytest.mark.parametrize("admin_path", ["/admin", "/admin?tab=settings"])
+    def test_redirect_accepts_admin_route_root(self, admin_path: str) -> None:
+        """The admin route root should be accepted by the path guard."""
+        assert admin_redirect_url("/api/hassio_ingress/abc123", admin_path) == (
+            f"/api/hassio_ingress/abc123{admin_path}"
+        )
+
     @pytest.mark.parametrize(
         "root_path",
         ["//evil.example", "https://evil.example", "line\r\nbreak", r"bad\path"],
@@ -77,10 +89,11 @@ class TestSafeAdminRedirect:
         """Malicious prefixes should not make redirects leave admin paths."""
         assert admin_redirect_url(root_path, "/admin/login") == "/admin/login"
 
-    def test_non_admin_paths_are_rejected(self) -> None:
+    @pytest.mark.parametrize("admin_path", ["/guest/authorize", "/administer"])
+    def test_non_admin_paths_are_rejected(self, admin_path: str) -> None:
         """The helper should only build redirects to fixed admin paths."""
         with pytest.raises(ValueError, match="admin_path"):
-            admin_redirect_url("/api/hassio_ingress/abc123", "/guest/authorize")
+            admin_redirect_url("/api/hassio_ingress/abc123", admin_path)
 
 
 def test_admin_routes_do_not_concatenate_root_path_into_admin_redirects() -> None:
