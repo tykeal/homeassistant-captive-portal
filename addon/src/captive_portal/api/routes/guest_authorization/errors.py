@@ -12,7 +12,7 @@ ResponseT = TypeVar("ResponseT", bound=Response)
 
 
 def _strip_html_tags(message: str) -> str:
-    """Strip HTML-like tags with a bounded, linear scan."""
+    """Strip HTML-like tags with a linear scan."""
     stripped_parts: list[str] = []
     cursor = 0
 
