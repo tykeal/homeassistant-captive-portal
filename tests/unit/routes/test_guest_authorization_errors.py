@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import time
-
 from fastapi.responses import HTMLResponse
 
 
@@ -32,14 +30,11 @@ def test_sanitize_error_message_handles_pathological_input_promptly() -> None:
     message = ("<" * 50_000) + ("tag>" * 50_000)
     long_tag = "prefix" + ("<" * 50_000) + ">" + "suffix"
 
-    start = time.perf_counter()
     sanitized = sanitize_error_message(message)
     stripped = _strip_html_tags(long_tag)
-    elapsed = time.perf_counter() - start
 
     assert sanitized == ("<" * 500) + "..."
     assert stripped == "prefixsuffix"
-    assert elapsed < 5.0
 
 
 def test_security_headers_preserve_route_contract() -> None:

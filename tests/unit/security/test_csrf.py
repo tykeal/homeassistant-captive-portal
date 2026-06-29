@@ -45,7 +45,7 @@ def test_set_csrf_cookie_accepts_generated_token() -> None:
 
     csrf.set_csrf_cookie(response, token)
 
-    assert f"csrftoken={token}" in response.headers["set-cookie"]
+    assert f"{csrf.config.cookie_name}={token}" in response.headers["set-cookie"]
 
 
 def test_set_csrf_cookie_rejects_unsafe_token(
