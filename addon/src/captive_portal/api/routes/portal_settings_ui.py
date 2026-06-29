@@ -2,15 +2,20 @@
 # SPDX-License-Identifier: Apache-2.0
 """Admin UI routes for portal configuration management."""
 
+from collections.abc import Callable, Coroutine
 from pathlib import Path
 from typing import Annotated, Any, Optional, cast
 from urllib.parse import quote_plus
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.routing import APIRoute
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlmodel import Session, select
+from starlette.responses import Response
 
 from captive_portal._version import __version__
 from captive_portal.models.admin_user import AdminUser
@@ -24,10 +29,245 @@ from captive_portal.security.session_middleware import (
 from captive_portal.services.audit_service import AuditService
 from captive_portal.services.redirect_validator import GuestExternalUrlValidator
 
-router = APIRouter(prefix="/admin/portal-settings", tags=["admin-ui-portal-settings"])
+_REQUIRED_FORM_FIELDS = frozenset(
+    {
+        "csrf_token",
+        "rate_limit_attempts",
+        "rate_limit_window_seconds",
+        "success_redirect_url",
+    }
+)
+
+
+class PortalSettingsValidationRoute(APIRoute):
+    """Route class preserving legacy validation payloads for form models."""
+
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+        """Return a route handler that normalizes form-model validation errors."""
+        original_route_handler = super().get_route_handler()
+
+        async def custom_route_handler(request: Request) -> Response:
+            """Handle requests and preserve individual-form missing-field errors."""
+            try:
+                return await original_route_handler(request)
+            except RequestValidationError as exc:
+                normalized_exc = _normalize_missing_form_field_errors(exc)
+                if normalized_exc is exc:
+                    raise
+                raise normalized_exc from exc
+
+        return custom_route_handler
+
+
+def _normalize_missing_form_field_errors(exc: RequestValidationError) -> RequestValidationError:
+    """Normalize required form-model errors to legacy individual-field errors."""
+    normalized_errors: list[Any] = []
+    changed = False
+    for error in exc.errors():
+        normalized_error = dict(error)
+        loc = normalized_error.get("loc", ())
+        if (
+            normalized_error.get("type") == "missing"
+            and len(loc) == 2
+            and loc[0] == "body"
+            and loc[1] in _REQUIRED_FORM_FIELDS
+            and isinstance(normalized_error.get("input"), dict)
+        ):
+            normalized_error["input"] = None
+            changed = True
+        normalized_errors.append(normalized_error)
+
+    if not changed:
+        return exc
+    return RequestValidationError(normalized_errors, body=exc.body)
+
+
+router = APIRouter(
+    prefix="/admin/portal-settings",
+    tags=["admin-ui-portal-settings"],
+    route_class=PortalSettingsValidationRoute,
+)
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent.parent / "web" / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 templates.env.globals["app_version"] = __version__
+
+
+class PortalSettingsForm(BaseModel):
+    """Portal settings form data submitted by the admin UI."""
+
+    csrf_token: str
+    rate_limit_attempts: int
+    rate_limit_window_seconds: int
+    success_redirect_url: str
+    redirect_to_original_url: Optional[str] = None
+    session_idle_minutes: int = 30
+    session_max_hours: int = 8
+    guest_external_url: str = ""
+
+
+def _settings_redirect(root: str, message_type: str, message: str) -> RedirectResponse:
+    """Build a portal settings redirect response.
+
+    Args:
+        root: Application root path.
+        message_type: Query parameter name for the redirect message.
+        message: Already URL-encoded query parameter value.
+
+    Returns:
+        Redirect response to the portal settings UI.
+    """
+    return RedirectResponse(
+        url=f"{root}/admin/portal-settings?{message_type}={message}",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+def _validate_portal_settings_form(
+    root: str,
+    form: PortalSettingsForm,
+) -> tuple[RedirectResponse | None, str]:
+    """Validate portal settings values that must redirect on failure.
+
+    Args:
+        root: Application root path.
+        form: Submitted portal settings form data.
+
+    Returns:
+        A validation redirect when invalid, otherwise the normalized guest URL.
+    """
+    if form.rate_limit_attempts < 1 or form.rate_limit_attempts > 1000:
+        return (
+            _settings_redirect(
+                root,
+                "error",
+                "Rate+limit+attempts+must+be+between+1+and+1000",
+            ),
+            "",
+        )
+
+    if form.rate_limit_window_seconds < 1 or form.rate_limit_window_seconds > 3600:
+        return (
+            _settings_redirect(
+                root,
+                "error",
+                "Rate+limit+window+must+be+between+1+and+3600+seconds",
+            ),
+            "",
+        )
+
+    if len(form.success_redirect_url) > 2048:
+        return (
+            _settings_redirect(
+                root,
+                "error",
+                "Redirect+URL+too+long+(max+2048+characters)",
+            ),
+            "",
+        )
+
+    if form.session_idle_minutes < 1 or form.session_idle_minutes > 1440:
+        return (
+            _settings_redirect(
+                root,
+                "error",
+                "Session+idle+timeout+must+be+between+1+and+1440+minutes",
+            ),
+            "",
+        )
+
+    if form.session_max_hours < 1 or form.session_max_hours > 168:
+        return (
+            _settings_redirect(
+                root,
+                "error",
+                "Session+max+duration+must+be+between+1+and+168+hours",
+            ),
+            "",
+        )
+
+    guest_url_validation = GuestExternalUrlValidator.validate(form.guest_external_url)
+    if not guest_url_validation.valid:
+        return (
+            _settings_redirect(
+                root,
+                "error",
+                quote_plus(guest_url_validation.error_message or ""),
+            ),
+            "",
+        )
+
+    return None, guest_url_validation.normalized_url
+
+
+def _get_or_create_portal_config(session: Session) -> PortalConfig:
+    """Get the singleton portal config, creating it when absent.
+
+    Args:
+        session: Database session.
+
+    Returns:
+        Portal configuration row.
+    """
+    stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
+    config: Optional[PortalConfig] = session.exec(stmt).first()
+
+    if not config:
+        config = PortalConfig(id=1)
+        session.add(config)
+
+    return config
+
+
+def _apply_portal_settings_form(
+    config: PortalConfig,
+    form: PortalSettingsForm,
+    guest_external_url: str,
+) -> None:
+    """Apply submitted portal settings to a configuration row.
+
+    Args:
+        config: Portal configuration row to update.
+        form: Submitted portal settings form data.
+        guest_external_url: Normalized guest external URL.
+    """
+    config.rate_limit_attempts = form.rate_limit_attempts
+    config.rate_limit_window_seconds = form.rate_limit_window_seconds
+    config.success_redirect_url = form.success_redirect_url
+    config.redirect_to_original_url = form.redirect_to_original_url == "true"
+    config.session_idle_minutes = form.session_idle_minutes
+    config.session_max_hours = form.session_max_hours
+    config.guest_external_url = guest_external_url
+
+
+async def _log_portal_settings_update(
+    session: Session,
+    current_user: AdminUser,
+    config: PortalConfig,
+    form: PortalSettingsForm,
+) -> None:
+    """Record the portal settings update in the audit log.
+
+    Args:
+        session: Database session.
+        current_user: Authenticated admin user.
+        config: Updated portal configuration row.
+        form: Submitted portal settings form data.
+    """
+    audit_service = AuditService(session)
+    await audit_service.log_admin_action(
+        admin_id=current_user.id,
+        action="portal_config.update",
+        target_type="portal_config",
+        target_id="1",
+        metadata={
+            "rate_limit_attempts": form.rate_limit_attempts,
+            "rate_limit_window_seconds": form.rate_limit_window_seconds,
+            "redirect_to_original_url": config.redirect_to_original_url,
+            "session_idle_minutes": form.session_idle_minutes,
+            "session_max_hours": form.session_max_hours,
+            "guest_external_url": config.guest_external_url,
+        },
+    )
 
 
 def get_current_admin(request: Request, db: Session = Depends(get_session)) -> AdminUser:
@@ -112,14 +352,7 @@ async def update_portal_settings(
     session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[AdminUser, Depends(get_current_admin)],
     csrf: Annotated[CSRFProtection, Depends(get_csrf_protection)],
-    csrf_token: Annotated[str, Form()],
-    rate_limit_attempts: Annotated[int, Form()],
-    rate_limit_window_seconds: Annotated[int, Form()],
-    success_redirect_url: Annotated[str, Form()],
-    redirect_to_original_url: Annotated[Optional[str], Form()] = None,
-    session_idle_minutes: Annotated[int, Form()] = 30,
-    session_max_hours: Annotated[int, Form()] = 8,
-    guest_external_url: Annotated[str, Form()] = "",
+    form: Annotated[PortalSettingsForm, Form()],
 ) -> RedirectResponse:
     """Update portal configuration settings (admin only).
 
@@ -128,14 +361,7 @@ async def update_portal_settings(
         session: Database session
         current_user: Authenticated admin user
         csrf: CSRF protection
-        csrf_token: CSRF token from form
-        rate_limit_attempts: Max attempts per IP
-        rate_limit_window_seconds: Rolling window in seconds
-        success_redirect_url: Default redirect URL
-        redirect_to_original_url: Checkbox value (present if checked)
-        session_idle_minutes: Session idle timeout in minutes
-        session_max_hours: Session max duration in hours
-        guest_external_url: Guest portal external URL
+        form: Portal settings form data
 
     Returns:
         Redirect to settings page
@@ -148,71 +374,27 @@ async def update_portal_settings(
 
     # Only admins can update configuration
     if current_user.role != "admin":
-        return RedirectResponse(
-            url=f"{root}/admin/portal-settings?error=Only+administrators+can+modify+portal+configuration",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return _settings_redirect(
+            root,
+            "error",
+            "Only+administrators+can+modify+portal+configuration",
         )
 
     try:
         await csrf.validate_token(request)
     except HTTPException:
-        return RedirectResponse(
-            url=f"{root}/admin/portal-settings?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return _settings_redirect(
+            root,
+            "error",
+            "Invalid+CSRF+token",
         )
 
-    if rate_limit_attempts < 1 or rate_limit_attempts > 1000:
-        return RedirectResponse(
-            url=f"{root}/admin/portal-settings?error=Rate+limit+attempts+must+be+between+1+and+1000",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+    validation_redirect, guest_external_url = _validate_portal_settings_form(root, form)
+    if validation_redirect is not None:
+        return validation_redirect
 
-    if rate_limit_window_seconds < 1 or rate_limit_window_seconds > 3600:
-        return RedirectResponse(
-            url=f"{root}/admin/portal-settings?error=Rate+limit+window+must+be+between+1+and+3600+seconds",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    if len(success_redirect_url) > 2048:
-        return RedirectResponse(
-            url=f"{root}/admin/portal-settings?error=Redirect+URL+too+long+(max+2048+characters)",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    if session_idle_minutes < 1 or session_idle_minutes > 1440:
-        return RedirectResponse(
-            url=f"{root}/admin/portal-settings?error=Session+idle+timeout+must+be+between+1+and+1440+minutes",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    if session_max_hours < 1 or session_max_hours > 168:
-        return RedirectResponse(
-            url=f"{root}/admin/portal-settings?error=Session+max+duration+must+be+between+1+and+168+hours",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    guest_url_validation = GuestExternalUrlValidator.validate(guest_external_url)
-    if not guest_url_validation.valid:
-        return RedirectResponse(
-            url=f"{root}/admin/portal-settings?error={quote_plus(guest_url_validation.error_message or '')}",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-
-    stmt: Any = select(PortalConfig).where(PortalConfig.id == 1)
-    config: Optional[PortalConfig] = session.exec(stmt).first()
-
-    if not config:
-        config = PortalConfig(id=1)
-        session.add(config)
-
-    # Apply updates
-    config.rate_limit_attempts = rate_limit_attempts
-    config.rate_limit_window_seconds = rate_limit_window_seconds
-    config.success_redirect_url = success_redirect_url
-    config.redirect_to_original_url = redirect_to_original_url == "true"
-    config.session_idle_minutes = session_idle_minutes
-    config.session_max_hours = session_max_hours
-    config.guest_external_url = guest_url_validation.normalized_url
+    config = _get_or_create_portal_config(session)
+    _apply_portal_settings_form(config, form, guest_external_url)
 
     session.add(config)
     session.commit()
@@ -222,23 +404,10 @@ async def update_portal_settings(
         config.session_max_hours,
     )
 
-    audit_service = AuditService(session)
-    await audit_service.log_admin_action(
-        admin_id=current_user.id,
-        action="portal_config.update",
-        target_type="portal_config",
-        target_id="1",
-        metadata={
-            "rate_limit_attempts": rate_limit_attempts,
-            "rate_limit_window_seconds": rate_limit_window_seconds,
-            "redirect_to_original_url": config.redirect_to_original_url,
-            "session_idle_minutes": session_idle_minutes,
-            "session_max_hours": session_max_hours,
-            "guest_external_url": config.guest_external_url,
-        },
-    )
+    await _log_portal_settings_update(session, current_user, config, form)
 
-    return RedirectResponse(
-        url=f"{root}/admin/portal-settings?success=Portal+configuration+updated+successfully",
-        status_code=status.HTTP_303_SEE_OTHER,
+    return _settings_redirect(
+        root,
+        "success",
+        "Portal+configuration+updated+successfully",
     )
