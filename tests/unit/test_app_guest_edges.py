@@ -162,6 +162,8 @@ def test_app_lifespan_logs_configured_omada(
         "_load_omada_config",
         AsyncMock(return_value={"controller_url": "https://omada.example"}),
     )
+    monkeypatch.setattr(app_module.HAPoller, "start", AsyncMock())
+    monkeypatch.setattr(app_module.HAPoller, "stop", AsyncMock())
     app = app_module.create_app(settings=AppSettings(db_path=":memory:"))
 
     with caplog.at_level(logging.INFO, logger="captive_portal"):
