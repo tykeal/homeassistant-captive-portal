@@ -346,7 +346,7 @@ async def get_portal_settings(
     return response
 
 
-@router.post("/", response_class=HTMLResponse)
+@router.post("/", response_class=RedirectResponse)
 async def update_portal_settings(
     request: Request,
     session: Annotated[Session, Depends(get_session)],

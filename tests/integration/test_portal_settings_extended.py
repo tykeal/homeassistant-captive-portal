@@ -113,7 +113,7 @@ class TestPortalSettingsExtended:
         assert response.headers["location"] == location
         assert response.headers["content-length"] == "0"
         assert response.headers.get("set-cookie") is None
-        assert response.cookies == {}
+        assert dict(response.cookies) == {}
 
     def _assert_validation_response(self, response: Any, detail: list[dict[str, Any]]) -> None:
         """Assert exact FastAPI form validation response metadata.
