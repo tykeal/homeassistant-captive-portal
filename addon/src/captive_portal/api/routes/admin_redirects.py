@@ -28,7 +28,7 @@ def sanitize_admin_root_path(root_path: object) -> str:
     ):
         return ""
 
-    root = root_path.strip()
+    root = root_path
     if not root or root == "/":
         return ""
     if "://" in root or root.startswith("//"):
