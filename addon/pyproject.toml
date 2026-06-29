@@ -52,3 +52,15 @@ include = [
   "src/captive_portal/web/templates/**",
   "src/captive_portal/web/themes/**",
 ]
+
+[tool.coverage.run]
+source = ["captive_portal"]
+branch = true
+omit = [
+  "src/captive_portal/_version.py",
+]
+
+[tool.coverage.report]
+fail_under = 99
+precision = 2
+show_missing = true
