@@ -4,9 +4,15 @@
 
 from __future__ import annotations
 
+from dataclasses import FrozenInstanceError
 from datetime import datetime, timezone
+from types import SimpleNamespace
+from typing import cast
+
+from fastapi import Request
 
 from captive_portal.models.access_grant import AccessGrant, GrantStatus
+from captive_portal.services.audit_service import AuditService
 from captive_portal.services.unified_code_service import CodeType
 
 
@@ -74,3 +80,33 @@ def test_decision_result_preserves_audit_target() -> None:
     assert result.grant is grant
     assert result.success_target_type == "voucher"
     assert result.denial_target_id == "ABCD1234"
+
+
+def test_guest_decision_context_is_frozen_and_slotted() -> None:
+    """Decision context preserves branch helper inputs without mutation."""
+    from captive_portal.api.routes.guest_authorization.context import GuestDecisionContext
+
+    request = cast(Request, SimpleNamespace(headers={"User-Agent": "pytest"}))
+    audit_service = cast(AuditService, object())
+
+    context = GuestDecisionContext(
+        request=request,
+        audit_service=audit_service,
+        client_ip="192.0.2.10",
+        mac_address="AA:BB:CC:DD:EE:FF",
+        vid="100",
+    )
+
+    assert context.request is request
+    assert context.audit_service is audit_service
+    assert context.client_ip == "192.0.2.10"
+    assert context.mac_address == "AA:BB:CC:DD:EE:FF"
+    assert context.vid == "100"
+    assert not hasattr(context, "__dict__")
+
+    try:
+        context.client_ip = "198.51.100.10"
+    except FrozenInstanceError:
+        pass
+    else:  # pragma: no cover - should fail before implementation
+        raise AssertionError("GuestDecisionContext must be frozen")

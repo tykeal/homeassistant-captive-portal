@@ -15,23 +15,11 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
 from captive_portal._version import __version__
-from captive_portal.api.routes.guest_authorization.bookings import authorize_booking
 from captive_portal.api.routes.guest_authorization.context import (
-    GuestAuthorizationContext,
     GuestAuthorizationDependencies,
     GuestOmadaParams,
-    audit_controller_failure,
-    audit_success,
-    enforce_rate_limit,
-    extract_authorization_mac,
-    resolve_client_ip,
-    validate_guest_code,
 )
 from captive_portal.api.routes.guest_authorization import controller as _controller
-from captive_portal.api.routes.guest_authorization.controller import (
-    apply_legacy_site_override,
-    apply_omada_metadata,
-)
 from captive_portal.api.routes.guest_authorization.errors import (
     add_security_headers as _add_security_headers,
     sanitize_error_message as _sanitize_error_message,
@@ -43,22 +31,20 @@ from captive_portal.api.routes.guest_authorization.form import (
     render_authorize_form,
 )
 from captive_portal.api.routes.guest_authorization import mac_address as _mac_address
-from captive_portal.api.routes.guest_authorization.redirects import (
-    build_retry_query,
-    safe_redirect_destination,
-    success_redirect,
+from captive_portal.api.routes.guest_authorization.orchestration import (
+    GuestGetSubmissionProviders,
+    _handle_get_submission,
+    _process_authorization,
 )
-from captive_portal.api.routes.guest_authorization.vouchers import authorize_voucher
 from captive_portal.controllers.tp_omada.adapter_protocol import OmadaControllerAdapter
 from captive_portal.controllers.tp_omada.dependencies import get_omada_adapter
-from captive_portal.models.access_grant import GrantStatus
 from captive_portal.models.portal_config import PortalConfig
 from captive_portal.persistence.database import get_session
 from captive_portal.security.hmac_csrf import HMACCSRFProtection
 from captive_portal.security.rate_limiter import RateLimiter
 from captive_portal.services.audit_service import AuditService
 from captive_portal.services.redirect_validator import RedirectValidator
-from captive_portal.services.unified_code_service import CodeType, UnifiedCodeService
+from captive_portal.services.unified_code_service import UnifiedCodeService
 
 _logger = logging.getLogger("captive_portal.guest")
 
@@ -158,58 +144,23 @@ def get_portal_config_dep(session: Session = Depends(get_session)) -> PortalConf
     return config
 
 
-async def _handle_get_submission(
-    *,
-    request: Request,
-    code: str,
-    omada_params: GuestOmadaParams,
-    session: Session,
-) -> RedirectResponse:
-    """Resolve remaining dependencies and process a GET submission.
+def _get_submission_providers(request: Request) -> GuestGetSubmissionProviders:
+    """Build dependency providers for GET authorization submissions.
 
     Args:
         request: FastAPI request object.
-        code: Authorization code submitted by the guest.
-        omada_params: Omada and redirect metadata from query parameters.
-        session: Database session from the optional GET dependency.
 
     Returns:
-        RedirectResponse on successful authorization.
-
-    Raises:
-        HTTPException: On authorization failures.
+        Dependency providers selected from FastAPI overrides.
     """
     overrides = request.app.dependency_overrides
-
-    audit_factory = overrides.get(get_audit_service, get_audit_service)
-    audit_service = audit_factory(session)
-
-    config_factory = overrides.get(get_portal_config_dep, get_portal_config_dep)
-    portal_config = config_factory(session)
-
-    omada_factory = overrides.get(get_omada_adapter, get_omada_adapter)
-    try:
-        omada_adapter = omada_factory(request)
-    except TypeError:
-        omada_adapter = omada_factory()
-
-    rate_limiter_cls = overrides.get(RateLimiter, RateLimiter)
-    code_service_cls = overrides.get(UnifiedCodeService, UnifiedCodeService)
-    redirect_validator_cls = overrides.get(RedirectValidator, RedirectValidator)
-
-    return await _process_authorization(
-        request=request,
-        code=code,
-        omada_params=omada_params,
-        dependencies=GuestAuthorizationDependencies(
-            rate_limiter=rate_limiter_cls(),
-            unified_code_service=code_service_cls(),
-            redirect_validator=redirect_validator_cls(),
-            session=session,
-            audit_service=audit_service,
-            portal_config=portal_config,
-            omada_adapter=omada_adapter,
-        ),
+    return GuestGetSubmissionProviders(
+        audit_service_factory=overrides.get(get_audit_service, get_audit_service),
+        portal_config_factory=overrides.get(get_portal_config_dep, get_portal_config_dep),
+        omada_adapter_factory=overrides.get(get_omada_adapter, get_omada_adapter),
+        rate_limiter_factory=overrides.get(RateLimiter, RateLimiter),
+        code_service_factory=overrides.get(UnifiedCodeService, UnifiedCodeService),
+        redirect_validator_factory=overrides.get(RedirectValidator, RedirectValidator),
     )
 
 
@@ -280,6 +231,8 @@ async def show_authorize_form(
             code=code or "",
             omada_params=omada_params,
             session=session,
+            csrf=_guest_csrf,
+            providers=_get_submission_providers(request),
         )
 
     if getattr(request.app.state, "debug_guest_portal", False):
@@ -291,156 +244,6 @@ async def show_authorize_form(
         csrf=_guest_csrf,
         params=omada_params,
     )
-
-
-async def _process_authorization(
-    *,
-    request: Request,
-    code: str,
-    omada_params: GuestOmadaParams,
-    dependencies: GuestAuthorizationDependencies,
-) -> RedirectResponse:
-    """Execute the shared guest authorization orchestration.
-
-    Args:
-        request: FastAPI request object.
-        code: Submitted authorization code.
-        omada_params: Omada and redirect metadata.
-        dependencies: Resolved request dependencies.
-
-    Returns:
-        RedirectResponse to the success destination.
-
-    Raises:
-        HTTPException: On CSRF, rate-limit, validation, or controller failures.
-    """
-    request.state.retry_query = build_retry_query(omada_params)
-    debug = getattr(request.app.state, "debug_guest_portal", False)
-
-    if debug:
-        _logger.debug("%s /authorize step=csrf_start", request.method)
-    await _guest_csrf.validate_token(request)
-    if debug:
-        _logger.debug("%s /authorize step=csrf_ok", request.method)
-
-    client_ip = resolve_client_ip(request, dependencies.portal_config)
-    flow_context = GuestAuthorizationContext(
-        client_ip=client_ip,
-        retry_query=request.state.retry_query,
-    )
-    request.state.guest_authorization_context = flow_context
-    await enforce_rate_limit(
-        rate_limiter=dependencies.rate_limiter,
-        audit_service=dependencies.audit_service,
-        request=request,
-        client_ip=client_ip,
-    )
-    mac_address = await extract_authorization_mac(
-        request=request,
-        form_mac=omada_params.client_mac,
-        audit_service=dependencies.audit_service,
-        client_ip=client_ip,
-    )
-    flow_context.mac_address = mac_address
-    validation_result = await validate_guest_code(
-        code=code,
-        service=dependencies.unified_code_service,
-        audit_service=dependencies.audit_service,
-        request=request,
-        client_ip=client_ip,
-        mac_address=mac_address,
-    )
-    flow_context.validation_result = validation_result
-
-    if debug:
-        _logger.debug(
-            "%s /authorize step=code_validated  type=%s  code=%r",
-            request.method,
-            validation_result.code_type.value,
-            validation_result.normalized_code,
-        )
-
-    if validation_result.code_type == CodeType.VOUCHER:
-        decision = await authorize_voucher(
-            validation_result=validation_result,
-            session=dependencies.session,
-            audit_service=dependencies.audit_service,
-            request=request,
-            client_ip=client_ip,
-            mac_address=mac_address,
-            vid=omada_params.vid,
-        )
-    elif validation_result.code_type == CodeType.BOOKING:
-        decision = await authorize_booking(
-            validation_result=validation_result,
-            session=dependencies.session,
-            audit_service=dependencies.audit_service,
-            request=request,
-            client_ip=client_ip,
-            mac_address=mac_address,
-            vid=omada_params.vid,
-        )
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid code type",
-        )
-
-    flow_context.vlan_meta = decision.vlan_meta
-    flow_context.grant = decision.grant
-    grant = apply_omada_metadata(decision.grant, omada_params)
-    apply_legacy_site_override(dependencies.omada_adapter, omada_params.site)
-
-    if debug:
-        _logger.debug(
-            "%s /authorize step=controller_auth_start  adapter=%s",
-            request.method,
-            type(dependencies.omada_adapter).__name__ if dependencies.omada_adapter else "None",
-        )
-
-    grant, error_detail = await _authorize_with_controller(
-        adapter=dependencies.omada_adapter,
-        grant=grant,
-        mac_address=mac_address,
-        gateway_mac=grant.omada_gateway_mac,
-        ap_mac=grant.omada_ap_mac,
-        ssid_name=grant.omada_ssid_name,
-        radio_id=grant.omada_radio_id,
-        vid=grant.omada_vid,
-    )
-    dependencies.session.add(grant)
-    dependencies.session.commit()
-    dependencies.session.refresh(grant)
-    decision.grant = grant
-
-    if grant.status == GrantStatus.FAILED:
-        await audit_controller_failure(
-            audit_service=dependencies.audit_service,
-            request=request,
-            client_ip=client_ip,
-            mac_address=mac_address,
-            grant=grant,
-            error_detail=error_detail,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="WiFi authorization could not be completed. Please try again or contact the host.",
-        )
-
-    dependencies.rate_limiter.clear(client_ip)
-    await audit_success(
-        audit_service=dependencies.audit_service,
-        request=request,
-        client_ip=client_ip,
-        mac_address=mac_address,
-        decision=decision,
-    )
-    redirect_dest = safe_redirect_destination(
-        request,
-        omada_params.continue_url,
-        dependencies.redirect_validator,
-    )
-    return success_redirect(redirect_dest, grant.id)
 
 
 @router.post("/authorize")
@@ -520,6 +323,7 @@ async def handle_authorization(
             portal_config=portal_config,
             omada_adapter=omada_adapter,
         ),
+        csrf=_guest_csrf,
     )
 
 
