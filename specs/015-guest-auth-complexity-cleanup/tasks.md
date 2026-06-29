@@ -56,12 +56,12 @@ issue #189 findings are gone, then refresh metadata and task status separately.
 **Purpose**: Start implementation from merged spec and plan artifacts while
 confirming live source still matches the complexity findings.
 
-- [ ] T001 Create implementation branch `015-guest-auth-complexity-cleanup` from
+- [x] T001 Create implementation branch `015-guest-auth-complexity-cleanup` from
   `main`; confirm `specs/015-guest-auth-complexity-cleanup/` contains `spec.md`,
   `plan.md`, `research.md`, `data-model.md`, `quickstart.md`,
   `contracts/guest-http-contract.md`, and this `tasks.md`
 
-- [ ] T002 [US1] Confirm the live source inventory before edits: verify
+- [x] T002 [US1] Confirm the live source inventory before edits: verify
   `addon/src/captive_portal/api/routes/guest_portal.py` still owns
   `_handle_get_submission` and `_process_authorization`; verify
   `addon/src/captive_portal/api/routes/guest_authorization/bookings.py` still
@@ -70,7 +70,7 @@ confirming live source still matches the complexity findings.
   `addon/src/captive_portal/api/routes/guest_authorization/vouchers.py` still
   owns `authorize_voucher`; do not touch `portal_settings_ui.py`
 
-- [ ] T003 [US2] Record the pre-refactor complexity snapshot in the PR notes:
+- [x] T003 [US2] Record the pre-refactor complexity snapshot in the PR notes:
   `guest_portal.py` line count, `_process_authorization` line count,
   `authorize_booking` line/parameter counts, `_create_booking_grant` parameter
   count, `_audit_booking_error` parameter count, and `authorize_voucher`
@@ -93,13 +93,13 @@ are complete and T007 is green on unmodified production code.
 > or helper logic. Do not add intentionally failing new-boundary tests until
 > after this green baseline.**
 
-- [ ] T004 [US1] Map the feature-014 guest authorization characterization suite
+- [x] T004 [US1] Map the feature-014 guest authorization characterization suite
   against `specs/015-guest-auth-complexity-cleanup/quickstart.md`; use existing
   tests in `tests/integration/`, `tests/unit/routes/`, `tests/unit/security/`,
   and `tests/utils/test_guest_portal_characterization.py` as the primary safety
   net and identify only uncovered to-be-extracted units
 
-- [ ] T005 [P] [US1] Add missing current-behavior assertions, only if T004 finds
+- [x] T005 [P] [US1] Add missing current-behavior assertions, only if T004 finds
   a real gap, to existing feature-014 files such as
   `tests/integration/test_guest_authorization_flow_voucher.py`,
   `tests/integration/test_guest_authorization_flow_booking.py`,
@@ -108,12 +108,12 @@ are complete and T007 is green on unmodified production code.
   pass against unmodified current code and must not duplicate behavior already
   pinned by the characterization suite
 
-- [ ] T006 [P] [US1] Confirm no new `# noqa` suppressions are introduced in
+- [x] T006 [P] [US1] Confirm no new `# noqa` suppressions are introduced in
   `addon/src/captive_portal/api/routes/guest_portal.py` or
   `addon/src/captive_portal/api/routes/guest_authorization/` while adding
   current-behavior characterization coverage
 
-- [ ] T007 [US1] Run the complete guest authorization characterization baseline
+- [x] T007 [US1] Run the complete guest authorization characterization baseline
   on current code and confirm it is green before any production movement:
 
   ```bash
@@ -165,12 +165,12 @@ extraction and verify byte-for-byte equivalence for all stable outputs.
 > **Write these focused tests after the current-code baseline is green and
 > before implementing the new dataclasses or orchestration boundaries.**
 
-- [ ] T008 [P] [US1] Add RED tests for `GuestDecisionContext` in
+- [x] T008 [P] [US1] Add RED tests for `GuestDecisionContext` in
   `tests/unit/routes/test_guest_authorization_context.py`; assert slots/frozen
   behavior and preservation of `request`, `audit_service`, `client_ip`,
   `mac_address`, and `vid` without changing route parameters (RED 🔴)
 
-- [ ] T009 [P] [US1] Create RED tests in
+- [x] T009 [P] [US1] Create RED tests in
   `tests/unit/routes/test_guest_authorization_bookings.py` for new booking
   parameter objects `BookingGrantInput`, `BookingAuditContext`, and
   `BookingAuditFailure`; assert frozen/slots behavior and the exact values that
@@ -178,26 +178,26 @@ extraction and verify byte-for-byte equivalence for all stable outputs.
 
 ### Implementation for Authorization Orchestration (GREEN/REFACTOR) 🟢♻️
 
-- [ ] T010 [US1] Create
+- [x] T010 [US1] Create
   `addon/src/captive_portal/api/routes/guest_authorization/orchestration.py` with
   SPDX headers, module docstring, typed helper signatures, and imports that do
   not create a cycle with `guest_portal.py`
 
-- [ ] T011 [US1] Move `_handle_get_submission` from
+- [x] T011 [US1] Move `_handle_get_submission` from
   `addon/src/captive_portal/api/routes/guest_portal.py` into
   `addon/src/captive_portal/api/routes/guest_authorization/orchestration.py`;
   pass route dependency-provider callables explicitly so GET submission behavior,
   dependency override behavior, HTTP 503 handling, and Omada query preservation
   remain unchanged (REFACTOR ♻️)
 
-- [ ] T012 [US1] Move `_process_authorization` from
+- [x] T012 [US1] Move `_process_authorization` from
   `addon/src/captive_portal/api/routes/guest_portal.py` into
   `addon/src/captive_portal/api/routes/guest_authorization/orchestration.py`;
   keep the FastAPI `handle_authorization` route signature, form/query aliases,
   defaults, status codes, headers, cookies, redirects, audit entries, grants, and
   controller calls unchanged (REFACTOR ♻️)
 
-- [ ] T013 [US1] Split the moved `_process_authorization` body into private
+- [x] T013 [US1] Split the moved `_process_authorization` body into private
   helpers in `guest_authorization/orchestration.py` for
   `_prepare_authorization_flow`, `_dispatch_authorization_decision`,
   `_finalize_controller_authorization`, `_raise_controller_failure`, and
@@ -205,12 +205,12 @@ extraction and verify byte-for-byte equivalence for all stable outputs.
   `specs/015-guest-auth-complexity-cleanup/contracts/guest-http-contract.md`
   (REFACTOR ♻️)
 
-- [ ] T014 [US1] Keep `guest_portal.py` as route declarations, template setup,
+- [x] T014 [US1] Keep `guest_portal.py` as route declarations, template setup,
   dependency providers, and thin calls into `guest_authorization/orchestration.py`;
   retain any compatibility wrappers needed by existing tests without adding
   `# noqa`
 
-- [ ] T015 [US1] Run the unchanged T007 characterization command after T010
+- [x] T015 [US1] Run the unchanged T007 characterization command after T010
   through T014 and fix only behavior regressions within `guest_portal.py`,
   `guest_authorization/orchestration.py`, existing guest authorization helpers,
   or incorrect new assertions from T008 through T009
@@ -231,14 +231,14 @@ parameter checks show the six named findings are absent.
 
 ### Parameter Object Tests and Implementations (RED/GREEN) 🔴🟢
 
-- [ ] T016 [US2] Implement `GuestDecisionContext` in
+- [x] T016 [US2] Implement `GuestDecisionContext` in
   `addon/src/captive_portal/api/routes/guest_authorization/context.py` as
   `@dataclass(frozen=True, slots=True)` with `request`, `audit_service`,
   `client_ip`, `mac_address`, and `vid`; make T008 pass without changing
   `GuestOmadaParams`, `GuestAuthorizationDependencies`, or route-visible fields
   (GREEN 🟢)
 
-- [ ] T017 [US2] Update `authorize_voucher` in
+- [x] T017 [US2] Update `authorize_voucher` in
   `addon/src/captive_portal/api/routes/guest_authorization/vouchers.py` to accept
   `validation_result`, `session`, and `decision_context` instead of repeated
   audit/request/client/MAC/VLAN scalars; update call sites in
@@ -246,40 +246,40 @@ parameter checks show the six named findings are absent.
   redemption, VLAN denial, duplicate-device behavior, grant fields, and audit
   metadata
 
-- [ ] T018 [US2] Implement `BookingGrantInput`, `BookingAuditContext`, and
+- [x] T018 [US2] Implement `BookingGrantInput`, `BookingAuditContext`, and
   `BookingAuditFailure` in
   `addon/src/captive_portal/api/routes/guest_authorization/bookings.py` as frozen
   slot dataclasses; make T009 pass while preserving booking identifier casing,
   original submitted code, integration ID, booking windows, and audit values
   (GREEN 🟢)
 
-- [ ] T019 [US2] Refactor `_create_booking_grant` in
+- [x] T019 [US2] Refactor `_create_booking_grant` in
   `addon/src/captive_portal/api/routes/guest_authorization/bookings.py` to accept
   `session` and `BookingGrantInput`; preserve `floor_to_minute(max(now,
   start_utc))`, `ceil_to_minute(effective_end)`, pending status, MAC address,
   `user_input_code`, `booking_ref`, and `integration_id`
 
-- [ ] T020 [US2] Refactor `_audit_booking_error` in
+- [x] T020 [US2] Refactor `_audit_booking_error` in
   `addon/src/captive_portal/api/routes/guest_authorization/bookings.py` to accept
   `BookingAuditContext` and `BookingAuditFailure`; preserve actor, action,
   outcome, target type/id behavior, user-agent lookup, client IP, and metadata
   keys/values
 
-- [ ] T021 [US2] Refactor `authorize_booking` in
+- [x] T021 [US2] Refactor `authorize_booking` in
   `addon/src/captive_portal/api/routes/guest_authorization/bookings.py` to accept
   `validation_result`, `session`, and `decision_context`; update call sites in
   `guest_authorization/orchestration.py` without changing integration lookup,
   booking window/grace checks, duplicate-grant detection, VLAN denial, exception
   mapping, grant creation, or audit metadata
 
-- [ ] T022 [US2] Split the long `authorize_booking` body in
+- [x] T022 [US2] Split the long `authorize_booking` body in
   `addon/src/captive_portal/api/routes/guest_authorization/bookings.py` into
   cohesive private helpers for integration lookup, VLAN validation/audit, booking
   window preparation, duplicate detection, grant construction, and
   exception-to-HTTP mapping; keep `authorize_booking` at or below 80 lines
   (REFACTOR ♻️)
 
-- [ ] T023 [US2] Run focused tests after T016 through T022:
+- [x] T023 [US2] Run focused tests after T016 through T022:
   `uv run pytest tests/unit/routes/test_guest_authorization_context.py
   tests/unit/routes/test_guest_authorization_bookings.py
   tests/integration/test_guest_authorization_flow_voucher.py
@@ -287,7 +287,7 @@ parameter checks show the six named findings are absent.
   tests/integration/test_vlan_voucher_authorization.py
   tests/integration/test_vlan_booking_authorization.py`
 
-- [ ] T024 [US2] Run the unchanged T007 characterization command after helper
+- [x] T024 [US2] Run the unchanged T007 characterization command after helper
   signature reduction and fix only behavior regressions within scoped guest
   authorization files or assertions that were wrong about current behavior
 
@@ -302,39 +302,39 @@ still characterization-green.
 **Goal**: Prove the six named findings are gone and no new suppressions or
 out-of-scope edits were introduced.
 
-- [ ] T025 [US2] Verify `addon/src/captive_portal/api/routes/guest_portal.py` is
+- [x] T025 [US2] Verify `addon/src/captive_portal/api/routes/guest_portal.py` is
   below 400 lines and no longer contains `_process_authorization` or
   `_handle_get_submission` implementations; keep route signatures unchanged
 
-- [ ] T026 [US2] Verify `_process_authorization` in
+- [x] T026 [US2] Verify `_process_authorization` in
   `addon/src/captive_portal/api/routes/guest_authorization/orchestration.py` is
   at or below 80 lines after extraction and splitting
 
-- [ ] T027 [US2] Verify `authorize_booking` in
+- [x] T027 [US2] Verify `authorize_booking` in
   `addon/src/captive_portal/api/routes/guest_authorization/bookings.py` is at or
   below 80 lines and has six or fewer parameters
 
-- [ ] T028 [US2] Verify `_create_booking_grant` and `_audit_booking_error` in
+- [x] T028 [US2] Verify `_create_booking_grant` and `_audit_booking_error` in
   `addon/src/captive_portal/api/routes/guest_authorization/bookings.py` each have
   six or fewer parameters
 
-- [ ] T029 [US2] Verify `authorize_voucher` in
+- [x] T029 [US2] Verify `authorize_voucher` in
   `addon/src/captive_portal/api/routes/guest_authorization/vouchers.py` has six
   or fewer parameters
 
-- [ ] T030 [US2] Run targeted linting with
+- [x] T030 [US2] Run targeted linting with
   `uv run ruff check addon/src/captive_portal/api/routes/ tests/unit/routes/`;
   confirm ruff C901 passes and no new `# noqa` suppression exists in
   `guest_portal.py` or `guest_authorization/`
 
-- [ ] T031 [US2] Run the staged complexity gate with
+- [x] T031 [US2] Run the staged complexity gate with
   `uv run pre-commit run aislop --all-files` or the repository-equivalent
   `aislop ci --staged`; confirm no active issue #189 findings remain for
   `guest_portal.py`, `_process_authorization`, `authorize_booking`,
   `_create_booking_grant`, `_audit_booking_error`, or `authorize_voucher`; do
   not address or baseline `portal_settings_ui.py:110`
 
-- [ ] T032 [US2] Confirm the final implementation diff is limited to
+- [x] T032 [US2] Confirm the final implementation diff is limited to
   `addon/src/captive_portal/api/routes/guest_portal.py`,
   `addon/src/captive_portal/api/routes/guest_authorization/`, guest
   authorization tests under `tests/`, `.aislop/baseline.json`, and this task
@@ -356,17 +356,17 @@ ownership.
 orchestration, controller finalization, redirects, grants, and audit behavior to
 a cohesive helper and a characterization or unit test path.
 
-- [ ] T033 [P] [US3] Ensure every new or changed source file under
+- [x] T033 [P] [US3] Ensure every new or changed source file under
   `addon/src/captive_portal/api/routes/guest_authorization/` has required SPDX
   headers, module docstrings, function/class docstrings, and public type
   annotations required by constitution §I
 
-- [ ] T034 [P] [US3] Ensure new or changed tests under `tests/unit/routes/` and
+- [x] T034 [P] [US3] Ensure new or changed tests under `tests/unit/routes/` and
   `tests/integration/` name the protected behavior they cover and fail clearly
   when orchestration, voucher, booking, grant, audit, or controller behavior
   regresses
 
-- [ ] T035 [US3] In the implementation PR description, include a concise evidence
+- [x] T035 [US3] In the implementation PR description, include a concise evidence
   map from extracted helper file to protected behavior and targeted test path;
   do not create unrelated repository documentation files for this evidence
 
@@ -380,7 +380,7 @@ and protected by targeted tests plus the unchanged feature-014 golden suite.
 **Purpose**: Run targeted gates first, then repository-level gates, without
 broadening implementation scope.
 
-- [ ] T036 [P] Run targeted guest regression tests from
+- [x] T036 [P] Run targeted guest regression tests from
   `specs/015-guest-auth-complexity-cleanup/quickstart.md`:
 
   ```bash
@@ -411,22 +411,22 @@ broadening implementation scope.
     tests/unit/security/test_rate_limiter.py
   ```
 
-- [ ] T037 [P] Run code quality gates for changed code:
+- [x] T037 [P] Run code quality gates for changed code:
   `uv run ruff check addon/src/captive_portal/api/routes/ tests/`,
   `uv run mypy addon/src/captive_portal`,
   `uv run interrogate -vv --fail-under=100 addon/src/captive_portal tests`, and
   `uv run reuse lint`; fix only issues within the implementation scope
 
-- [ ] T038 [P] Run `uv run pre-commit run --all-files` and fix hook failures
+- [x] T038 [P] Run `uv run pre-commit run --all-files` and fix hook failures
   without bypassing hooks; if hooks update files automatically, stage the
   changes and rerun the affected checks
 
-- [ ] T039 Run full regression suite `uv run pytest tests/ -v` and confirm no
+- [x] T039 Run full regression suite `uv run pytest tests/ -v` and confirm no
   guest portal, guest authorization, redirect, security-header, Omada, VLAN,
   CSRF, rate-limiter, or integration regression remains before opening the
   implementation PR
 
-- [ ] T040 Refresh `.aislop/baseline.json` after the six issue #189 findings are
+- [x] T040 Refresh `.aislop/baseline.json` after the six issue #189 findings are
   absent, then mark completed checkboxes in
   `specs/015-guest-auth-complexity-cleanup/tasks.md`; commit the baseline refresh
   and task-list checkbox updates together as a separate final documentation

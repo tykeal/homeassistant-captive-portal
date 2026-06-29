@@ -6,10 +6,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, status
 from sqlmodel import Session
 
-from captive_portal.services.audit_service import AuditService
 from captive_portal.services.unified_code_service import CodeType, CodeValidationResult
 from captive_portal.services.vlan_validation_service import VlanValidationService
 from captive_portal.services.voucher_service import (
@@ -18,7 +17,7 @@ from captive_portal.services.voucher_service import (
     VoucherService,
 )
 
-from .context import AuthorizationDecisionResult
+from .context import AuthorizationDecisionResult, GuestDecisionContext
 
 
 def _vlan_meta(vlan_result: Any) -> dict[str, Any]:
@@ -42,22 +41,14 @@ async def authorize_voucher(
     *,
     validation_result: CodeValidationResult,
     session: Session,
-    audit_service: AuditService,
-    request: Request,
-    client_ip: str,
-    mac_address: str,
-    vid: str | None,
+    decision_context: GuestDecisionContext,
 ) -> AuthorizationDecisionResult:
     """Execute the voucher branch of guest authorization.
 
     Args:
         validation_result: Validated voucher code.
         session: SQLModel session.
-        audit_service: Audit log writer.
-        request: Incoming FastAPI request.
-        client_ip: Resolved client IP address.
-        mac_address: Validated MAC address.
-        vid: Submitted VLAN identifier.
+        decision_context: Shared request, audit, client, MAC, and VLAN inputs.
 
     Returns:
         Voucher decision result containing the redeemed grant.
@@ -72,18 +63,21 @@ async def authorize_voucher(
             validation_result.normalized_code
         )
         if voucher_for_vlan:
-            vlan_result = VlanValidationService().validate_voucher_vlan(vid, voucher_for_vlan)
+            vlan_result = VlanValidationService().validate_voucher_vlan(
+                decision_context.vid,
+                voucher_for_vlan,
+            )
             vlan_meta = _vlan_meta(vlan_result)
             if not vlan_result.allowed:
-                await audit_service.log(
-                    actor=f"guest@{client_ip}",
+                await decision_context.audit_service.log(
+                    actor=f"guest@{decision_context.client_ip}",
                     action="guest.authorize",
                     outcome="denied",
                     target_type="voucher",
                     target_id=validation_result.normalized_code,
                     meta={
-                        "client_ip": client_ip,
-                        "mac": mac_address,
+                        "client_ip": decision_context.client_ip,
+                        "mac": decision_context.mac_address,
                         "error": "vlan_check_failed",
                         **vlan_meta,
                     },
@@ -95,19 +89,19 @@ async def authorize_voucher(
 
         grant = await voucher_service.redeem(
             code=validation_result.normalized_code,
-            mac=mac_address,
+            mac=decision_context.mac_address,
         )
     except VoucherDeviceLimitError:
-        await audit_service.log(
-            actor=f"guest@{client_ip}",
+        await decision_context.audit_service.log(
+            actor=f"guest@{decision_context.client_ip}",
             action="guest.authorize",
             outcome="denied",
             target_type="voucher",
             target_id=validation_result.normalized_code,
             meta={
-                "client_ip": client_ip,
-                "mac": mac_address,
-                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "client_ip": decision_context.client_ip,
+                "mac": decision_context.mac_address,
+                "user_agent": decision_context.request.headers.get("User-Agent", "unknown"),
                 "error": "voucher_device_limit",
             },
         )
@@ -116,16 +110,16 @@ async def authorize_voucher(
             detail="This code has reached its maximum number of devices.",
         ) from None
     except VoucherRedemptionError as exc:
-        await audit_service.log(
-            actor=f"guest@{client_ip}",
+        await decision_context.audit_service.log(
+            actor=f"guest@{decision_context.client_ip}",
             action="guest.authorize",
             outcome="denied",
             target_type="voucher",
             target_id=validation_result.normalized_code,
             meta={
-                "client_ip": client_ip,
-                "mac": mac_address,
-                "user_agent": request.headers.get("User-Agent", "unknown"),
+                "client_ip": decision_context.client_ip,
+                "mac": decision_context.mac_address,
+                "user_agent": decision_context.request.headers.get("User-Agent", "unknown"),
                 "error": "voucher_redemption_failed",
                 "detail": str(exc),
             },

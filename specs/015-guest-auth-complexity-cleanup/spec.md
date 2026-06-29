@@ -193,9 +193,9 @@ mapped to characterization coverage.
   attributes, and sensitive value redaction.
 - **FR-010**: `guest_portal.py` MUST no longer trigger
   `complexity/file-too-large`; its line count MUST be below 400.
-- **FR-011**: `_process_authorization` in `guest_portal.py` MUST no longer
-  trigger `complexity/function-too-long`; its length MUST be at or below 80
-  lines.
+- **FR-011**: `_process_authorization`, currently in `guest_portal.py` and
+  relocated to `guest_authorization/orchestration.py`, MUST no longer trigger
+  `complexity/function-too-long`; its length MUST be at or below 80 lines.
 - **FR-012**: `authorize_booking` in `guest_authorization/bookings.py` MUST no
   longer trigger `complexity/function-too-long` or `complexity/too-many-params`;
   its length MUST be at or below 80 lines and its parameter count MUST be at or

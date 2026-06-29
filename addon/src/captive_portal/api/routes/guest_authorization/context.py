@@ -141,6 +141,25 @@ class GuestAuthorizationContext:
     retry_query: str = ""
 
 
+@dataclass(frozen=True, slots=True)
+class GuestDecisionContext:
+    """Immutable inputs shared by voucher and booking decision helpers.
+
+    Attributes:
+        request: Incoming FastAPI request.
+        audit_service: Audit log writer.
+        client_ip: Resolved trusted-proxy-aware client IP address.
+        mac_address: Validated and normalized MAC address.
+        vid: Submitted VLAN identifier, if any.
+    """
+
+    request: Request
+    audit_service: AuditService
+    client_ip: str
+    mac_address: str
+    vid: str | None
+
+
 @dataclass(slots=True)
 class AuthorizationDecisionResult:
     """Result returned by voucher and booking decision helpers.
