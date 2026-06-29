@@ -47,6 +47,11 @@ class BookingAuthorizeResponse(BaseModel):
 _engine: Optional[Engine] = None
 
 
+def _aware_utc(value: datetime) -> datetime:
+    """Return a timezone-aware UTC datetime."""
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
 def set_db_engine(engine: Engine) -> None:
     """Set the global database engine instance.
 
@@ -140,10 +145,8 @@ async def authorize_booking(
     # Check if booking is within valid time window
     now_utc = datetime.now(timezone.utc)
 
-    start_utc = (
-        event.start_utc if event.start_utc.tzinfo else event.start_utc.replace(tzinfo=timezone.utc)
-    )
-    end_utc = event.end_utc if event.end_utc.tzinfo else event.end_utc.replace(tzinfo=timezone.utc)
+    start_utc = _aware_utc(event.start_utc)
+    end_utc = _aware_utc(event.end_utc)
 
     # Apply grace period (only applied here at grant creation)
     grace_minutes = matching_integration.checkout_grace_minutes
@@ -170,8 +173,8 @@ async def authorize_booking(
         return BookingAuthorizeResponse(
             grant_id=str(existing_grant.id),
             mac_address=existing_grant.mac,
-            start_utc=existing_grant.start_utc.isoformat(),
-            end_utc=existing_grant.end_utc.isoformat(),
+            start_utc=_aware_utc(existing_grant.start_utc).isoformat(),
+            end_utc=_aware_utc(existing_grant.end_utc).isoformat(),
             message="Access already granted (existing authorization)",
         )
 
@@ -194,7 +197,7 @@ async def authorize_booking(
     return BookingAuthorizeResponse(
         grant_id=str(grant.id),
         mac_address=grant.mac,
-        start_utc=grant.start_utc.isoformat(),
-        end_utc=grant.end_utc.isoformat(),
+        start_utc=_aware_utc(grant.start_utc).isoformat(),
+        end_utc=_aware_utc(grant.end_utc).isoformat(),
         message="Access granted successfully",
     )

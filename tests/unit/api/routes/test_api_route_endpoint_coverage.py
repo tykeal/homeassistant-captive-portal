@@ -173,7 +173,7 @@ def test_voucher_api_validation_and_error_paths(
         code="ABC123",
         duration_minutes=60,
         status=VoucherStatus.UNUSED,
-        allowed_vlans=[20, 10],
+        allowed_vlans=[10, 20],
         max_devices=2,
     )
     response = admin_api_client.post(
@@ -185,7 +185,7 @@ def test_voucher_api_validation_and_error_paths(
         },
     )
     assert response.status_code == 201
-    assert response.json()["allowed_vlans"] == [20, 10]
+    assert response.json()["allowed_vlans"] == [10, 20]
     assert _VoucherServiceFactory.seen_kwargs["allowed_vlans"] == [10, 20]
 
     _VoucherServiceFactory.outcome = VoucherCollisionError("collision")
@@ -714,20 +714,22 @@ def _plain_request(
     )
 
 
-@pytest.mark.asyncio
-async def test_miscellaneous_route_branches(
+def test_dashboard_fallback_sets_csrf_cookie(
     admin_api_client: TestClient,
     app: FastAPI,
     monkeypatch: pytest.MonkeyPatch,
-    db_session: Session,
 ) -> None:
-    """Miscellaneous route modules cover small remaining branches."""
+    """Dashboard fallback rendering sets a CSRF cookie."""
     _install_ui_overrides(app, monkeypatch)
     monkeypatch.setattr(dashboard_ui, "DashboardService", _DashboardServiceError)
     dashboard = admin_api_client.get("/admin/dashboard/")
     assert dashboard.status_code == 200
     assert "csrftoken" in dashboard.headers.get("set-cookie", "")
 
+
+@pytest.mark.asyncio
+async def test_miscellaneous_route_branches(db_session: Session) -> None:
+    """Miscellaneous route modules cover small remaining branches."""
     detect_request = _plain_request(
         app_state=SimpleNamespace(guest_external_url="https://guest.test")
     )
