@@ -157,3 +157,18 @@ def test_no_inline_scripts_in_templates(client: TestClient) -> None:
         # Should not contain inline script tags
         content = response.content.decode().lower()
         assert "<script>" not in content
+
+
+@pytest.mark.integration
+def test_error_page_truncates_after_tag_stripping(client: TestClient) -> None:
+    """Error route strips tags, truncates, and keeps the retry page HTML."""
+    message = "<b>" + ("A" * 600) + "</b>"
+    response = client.get(f"/guest/error?message={message}")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    content = response.content.decode()
+    assert "<b>" not in content
+    assert content.count("A") < 600
+    assert "..." in content
+    assert 'href="/guest/authorize"' in content
