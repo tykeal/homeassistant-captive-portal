@@ -47,6 +47,11 @@ class BookingAuthorizeResponse(BaseModel):
 _engine: Optional[Engine] = None
 
 
+def _aware_utc(value: datetime) -> datetime:
+    """Return a timezone-aware UTC datetime."""
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
 def set_db_engine(engine: Engine) -> None:
     """Set the global database engine instance.
 
@@ -140,15 +145,18 @@ async def authorize_booking(
     # Check if booking is within valid time window
     now_utc = datetime.now(timezone.utc)
 
+    start_utc = _aware_utc(event.start_utc)
+    end_utc = _aware_utc(event.end_utc)
+
     # Apply grace period (only applied here at grant creation)
     grace_minutes = matching_integration.checkout_grace_minutes
-    effective_end = event.end_utc + timedelta(minutes=grace_minutes)
+    effective_end = end_utc + timedelta(minutes=grace_minutes)
     # Note: Grace period extends access but doesn't modify stored booking window
 
-    if now_utc < event.start_utc:
+    if now_utc < start_utc:
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
-            detail=f"Booking has not started yet. Start time: {event.start_utc.isoformat()}",
+            detail=f"Booking has not started yet. Start time: {start_utc.isoformat()}",
         )
     if now_utc > effective_end:
         raise HTTPException(
@@ -165,15 +173,16 @@ async def authorize_booking(
         return BookingAuthorizeResponse(
             grant_id=str(existing_grant.id),
             mac_address=existing_grant.mac,
-            start_utc=existing_grant.start_utc.isoformat(),
-            end_utc=existing_grant.end_utc.isoformat(),
+            start_utc=_aware_utc(existing_grant.start_utc).isoformat(),
+            end_utc=_aware_utc(existing_grant.end_utc).isoformat(),
             message="Access already granted (existing authorization)",
         )
 
     grant = AccessGrant(
         id=uuid4(),
         mac=request.mac_address,
-        start_utc=event.start_utc,
+        device_id=request.mac_address,
+        start_utc=start_utc,
         end_utc=effective_end,
         booking_ref=request.booking_code,
         created_utc=now_utc,
@@ -188,7 +197,7 @@ async def authorize_booking(
     return BookingAuthorizeResponse(
         grant_id=str(grant.id),
         mac_address=grant.mac,
-        start_utc=grant.start_utc.isoformat(),
-        end_utc=grant.end_utc.isoformat(),
+        start_utc=_aware_utc(grant.start_utc).isoformat(),
+        end_utc=_aware_utc(grant.end_utc).isoformat(),
         message="Access granted successfully",
     )
