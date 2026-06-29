@@ -57,7 +57,7 @@ def normalized_set_cookie(headers: list[str]) -> list[str]:
     """
     normalized: list[str] = []
     for header in headers:
-        cookie = SimpleCookie[str]()
+        cookie: SimpleCookie = SimpleCookie()
         cookie.load(header)
         if "grant_id" in cookie:
             cookie["grant_id"] = "<grant-id>"

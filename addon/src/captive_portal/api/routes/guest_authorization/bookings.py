@@ -60,13 +60,19 @@ def _aware_utc(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
 
 
-def _check_booking_window(start_utc: datetime, end_utc: datetime, grace_minutes: int) -> datetime:
+def _check_booking_window(
+    start_utc: datetime,
+    end_utc: datetime,
+    grace_minutes: int,
+    now: datetime,
+) -> datetime:
     """Validate booking time bounds and return effective end time.
 
     Args:
         start_utc: Booking start in UTC.
         end_utc: Booking end in UTC.
         grace_minutes: Integration checkout grace minutes.
+        now: Single timestamp shared by the booking decision.
 
     Returns:
         End time plus checkout grace.
@@ -74,7 +80,6 @@ def _check_booking_window(start_utc: datetime, end_utc: datetime, grace_minutes:
     Raises:
         BookingOutsideWindowError: When the request is outside the allowed window.
     """
-    now = datetime.now(timezone.utc)
     early_checkin_window = start_utc - timedelta(minutes=60)
     if now < early_checkin_window:
         raise BookingOutsideWindowError(
@@ -99,6 +104,7 @@ def _create_booking_grant(
     booking_identifier: str,
     start_utc: datetime,
     effective_end: datetime,
+    now: datetime,
 ) -> AccessGrant:
     """Create and persist a booking access grant using current field rules.
 
@@ -110,11 +116,11 @@ def _create_booking_grant(
         booking_identifier: Case-preserved matched booking identifier.
         start_utc: Booking start in UTC.
         effective_end: Booking end plus grace period.
+        now: Single timestamp shared by the booking decision.
 
     Returns:
         Persisted pending access grant.
     """
-    now = datetime.now(timezone.utc)
     grant = AccessGrant(
         mac=mac_address,
         device_id=mac_address,
@@ -223,12 +229,14 @@ async def authorize_booking(
                 detail="This code is not valid for your network.",
             )
 
+        now = datetime.now(timezone.utc)
         start_utc = _aware_utc(event.start_utc)
         end_utc = _aware_utc(event.end_utc)
         effective_end = _check_booking_window(
             start_utc,
             end_utc,
             integration.checkout_grace_minutes,
+            now,
         )
         _ensure_no_duplicate_grant(
             session=session,
@@ -244,6 +252,7 @@ async def authorize_booking(
             booking_identifier=booking_identifier,
             start_utc=start_utc,
             effective_end=effective_end,
+            now=now,
         )
     except BookingNotFoundError as exc:
         await _audit_booking_error(
