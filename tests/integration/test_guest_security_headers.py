@@ -160,8 +160,8 @@ def test_no_inline_scripts_in_templates(client: TestClient) -> None:
 
 
 @pytest.mark.integration
-def test_error_page_truncates_after_tag_stripping(client: TestClient) -> None:
-    """Error route strips tags, truncates, and keeps the retry page HTML."""
+def test_error_page_truncates_and_strips_tags(client: TestClient) -> None:
+    """Error route truncates long messages, strips tags, and keeps retry HTML."""
     message = "<b>" + ("A" * 600) + "</b>"
     response = client.get(f"/guest/error?message={message}")
 

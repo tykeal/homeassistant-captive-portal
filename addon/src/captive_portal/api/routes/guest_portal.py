@@ -328,6 +328,7 @@ async def _process_authorization(
         client_ip=client_ip,
         retry_query=request.state.retry_query,
     )
+    request.state.guest_authorization_context = flow_context
     await enforce_rate_limit(
         rate_limiter=dependencies.rate_limiter,
         audit_service=dependencies.audit_service,
