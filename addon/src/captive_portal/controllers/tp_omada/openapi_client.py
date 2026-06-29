@@ -301,7 +301,8 @@ class OpenApiClient:
             backoff_seconds = [1.0, 2.0, 4.0, 8.0]
             last_error: Exception | None = None
             auth_retried = False
-            for attempt in range(4):
+            attempt = 0
+            while attempt < 4:
                 try:
                     return await self._request_once(
                         method, path, params=params, json_body=json_body
@@ -321,6 +322,7 @@ class OpenApiClient:
                             f"OpenAPI transient error after retries: {exc.status_code}"
                         ) from exc
                     await asyncio.sleep(backoff_seconds[attempt])
+                    attempt += 1
                 except httpx.RequestError as exc:
                     last_error = exc
                     if attempt == 3:
@@ -328,7 +330,10 @@ class OpenApiClient:
                             f"OpenAPI request failed after retries: {type(exc).__name__}"
                         ) from exc
                     await asyncio.sleep(backoff_seconds[attempt])
-            raise OmadaRetryExhaustedError(
+                    attempt += 1
+            # The fixed retry loop always returns or raises above; this
+            # defensive guard remains for future retry-loop refactors.
+            raise OmadaRetryExhaustedError(  # pragma: no cover
                 f"OpenAPI retries exhausted: {type(last_error).__name__}"
             )
 
