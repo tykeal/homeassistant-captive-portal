@@ -17,6 +17,7 @@ from sqlmodel import Session, select
 from captive_portal._version import __version__
 from captive_portal.api.routes.guest_authorization.bookings import authorize_booking
 from captive_portal.api.routes.guest_authorization.context import (
+    GuestAuthorizationContext,
     GuestAuthorizationDependencies,
     GuestOmadaParams,
     audit_controller_failure,
@@ -323,6 +324,10 @@ async def _process_authorization(
         _logger.debug("%s /authorize step=csrf_ok", request.method)
 
     client_ip = resolve_client_ip(request, dependencies.portal_config)
+    flow_context = GuestAuthorizationContext(
+        client_ip=client_ip,
+        retry_query=request.state.retry_query,
+    )
     await enforce_rate_limit(
         rate_limiter=dependencies.rate_limiter,
         audit_service=dependencies.audit_service,
@@ -335,6 +340,7 @@ async def _process_authorization(
         audit_service=dependencies.audit_service,
         client_ip=client_ip,
     )
+    flow_context.mac_address = mac_address
     validation_result = await validate_guest_code(
         code=code,
         service=dependencies.unified_code_service,
@@ -343,6 +349,7 @@ async def _process_authorization(
         client_ip=client_ip,
         mac_address=mac_address,
     )
+    flow_context.validation_result = validation_result
 
     if debug:
         _logger.debug(
@@ -378,6 +385,8 @@ async def _process_authorization(
             detail="Invalid code type",
         )
 
+    flow_context.vlan_meta = decision.vlan_meta
+    flow_context.grant = decision.grant
     grant = apply_omada_metadata(decision.grant, omada_params)
     apply_legacy_site_override(dependencies.omada_adapter, omada_params.site)
 
