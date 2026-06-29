@@ -140,15 +140,20 @@ async def authorize_booking(
     # Check if booking is within valid time window
     now_utc = datetime.now(timezone.utc)
 
+    start_utc = (
+        event.start_utc if event.start_utc.tzinfo else event.start_utc.replace(tzinfo=timezone.utc)
+    )
+    end_utc = event.end_utc if event.end_utc.tzinfo else event.end_utc.replace(tzinfo=timezone.utc)
+
     # Apply grace period (only applied here at grant creation)
     grace_minutes = matching_integration.checkout_grace_minutes
-    effective_end = event.end_utc + timedelta(minutes=grace_minutes)
+    effective_end = end_utc + timedelta(minutes=grace_minutes)
     # Note: Grace period extends access but doesn't modify stored booking window
 
-    if now_utc < event.start_utc:
+    if now_utc < start_utc:
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
-            detail=f"Booking has not started yet. Start time: {event.start_utc.isoformat()}",
+            detail=f"Booking has not started yet. Start time: {start_utc.isoformat()}",
         )
     if now_utc > effective_end:
         raise HTTPException(
@@ -173,7 +178,8 @@ async def authorize_booking(
     grant = AccessGrant(
         id=uuid4(),
         mac=request.mac_address,
-        start_utc=event.start_utc,
+        device_id=request.mac_address,
+        start_utc=start_utc,
         end_utc=effective_end,
         booking_ref=request.booking_code,
         created_utc=now_utc,
