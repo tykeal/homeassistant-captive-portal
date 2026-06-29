@@ -9,10 +9,11 @@ import urllib.parse
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session
 
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
 from captive_portal.persistence.database import get_session
 from captive_portal.persistence.repositories import (
     AccessGrantRepository,
@@ -37,10 +38,10 @@ def _age_threshold_error(root: str) -> RedirectResponse:
     Returns:
         303 redirect response.
     """
-    return RedirectResponse(
-        url=f"{root}/admin/vouchers/?error="
+    return safe_admin_redirect(
+        root,
+        "/admin/vouchers/?error="
         + urllib.parse.quote_plus("Age threshold must be a non-negative integer."),
-        status_code=status.HTTP_303_SEE_OTHER,
     )
 
 
@@ -108,10 +109,7 @@ async def purge_preview(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for purge preview")
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=Invalid+CSRF+token")
 
     min_age_days = await _parse_purge_age(request, root)
     if isinstance(min_age_days, RedirectResponse):
@@ -120,15 +118,15 @@ async def purge_preview(
     count = await _purge_service(session).count_purgeable(min_age_days)
 
     if count == 0:
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?info="
+        return safe_admin_redirect(
+            root,
+            "/admin/vouchers/?info="
             + urllib.parse.quote_plus("No vouchers are eligible for purging with that threshold."),
-            status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    return RedirectResponse(
-        url=f"{root}/admin/vouchers/?purge_preview_count={count}&purge_preview_days={min_age_days}",
-        status_code=status.HTTP_303_SEE_OTHER,
+    return safe_admin_redirect(
+        root,
+        f"/admin/vouchers/?purge_preview_count={count}&purge_preview_days={min_age_days}",
     )
 
 
@@ -156,10 +154,7 @@ async def purge_confirm(
         await csrf.validate_token(request)
     except HTTPException:
         logger.warning("CSRF validation failed for purge confirm")
-        return RedirectResponse(
-            url=f"{root}/admin/vouchers/?error=Invalid+CSRF+token",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
+        return safe_admin_redirect(root, "/admin/vouchers/?error=Invalid+CSRF+token")
 
     min_age_days = await _parse_purge_age(request, root)
     if isinstance(min_age_days, RedirectResponse):
@@ -171,7 +166,4 @@ async def purge_confirm(
     purged_count = await _purge_service(session).manual_purge(min_age_days, actor=actor)
 
     success_msg = urllib.parse.quote_plus(f"Purged {purged_count} vouchers")
-    return RedirectResponse(
-        url=f"{root}/admin/vouchers/?success={success_msg}",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return safe_admin_redirect(root, f"/admin/vouchers/?success={success_msg}")

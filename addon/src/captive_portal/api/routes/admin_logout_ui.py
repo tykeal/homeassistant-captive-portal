@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
+
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
 
 logger = logging.getLogger("captive_portal")
 
@@ -37,10 +39,7 @@ async def admin_logout(request: Request) -> RedirectResponse:
     root = request.scope.get("root_path", "")
     session_id = getattr(request.state, "session_id", None)
 
-    response = RedirectResponse(
-        url=f"{root}/admin/login",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    response = safe_admin_redirect(root, "/admin/login")
 
     # Access session store and config once
     session_store = request.app.state.session_store

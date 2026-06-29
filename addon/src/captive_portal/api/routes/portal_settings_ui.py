@@ -18,6 +18,7 @@ from sqlmodel import Session, select
 from starlette.responses import Response
 
 from captive_portal._version import __version__
+from captive_portal.api.routes.admin_redirects import safe_admin_redirect
 from captive_portal.models.admin_user import AdminUser
 from captive_portal.models.portal_config import PortalConfig
 from captive_portal.persistence.database import get_session
@@ -116,10 +117,7 @@ def _settings_redirect(root: str, message_type: str, message: str) -> RedirectRe
     Returns:
         Redirect response to the portal settings UI.
     """
-    return RedirectResponse(
-        url=f"{root}/admin/portal-settings?{message_type}={message}",
-        status_code=status.HTTP_303_SEE_OTHER,
-    )
+    return safe_admin_redirect(root, f"/admin/portal-settings?{message_type}={message}")
 
 
 def _validate_portal_settings_form(
