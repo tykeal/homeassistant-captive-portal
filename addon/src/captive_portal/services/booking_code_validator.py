@@ -214,17 +214,19 @@ class BookingCodeValidator:
             # Missing, empty, non-numeric, or out-of-range VIDs are no
             # basis for preferring one integration over another; let the
             # caller's VLAN check report the reason.
-            return candidates
+            eligible = candidates
+        else:
+            allowed = [
+                candidate
+                for candidate in candidates
+                if vlan_service.validate_booking_vlan(device_vid, candidate[1]).allowed
+            ]
+            eligible = allowed or candidates
 
-        allowed = [
-            candidate
-            for candidate in candidates
-            if vlan_service.validate_booking_vlan(device_vid, candidate[1]).allowed
-        ]
-        if not allowed:
-            return candidates
-
-        distinct_integrations = {candidate[1].integration_id for candidate in allowed}
+        # Warn on every path that falls back to the booking window, since
+        # that is where a colliding code can silently resolve to another
+        # integration.
+        distinct_integrations = {candidate[1].integration_id for candidate in eligible}
         if len(distinct_integrations) > 1:
             _logger.warning(
                 "Booking code matches %d integrations for VLAN %r: %s. "
@@ -234,7 +236,7 @@ class BookingCodeValidator:
                 device_vid,
                 sorted(distinct_integrations),
             )
-        return allowed
+        return eligible
 
     def _find_matching_events(
         self,

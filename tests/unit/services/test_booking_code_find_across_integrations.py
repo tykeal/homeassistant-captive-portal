@@ -639,3 +639,48 @@ class TestFindAcrossIntegrationsVlanSelection:
         # and wrongly promote the open one, turning a denial into a grant.
         assert integration is not None
         assert integration.integration_id == "calendar.restricted"
+
+    def test_unusable_vid_logs_ambiguity(
+        self, test_db_session: Session, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Falling back on an unusable VID still reports ambiguity."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -120)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        with caplog.at_level("WARNING", logger="captive_portal.guest"):
+            validator.find_across_integrations("5773", device_vid="abc")
+
+        assert "matches 2 integrations" in caplog.text
+
+    def test_no_vlan_match_logs_ambiguity(
+        self, test_db_session: Session, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Falling back when no candidate qualifies reports ambiguity."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -120)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        with caplog.at_level("WARNING", logger="captive_portal.guest"):
+            validator.find_across_integrations("5773", device_vid="99")
+
+        assert "matches 2 integrations" in caplog.text
+
+    def test_single_vlan_match_logs_nothing(
+        self, test_db_session: Session, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """An unambiguous VLAN-filtered match emits no warning."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -120)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        with caplog.at_level("WARNING", logger="captive_portal.guest"):
+            validator.find_across_integrations("5773", device_vid="63")
+
+        assert "matches" not in caplog.text
