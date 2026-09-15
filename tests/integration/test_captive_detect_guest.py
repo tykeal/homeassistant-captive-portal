@@ -8,6 +8,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from tests.route_helpers import route_paths
+
 from captive_portal.config.settings import AppSettings
 from captive_portal.guest_app import create_guest_app
 
@@ -93,5 +95,4 @@ class TestGuestAuthorizationAccess:
 
     def test_guest_authorize_post_exists(self, guest_app: FastAPI) -> None:
         """POST /guest/authorize endpoint is registered."""
-        route_paths = [getattr(route, "path", None) for route in guest_app.routes]
-        assert "/guest/authorize" in route_paths
+        assert "/guest/authorize" in route_paths(guest_app)
