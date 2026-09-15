@@ -823,7 +823,7 @@ async def _process_authorization(  # noqa: C901
 
             # Search ALL integrations for matching code
             event, integration = booking_validator.find_across_integrations(
-                validation_result.normalized_code
+                validation_result.normalized_code, device_vid=vid
             )
             if not event or not integration:
                 raise BookingNotFoundError("Booking not found")
