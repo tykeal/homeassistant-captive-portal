@@ -18,6 +18,8 @@ on:
     types: [opened, reopened, edited, synchronize]
     branches:
       - main
+      # Maintenance branches for released versions (e.g. support/v0.4)
+      - 'support/**'
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"

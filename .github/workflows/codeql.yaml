@@ -10,12 +10,15 @@ on:
   push:
     branches:
       - main
+      # Maintenance branches for released versions (e.g. support/v0.4)
+      - 'support/**'
     paths-ignore:
       - '.github/**'
       - 'docs/**'
   pull_request:
     branches:
       - main
+      - 'support/**'
   schedule:
     - cron: '31 9 * * 3'
 
