@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from captive_portal.config.settings import AppSettings
 from captive_portal.guest_app import create_guest_app
+from tests.route_helpers import route_paths
 
 
 @pytest.fixture
@@ -93,8 +94,7 @@ class TestGuestAppRoutes:
 
     def test_booking_authorize_post(self, guest_app: FastAPI) -> None:
         """Booking authorize /api/guest/authorize endpoint is registered."""
-        route_paths = [getattr(route, "path", None) for route in guest_app.routes]
-        assert "/api/guest/authorize" in route_paths
+        assert "/api/guest/authorize" in route_paths(guest_app)
 
     def test_health_endpoint(self, guest_client: TestClient) -> None:
         """Health endpoint /api/health is mounted."""
