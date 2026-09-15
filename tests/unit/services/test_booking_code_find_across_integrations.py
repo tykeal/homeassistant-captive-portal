@@ -385,3 +385,302 @@ class TestFindAcrossIntegrationsDifferentAttrs:
         assert found_event.slot_code == "CODE111"
         assert found_integration is not None
         assert found_integration.integration_id == "calendar.rental_1"
+
+
+class TestFindAcrossIntegrationsVlanSelection:
+    """Test VLAN-aware candidate selection across colliding booking codes."""
+
+    @staticmethod
+    def _add_integration(
+        session: Session,
+        integration_id: str,
+        allowed_vlans: list[int] | None,
+    ) -> None:
+        """Persist an integration with a VLAN allowlist."""
+        session.add(
+            HAIntegrationConfig(
+                integration_id=integration_id,
+                identifier_attr=IdentifierAttr.SLOT_CODE,
+                checkout_grace_minutes=15,
+                allowed_vlans=allowed_vlans,
+            )
+        )
+        session.commit()
+
+    @staticmethod
+    def _add_event(
+        session: Session,
+        integration_id: str,
+        code: str,
+        start_offset_minutes: int,
+    ) -> None:
+        """Persist an active booking event starting at a relative offset."""
+        now = datetime.now(timezone.utc)
+        session.add(
+            RentalControlEvent(
+                integration_id=integration_id,
+                event_index=0,
+                slot_code=code,
+                slot_name=f"Guest {integration_id}",
+                last_four="1234",
+                start_utc=now + timedelta(minutes=start_offset_minutes),
+                end_utc=now + timedelta(days=1),
+                raw_attributes="{}",
+            )
+        )
+        session.commit()
+
+    def test_colliding_code_resolves_to_device_vlan(self, test_db_session: Session) -> None:
+        """A colliding code resolves to the integration matching the device VLAN."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        # The VLAN 61 booking starts later, so it wins the time-based
+        # preference ordering and would be selected without VLAN filtering.
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -120)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        event, integration = validator.find_across_integrations("5773", device_vid="63")
+
+        assert integration is not None
+        assert integration.integration_id == "calendar.vlan_63"
+        assert event is not None
+
+    def test_colliding_code_resolves_for_other_vlan(self, test_db_session: Session) -> None:
+        """The same collision resolves the other way for a VLAN 61 device."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -120)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        _event, integration = validator.find_across_integrations("5773", device_vid="61")
+
+        assert integration is not None
+        assert integration.integration_id == "calendar.vlan_61"
+
+    def test_returns_candidate_when_no_vlan_matches(self, test_db_session: Session) -> None:
+        """Return a candidate so the caller can report a VLAN denial."""
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        event, integration = validator.find_across_integrations("5773", device_vid="63")
+
+        # Distinguishable from an unknown code, which yields (None, None).
+        assert event is not None
+        assert integration is not None
+        assert integration.integration_id == "calendar.vlan_61"
+
+    def test_unknown_code_still_returns_none(self, test_db_session: Session) -> None:
+        """An unknown code returns (None, None) regardless of VLAN."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        event, integration = validator.find_across_integrations("0000", device_vid="63")
+
+        assert event is None
+        assert integration is None
+
+    def test_unrestricted_integration_matches_any_vlan(self, test_db_session: Session) -> None:
+        """An integration without an allowlist remains reachable."""
+        self._add_integration(test_db_session, "calendar.open", None)
+        self._add_event(test_db_session, "calendar.open", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        _event, integration = validator.find_across_integrations("5773", device_vid="63")
+
+        assert integration is not None
+        assert integration.integration_id == "calendar.open"
+
+    def test_matching_vlan_preferred_over_newer_mismatch(self, test_db_session: Session) -> None:
+        """A VLAN-matching integration wins over a non-matching newer booking."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -120)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -1)
+
+        validator = BookingCodeValidator(test_db_session)
+        _event, integration = validator.find_across_integrations("5773", device_vid="63")
+
+        assert integration is not None
+        assert integration.integration_id == "calendar.vlan_63"
+
+    def test_missing_vid_falls_back_to_candidate(self, test_db_session: Session) -> None:
+        """A device with no VID still yields a candidate for denial reporting."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        event, integration = validator.find_across_integrations("5773", device_vid=None)
+
+        assert event is not None
+        assert integration is not None
+
+    def test_ambiguous_match_logs_warning(
+        self, test_db_session: Session, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Multiple integrations valid for one VLAN emit a warning."""
+        self._add_integration(test_db_session, "calendar.first", [63])
+        self._add_integration(test_db_session, "calendar.second", [63])
+        self._add_event(test_db_session, "calendar.first", "5773", -120)
+        self._add_event(test_db_session, "calendar.second", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        with caplog.at_level("WARNING", logger="captive_portal.guest"):
+            _event, integration = validator.find_across_integrations("5773", device_vid="63")
+
+        assert integration is not None
+        assert "matches 2 integrations" in caplog.text
+
+    def test_backward_compatible_without_vid(self, test_db_session: Session) -> None:
+        """Omitting device_vid preserves the previous selection behaviour."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -120)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        _event, integration = validator.find_across_integrations("5773")
+
+        # Time-based ordering still selects the most recently started event.
+        assert integration is not None
+        assert integration.integration_id == "calendar.vlan_61"
+
+    def test_correct_vlan_wins_over_active_wrong_vlan(self, test_db_session: Session) -> None:
+        """A non-active correct-VLAN booking beats an active wrong-VLAN one."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        # VLAN 63 booking is expired; VLAN 61 booking is active. Without
+        # VLAN filtering the active booking wins on tier alone.
+        now = datetime.now(timezone.utc)
+        test_db_session.add(
+            RentalControlEvent(
+                integration_id="calendar.vlan_63",
+                event_index=0,
+                slot_code="5773",
+                slot_name="Expired Guest",
+                last_four="1234",
+                start_utc=now - timedelta(days=5),
+                end_utc=now - timedelta(days=4),
+                raw_attributes="{}",
+            )
+        )
+        test_db_session.commit()
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        _event, integration = validator.find_across_integrations("5773", device_vid="63")
+
+        # Selecting the VLAN 63 booking lets the caller report an accurate
+        # booking-window error instead of a misleading network error.
+        assert integration is not None
+        assert integration.integration_id == "calendar.vlan_63"
+
+    def test_future_correct_vlan_wins_over_active_wrong_vlan(
+        self, test_db_session: Session
+    ) -> None:
+        """A future correct-VLAN booking beats an active wrong-VLAN one."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", 60 * 24 * 3)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        _event, integration = validator.find_across_integrations("5773", device_vid="63")
+
+        assert integration is not None
+        assert integration.integration_id == "calendar.vlan_63"
+
+    def test_mixed_allowlists_unchanged_without_vid(self, test_db_session: Session) -> None:
+        """An unknown VLAN must not reorder mixed restricted/open candidates."""
+        self._add_integration(test_db_session, "calendar.restricted", [61])
+        self._add_integration(test_db_session, "calendar.open", None)
+        # The restricted booking starts later, so time ordering prefers it.
+        self._add_event(test_db_session, "calendar.open", "5773", -120)
+        self._add_event(test_db_session, "calendar.restricted", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        _event, integration = validator.find_across_integrations("5773", device_vid=None)
+
+        # Filtering on an unknown VID would drop the restricted candidate
+        # and wrongly promote the open one, turning a denial into a grant.
+        assert integration is not None
+        assert integration.integration_id == "calendar.restricted"
+
+    def test_mixed_allowlists_filtered_with_vid(self, test_db_session: Session) -> None:
+        """A known VLAN still selects the reachable integration."""
+        self._add_integration(test_db_session, "calendar.restricted", [61])
+        self._add_integration(test_db_session, "calendar.open", None)
+        self._add_event(test_db_session, "calendar.open", "5773", -120)
+        self._add_event(test_db_session, "calendar.restricted", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        _event, integration = validator.find_across_integrations("5773", device_vid="63")
+
+        assert integration is not None
+        assert integration.integration_id == "calendar.open"
+
+    @pytest.mark.parametrize("bad_vid", ["", "   ", "abc", "0", "4095", "-1", "63.5"])
+    def test_unusable_vid_does_not_reorder_candidates(
+        self, test_db_session: Session, bad_vid: str
+    ) -> None:
+        """Unparseable VIDs must not promote an unrestricted booking."""
+        self._add_integration(test_db_session, "calendar.restricted", [61])
+        self._add_integration(test_db_session, "calendar.open", None)
+        self._add_event(test_db_session, "calendar.open", "5773", -120)
+        self._add_event(test_db_session, "calendar.restricted", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        _event, integration = validator.find_across_integrations("5773", device_vid=bad_vid)
+
+        # Filtering on an unusable VID would drop the restricted candidate
+        # and wrongly promote the open one, turning a denial into a grant.
+        assert integration is not None
+        assert integration.integration_id == "calendar.restricted"
+
+    def test_unusable_vid_logs_ambiguity(
+        self, test_db_session: Session, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Falling back on an unusable VID still reports ambiguity."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -120)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        with caplog.at_level("WARNING", logger="captive_portal.guest"):
+            validator.find_across_integrations("5773", device_vid="abc")
+
+        assert "matches 2 integrations" in caplog.text
+
+    def test_no_vlan_match_logs_ambiguity(
+        self, test_db_session: Session, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Falling back when no candidate qualifies reports ambiguity."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -120)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        with caplog.at_level("WARNING", logger="captive_portal.guest"):
+            validator.find_across_integrations("5773", device_vid="99")
+
+        assert "matches 2 integrations" in caplog.text
+
+    def test_single_vlan_match_logs_nothing(
+        self, test_db_session: Session, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """An unambiguous VLAN-filtered match emits no warning."""
+        self._add_integration(test_db_session, "calendar.vlan_63", [63])
+        self._add_integration(test_db_session, "calendar.vlan_61", [61])
+        self._add_event(test_db_session, "calendar.vlan_63", "5773", -120)
+        self._add_event(test_db_session, "calendar.vlan_61", "5773", -10)
+
+        validator = BookingCodeValidator(test_db_session)
+        with caplog.at_level("WARNING", logger="captive_portal.guest"):
+            validator.find_across_integrations("5773", device_vid="63")
+
+        assert "matches" not in caplog.text
