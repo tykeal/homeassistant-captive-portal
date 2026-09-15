@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Booking code validation service with case-insensitive matching."""
 
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, cast
@@ -11,6 +12,9 @@ from sqlmodel import Session, func, select
 from captive_portal.models.access_grant import AccessGrant
 from captive_portal.models.ha_integration_config import HAIntegrationConfig
 from captive_portal.models.rental_control_event import RentalControlEvent
+from captive_portal.services.vlan_validation_service import VlanValidationService
+
+_logger = logging.getLogger("captive_portal.guest")
 
 
 class BookingNotFoundError(Exception):
@@ -135,15 +139,27 @@ class BookingCodeValidator:
         return name.strip()
 
     def find_across_integrations(
-        self, user_input: str
+        self, user_input: str, device_vid: str | None = None
     ) -> tuple[RentalControlEvent, HAIntegrationConfig] | tuple[None, None]:
         """Search all integrations for a matching booking code.
 
         Iterates through all configured integrations and checks each one
         for a matching event using case-insensitive lookup.
 
+        When ``device_vid`` is supplied, candidates whose integration does
+        not permit that VLAN are set aside before the preference ordering
+        is applied. This prevents a booking code that exists in several
+        integrations from resolving to one the device cannot reach, which
+        would deny a guest holding a valid code for their own network.
+
+        If the VLAN is unusable, or no candidate permits it, the best
+        candidate is still returned so the caller can reject it through
+        the normal VLAN check and report an accurate reason. Returning
+        nothing here would be indistinguishable from an unknown code.
+
         Args:
             user_input: Guest-provided booking code (any case)
+            device_vid: Raw VLAN ID from the controller redirect, if known
 
         Returns:
             Tuple of (event, integration) if found, (None, None)
@@ -165,8 +181,10 @@ class BookingCodeValidator:
         if not candidates:
             return None, None
 
+        eligible = self._filter_by_vlan(candidates, device_vid)
+
         result, integration = min(
-            candidates,
+            eligible,
             key=lambda candidate: self._event_preference_key(
                 candidate[0],
                 grace_minutes=candidate[1].checkout_grace_minutes,
@@ -174,6 +192,49 @@ class BookingCodeValidator:
             ),
         )
         return result, integration
+
+    def _filter_by_vlan(
+        self,
+        candidates: list[tuple[RentalControlEvent, HAIntegrationConfig]],
+        device_vid: str | None,
+    ) -> list[tuple[RentalControlEvent, HAIntegrationConfig]]:
+        """Restrict candidates to integrations permitting the device VLAN.
+
+        Args:
+            candidates: Matching (event, integration) pairs
+            device_vid: Raw VLAN ID from the controller redirect, if known
+
+        Returns:
+            Candidates the device VLAN may use, or all candidates when
+            the VLAN is unusable or none qualify, so the caller can
+            report the VLAN denial.
+        """
+        vlan_service = VlanValidationService()
+        if vlan_service.parse_vid(device_vid) is None:
+            # Missing, empty, non-numeric, or out-of-range VIDs are no
+            # basis for preferring one integration over another; let the
+            # caller's VLAN check report the reason.
+            return candidates
+
+        allowed = [
+            candidate
+            for candidate in candidates
+            if vlan_service.validate_booking_vlan(device_vid, candidate[1]).allowed
+        ]
+        if not allowed:
+            return candidates
+
+        distinct_integrations = {candidate[1].integration_id for candidate in allowed}
+        if len(distinct_integrations) > 1:
+            _logger.warning(
+                "Booking code matches %d integrations for VLAN %r: %s. "
+                "Selecting by booking window; codes are not unique across "
+                "integrations.",
+                len(distinct_integrations),
+                device_vid,
+                sorted(distinct_integrations),
+            )
+        return allowed
 
     def _find_matching_events(
         self,

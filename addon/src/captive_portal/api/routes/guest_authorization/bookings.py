@@ -158,14 +158,18 @@ def _ensure_no_duplicate_grant(
             raise DuplicateGrantError("You already have an active access grant for this booking.")
 
 
-def _find_booking_match(session: Session, normalized_code: str) -> _BookingMatch:
+def _find_booking_match(
+    session: Session, normalized_code: str, device_vid: str | None = None
+) -> _BookingMatch:
     """Find the booking event and integration using current lookup order."""
     booking_validator = BookingCodeValidator(session)
     all_integrations = list(session.exec(select(HAIntegrationConfig)).all())
     if not all_integrations:
         raise IntegrationUnavailableError("No rental control integration configured")
 
-    event, integration = booking_validator.find_across_integrations(normalized_code)
+    event, integration = booking_validator.find_across_integrations(
+        normalized_code, device_vid=device_vid
+    )
     if not event or not integration:
         raise BookingNotFoundError("Booking not found")
     return _BookingMatch(event=event, integration=integration)
@@ -296,7 +300,11 @@ async def authorize_booking(
     """Execute the booking branch of guest authorization."""
     audit_context = _booking_audit_context(validation_result, decision_context)
     try:
-        match = _find_booking_match(session, validation_result.normalized_code)
+        match = _find_booking_match(
+            session,
+            validation_result.normalized_code,
+            device_vid=decision_context.vid,
+        )
         _log_booking_found(decision_context.request, match)
         vlan_meta = await _validate_booking_vlan(
             decision_context=decision_context,
