@@ -577,7 +577,9 @@ async def test_authorize_booking_maps_helper_errors(
 ) -> None:
     """Booking authorization maps domain errors to HTTP responses."""
 
-    def fail_find(session: Session, normalized_code: str) -> bookings._BookingMatch:
+    def fail_find(
+        session: Session, normalized_code: str, device_vid: str | None = None
+    ) -> bookings._BookingMatch:
         """Raise the parametrized domain error."""
         raise raised
 
@@ -760,3 +762,50 @@ async def test_controller_authorization_error_branch() -> None:
     )
     assert grant.status == GrantStatus.FAILED
     assert detail is not None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("device_vid", "expected_integration"),
+    [("63", "calendar.vlan_63"), ("61", "calendar.vlan_61")],
+)
+async def test_authorize_booking_selects_integration_for_device_vlan(
+    db_session: Session, device_vid: str, expected_integration: str
+) -> None:
+    """Colliding booking codes resolve to the device's own VLAN."""
+    now = datetime.now(timezone.utc)
+    for integration_id, vlan, start_offset in (
+        ("calendar.vlan_63", 63, timedelta(hours=-6)),
+        ("calendar.vlan_61", 61, timedelta(minutes=-10)),
+    ):
+        db_session.add(
+            HAIntegrationConfig(
+                integration_id=integration_id,
+                identifier_attr=IdentifierAttr.SLOT_CODE,
+                checkout_grace_minutes=15,
+                allowed_vlans=[vlan],
+            )
+        )
+        db_session.add(
+            RentalControlEvent(
+                integration_id=integration_id,
+                event_index=0,
+                slot_code="ABC123",
+                slot_name=f"Guest {vlan}",
+                last_four="1234",
+                start_utc=now + start_offset,
+                end_utc=now + timedelta(days=1),
+                raw_attributes="{}",
+            )
+        )
+    db_session.commit()
+
+    result = await bookings.authorize_booking(
+        validation_result=_validation(),
+        session=db_session,
+        decision_context=_decision_context(vid=device_vid),
+    )
+
+    # Without VLAN-aware matching the later-starting VLAN 61 booking always
+    # won, so a VLAN 63 guest was denied with a misleading 403.
+    assert result.grant.integration_id == expected_integration
